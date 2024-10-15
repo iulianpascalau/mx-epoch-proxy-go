@@ -4,7 +4,9 @@ go 1.20
 
 require (
 	github.com/multiversx/mx-chain-core-go v1.2.21
+	github.com/multiversx/mx-chain-logger-go v1.0.13
 	github.com/stretchr/testify v1.9.0
+	github.com/urfave/cli v1.22.10
 )
 
 require (
