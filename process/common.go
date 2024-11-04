@@ -7,6 +7,12 @@ import (
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
+// UrlParameterBlockNonce represents the name of a URL parameter
+const UrlParameterBlockNonce = "blockNonce"
+
+// UrlParameterHintEpoch represents the name of a URL parameter
+const UrlParameterHintEpoch = "hintEpoch"
+
 // ReturnCode defines the type defines to identify return codes
 type ReturnCode string
 

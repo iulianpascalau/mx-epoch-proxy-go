@@ -30,6 +30,16 @@ func TestNewRequestsProcessor(t *testing.T) {
 	})
 }
 
+func TestRequestsProcessor_IsInterfaceNil(t *testing.T) {
+	t.Parallel()
+
+	var instance *requestsProcessor
+	assert.True(t, instance.IsInterfaceNil())
+
+	instance = &requestsProcessor{}
+	assert.False(t, instance.IsInterfaceNil())
+}
+
 func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 	t.Parallel()
 

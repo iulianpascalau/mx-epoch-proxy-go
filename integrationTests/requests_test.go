@@ -56,7 +56,7 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 
 	log.Info("API engine running", "interface", engine.Address())
 
-	url := fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true", engine.Address())
+	url := fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=221001&hintEpoch=456", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
 	time.Sleep(time.Second)
