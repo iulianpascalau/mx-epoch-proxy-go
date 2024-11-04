@@ -63,3 +63,8 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		_, _ = io.CopyN(writer, response.Body, response.ContentLength)
 	}
 }
+
+// IsInterfaceNil returns true if the value under the interface is nil
+func (processor *requestsProcessor) IsInterfaceNil() bool {
+	return processor == nil
+}
