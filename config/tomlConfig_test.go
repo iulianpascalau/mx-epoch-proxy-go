@@ -14,9 +14,9 @@ func TestConfig(t *testing.T) {
 Port = 8080
 
 Gateways = [
-	{URL="http://192.168.167.22:8080", EpochStart="0", EpochEnd="1000", NonceStart="0", NonceEnd="14401000"},
-	{URL="http://192.168.167.33:9090", EpochStart="1001", EpochEnd="1400", NonceStart="14401001", NonceEnd="20175801"},
-	{URL="http://192.168.167.44:9095", EpochStart="1401", EpochEnd="latest", NonceStart="20175802", NonceEnd="latest"},
+	{URL="http://192.168.167.22:8080", EpochStart="0", EpochEnd="1000", NonceStart="0", NonceEnd="14401000", Name="R1"},
+	{URL="http://192.168.167.33:9090", EpochStart="1001", EpochEnd="1400", NonceStart="14401001", NonceEnd="20175801", Name="R2"},
+	{URL="http://192.168.167.44:9095", EpochStart="1401", EpochEnd="latest", NonceStart="20175802", NonceEnd="latest", Name="R3"},
 ]
 `
 
@@ -28,6 +28,7 @@ Gateways = [
 				EpochEnd:   "1000",
 				NonceStart: "0",
 				NonceEnd:   "14401000",
+				Name:       "R1",
 			},
 			{
 				URL:        "http://192.168.167.33:9090",
@@ -35,6 +36,7 @@ Gateways = [
 				EpochEnd:   "1400",
 				NonceStart: "14401001",
 				NonceEnd:   "20175801",
+				Name:       "R2",
 			},
 			{
 				URL:        "http://192.168.167.44:9095",
@@ -42,6 +44,7 @@ Gateways = [
 				EpochEnd:   "latest",
 				NonceStart: "20175802",
 				NonceEnd:   "latest",
+				Name:       "R3",
 			},
 		},
 		Port: 8080,

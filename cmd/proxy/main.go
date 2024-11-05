@@ -148,10 +148,17 @@ func run(ctx *cli.Context) error {
 	loadedGateways := hostFinder.LoadedGateways()
 	for _, host := range loadedGateways {
 		log.Info("Loaded gateway",
+			"name", host.Name,
 			"URL", host.URL,
 			"nonces", fmt.Sprintf("%s - %s", host.NonceStart, host.NonceEnd),
 			"epochs", fmt.Sprintf("%s - %s", host.EpochStart, host.EpochEnd),
 		)
+	}
+
+	tester := api.NewGatewayTester()
+	err = tester.TestGateways(loadedGateways)
+	if err != nil {
+		return err
 	}
 
 	requestsProcessor, err := process.NewRequestsProcessor(hostFinder)

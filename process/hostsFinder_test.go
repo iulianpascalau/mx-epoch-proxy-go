@@ -194,8 +194,8 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		t.Parallel()
 
 		finder, _ := NewHostsFinder(createTestConfigs())
-		url, err := finder.FindHost(nil)
-		assert.Empty(t, url)
+		cfg, err := finder.FindHost(nil)
+		assert.Empty(t, cfg.URL)
 		assert.ErrorIs(t, err, errCanNotDetermineSuitableHost)
 		assert.Contains(t, err.Error(), errNilMap.Error())
 	})
@@ -203,8 +203,8 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		t.Parallel()
 
 		finder, _ := NewHostsFinder(createTestConfigs())
-		url, err := finder.FindHost(nil)
-		assert.Empty(t, url)
+		cfg, err := finder.FindHost(nil)
+		assert.Empty(t, cfg.URL)
 		assert.ErrorIs(t, err, errCanNotDetermineSuitableHost)
 		assert.Contains(t, err.Error(), errNilMap.Error())
 	})
@@ -212,19 +212,19 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		t.Parallel()
 
 		finder, _ := NewHostsFinder(createTestConfigs())
-		url, err := finder.FindHost(make(map[string][]string))
+		cfg, err := finder.FindHost(make(map[string][]string))
 		assert.Nil(t, err)
-		assert.Equal(t, "URL1", url)
+		assert.Equal(t, "URL1", cfg.URL)
 	})
 	t.Run("no nonce or epoch provided with no latest data should error", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := createTestConfigs()
-		cfg[0].EpochEnd = "900"
-		cfg[0].NonceEnd = "90000"
-		finder, _ := NewHostsFinder(cfg)
-		url, err := finder.FindHost(make(map[string][]string))
-		assert.Empty(t, url)
+		configs := createTestConfigs()
+		configs[0].EpochEnd = "900"
+		configs[0].NonceEnd = "90000"
+		finder, _ := NewHostsFinder(configs)
+		cfg, err := finder.FindHost(make(map[string][]string))
+		assert.Empty(t, cfg.URL)
 		assert.ErrorIs(t, err, errNoLatestDataGatewayDefined)
 	})
 	t.Run("no value for the nonce key should error", func(t *testing.T) {
@@ -234,8 +234,8 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		urlValues := map[string][]string{
 			UrlParameterBlockNonce: nil,
 		}
-		url, err := finder.FindHost(urlValues)
-		assert.Empty(t, url)
+		cfg, err := finder.FindHost(urlValues)
+		assert.Empty(t, cfg.URL)
 		assert.ErrorIs(t, err, errMissingValue)
 		assert.Contains(t, err.Error(), "for key blockNonce")
 	})
@@ -246,8 +246,8 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		urlValues := map[string][]string{
 			UrlParameterBlockNonce: {"NaN"},
 		}
-		url, err := finder.FindHost(urlValues)
-		assert.Empty(t, url)
+		cfg, err := finder.FindHost(urlValues)
+		assert.Empty(t, cfg.URL)
 		assert.Contains(t, err.Error(), "strconv.Atoi: parsing")
 	})
 	t.Run("no value for the epoch key should error", func(t *testing.T) {
@@ -257,8 +257,8 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		urlValues := map[string][]string{
 			UrlParameterHintEpoch: nil,
 		}
-		url, err := finder.FindHost(urlValues)
-		assert.Empty(t, url)
+		cfg, err := finder.FindHost(urlValues)
+		assert.Empty(t, cfg.URL)
 		assert.ErrorIs(t, err, errMissingValue)
 		assert.Contains(t, err.Error(), "for key hintEpoch")
 	})
@@ -269,18 +269,18 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		urlValues := map[string][]string{
 			UrlParameterHintEpoch: {"NaN"},
 		}
-		url, err := finder.FindHost(urlValues)
-		assert.Empty(t, url)
+		cfg, err := finder.FindHost(urlValues)
+		assert.Empty(t, cfg.URL)
 		assert.Contains(t, err.Error(), "strconv.Atoi: parsing")
 	})
 	t.Run("no nonce & epoch found, should error", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := createTestConfigs()
-		cfg[0].NonceEnd = "90000"
-		cfg[0].EpochEnd = "900"
+		configs := createTestConfigs()
+		configs[0].NonceEnd = "90000"
+		configs[0].EpochEnd = "900"
 
-		finder, _ := NewHostsFinder(cfg)
+		finder, _ := NewHostsFinder(configs)
 
 		t.Run("with providing out of bound nonce", func(t *testing.T) {
 			t.Parallel()
@@ -288,14 +288,14 @@ func TestHostsFinder_FindHost(t *testing.T) {
 			urlValues := map[string][]string{
 				UrlParameterBlockNonce: {"90001"},
 			}
-			url, err := finder.FindHost(urlValues)
-			assert.Empty(t, url)
+			cfg, err := finder.FindHost(urlValues)
+			assert.Empty(t, cfg.URL)
 			assert.ErrorIs(t, err, errNoGatewayDefined)
 			assert.Contains(t, err.Error(), "for nonce 90001")
 
 			urlValues[UrlParameterBlockNonce] = []string{"9000001"}
-			url, err = finder.FindHost(urlValues)
-			assert.Empty(t, url)
+			cfg, err = finder.FindHost(urlValues)
+			assert.Empty(t, cfg.URL)
 			assert.ErrorIs(t, err, errNoGatewayDefined)
 			assert.Contains(t, err.Error(), "for nonce 9000001")
 		})
@@ -305,14 +305,14 @@ func TestHostsFinder_FindHost(t *testing.T) {
 			urlValues := map[string][]string{
 				UrlParameterHintEpoch: {"901"},
 			}
-			url, err := finder.FindHost(urlValues)
-			assert.Empty(t, url)
+			cfg, err := finder.FindHost(urlValues)
+			assert.Empty(t, cfg.URL)
 			assert.ErrorIs(t, err, errNoGatewayDefined)
 			assert.Contains(t, err.Error(), "for epoch 901")
 
 			urlValues[UrlParameterHintEpoch] = []string{"90001"}
-			url, err = finder.FindHost(urlValues)
-			assert.Empty(t, url)
+			cfg, err = finder.FindHost(urlValues)
+			assert.Empty(t, cfg.URL)
 			assert.ErrorIs(t, err, errNoGatewayDefined)
 			assert.Contains(t, err.Error(), "for epoch 90001")
 		})
@@ -329,64 +329,64 @@ func TestHostsFinder_FindHost(t *testing.T) {
 			urlValues := map[string][]string{
 				UrlParameterBlockNonce: {"0"},
 			}
-			url, err := finder.FindHost(urlValues)
+			cfg, err := finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterBlockNonce] = []string{"1"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterBlockNonce] = []string{"2500"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterBlockNonce] = []string{"4999"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterBlockNonce] = []string{"5000"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterBlockNonce] = []string{"5001"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterBlockNonce] = []string{"7500"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterBlockNonce] = []string{"9999"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterBlockNonce] = []string{"10000"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 
 			urlValues[UrlParameterBlockNonce] = []string{"10001"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 
 			urlValues[UrlParameterBlockNonce] = []string{"100000"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 
 			urlValues[UrlParameterBlockNonce] = []string{"10000000"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 		})
 		t.Run("with providing epoch", func(t *testing.T) {
 			t.Parallel()
@@ -394,64 +394,64 @@ func TestHostsFinder_FindHost(t *testing.T) {
 			urlValues := map[string][]string{
 				UrlParameterHintEpoch: {"0"},
 			}
-			url, err := finder.FindHost(urlValues)
+			cfg, err := finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterHintEpoch] = []string{"1"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterHintEpoch] = []string{"25"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterHintEpoch] = []string{"49"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL2")
+			assert.Equal(t, cfg.URL, "URL2")
 
 			urlValues[UrlParameterHintEpoch] = []string{"50"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterHintEpoch] = []string{"51"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterHintEpoch] = []string{"75"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterHintEpoch] = []string{"99"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL3")
+			assert.Equal(t, cfg.URL, "URL3")
 
 			urlValues[UrlParameterHintEpoch] = []string{"100"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 
 			urlValues[UrlParameterHintEpoch] = []string{"101"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 
 			urlValues[UrlParameterHintEpoch] = []string{"1000"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 
 			urlValues[UrlParameterHintEpoch] = []string{"100000"}
-			url, err = finder.FindHost(urlValues)
+			cfg, err = finder.FindHost(urlValues)
 			assert.Nil(t, err)
-			assert.Equal(t, url, "URL1")
+			assert.Equal(t, cfg.URL, "URL1")
 		})
 	})
 }

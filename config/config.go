@@ -13,4 +13,5 @@ type GatewayConfig struct {
 	EpochEnd   string
 	NonceStart string
 	NonceEnd   string
+	Name       string
 }

@@ -140,46 +140,46 @@ func checkStartAndEndIntervals(gatewayConfigs []gatewayConfig) error {
 }
 
 // FindHost tries to find a matching host based on the URL values. Errors if it can not find a suitable host
-func (finder *hostsFinder) FindHost(urlValues map[string][]string) (string, error) {
+func (finder *hostsFinder) FindHost(urlValues map[string][]string) (config.GatewayConfig, error) {
 	if urlValues == nil {
-		return "", fmt.Errorf("%w: %s", errCanNotDetermineSuitableHost, errNilMap.Error())
+		return config.GatewayConfig{}, fmt.Errorf("%w: %s", errCanNotDetermineSuitableHost, errNilMap.Error())
 	}
 
 	nonce, nonceFound, err := finder.parseToUint64(urlValues, UrlParameterBlockNonce)
 	if err != nil {
-		return "", err
+		return config.GatewayConfig{}, err
 	}
 
 	epoch, epochFound, err := finder.parseToUint64(urlValues, UrlParameterHintEpoch)
 	if err != nil {
-		return "", err
+		return config.GatewayConfig{}, err
 	}
 
 	if !nonceFound && !epochFound {
 		if finder.latestDataGateway == nil {
-			return "", errNoLatestDataGatewayDefined
+			return config.GatewayConfig{}, errNoLatestDataGatewayDefined
 		}
 
-		return finder.latestDataGateway.URL, nil
+		return finder.latestDataGateway.GatewayConfig, nil
 	}
 
 	if nonceFound {
 		for _, cfg := range finder.gateways {
 			if cfg.nonceStart <= nonce && nonce <= cfg.nonceEnd {
-				return cfg.URL, nil
+				return cfg.GatewayConfig, nil
 			}
 		}
 
-		return "", fmt.Errorf("%w for nonce %d", errNoGatewayDefined, nonce)
+		return config.GatewayConfig{}, fmt.Errorf("%w for nonce %d", errNoGatewayDefined, nonce)
 	}
 
 	for _, cfg := range finder.gateways {
 		if cfg.epochStart <= epoch && epoch <= cfg.epochEnd {
-			return cfg.URL, nil
+			return cfg.GatewayConfig, nil
 		}
 	}
 
-	return "", fmt.Errorf("%w for epoch %d", errNoGatewayDefined, epoch)
+	return config.GatewayConfig{}, fmt.Errorf("%w for epoch %d", errNoGatewayDefined, epoch)
 }
 
 func (finder *hostsFinder) parseToUint64(urlValues map[string][]string, key string) (uint64, bool, error) {

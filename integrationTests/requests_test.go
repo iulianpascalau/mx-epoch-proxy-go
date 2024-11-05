@@ -87,14 +87,14 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	_, _ = http.DefaultClient.Get(url)
 
 	expectedHandlerAValues := []string{
-		"//transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456",
-		"//transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&hintEpoch=99",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true&blockNonce=100&hintEpoch=456",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true&hintEpoch=99",
 	}
 	assert.Equal(t, expectedHandlerAValues, handlerAValues)
 
 	expectedHandlerBValues := []string{
-		"//transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true",
-		"//transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true&blockNonce=10000",
 	}
 	assert.Equal(t, expectedHandlerBValues, handlerBValues)
 
