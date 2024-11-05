@@ -11,6 +11,8 @@ func TestConfig(t *testing.T) {
 	t.Parallel()
 
 	testString := `
+Port = 8080
+
 Gateways = [
 	{URL="http://192.168.167.22:8080", EpochStart="0", EpochEnd="1000", NonceStart="0", NonceEnd="14401000"},
 	{URL="http://192.168.167.33:9090", EpochStart="1001", EpochEnd="1400", NonceStart="14401001", NonceEnd="20175801"},
@@ -42,6 +44,7 @@ Gateways = [
 				NonceEnd:   "latest",
 			},
 		},
+		Port: 8080,
 	}
 
 	cfg := Config{}

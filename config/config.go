@@ -3,6 +3,7 @@ package config
 // Config specify all config options this proxy will use
 type Config struct {
 	Gateways []GatewayConfig
+	Port     uint64
 }
 
 // GatewayConfig defines a gateway and its set epochs
