@@ -154,6 +154,12 @@ func run(ctx *cli.Context) error {
 		)
 	}
 
+	tester := api.NewGatewayTester()
+	err = tester.TestGateways(loadedGateways)
+	if err != nil {
+		return err
+	}
+
 	requestsProcessor, err := process.NewRequestsProcessor(hostFinder)
 	if err != nil {
 		return err
