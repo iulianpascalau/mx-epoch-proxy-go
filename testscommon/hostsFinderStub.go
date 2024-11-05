@@ -1,19 +1,23 @@
 package testscommon
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
+)
 
 // HostsFinderStub -
 type HostsFinderStub struct {
-	FindHostCalled func(urlValues map[string][]string) (string, error)
+	FindHostCalled func(urlValues map[string][]string) (config.GatewayConfig, error)
 }
 
 // FindHost -
-func (stub *HostsFinderStub) FindHost(urlValues map[string][]string) (string, error) {
+func (stub *HostsFinderStub) FindHost(urlValues map[string][]string) (config.GatewayConfig, error) {
 	if stub.FindHostCalled != nil {
 		return stub.FindHostCalled(urlValues)
 	}
 
-	return "", errors.New("not implemented")
+	return config.GatewayConfig{}, errors.New("not implemented")
 }
 
 // IsInterfaceNil -

@@ -9,6 +9,8 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
+const origin = "Origin"
+
 type requestsProcessor struct {
 	hostFinder HostFinder
 }
@@ -38,7 +40,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		return
 	}
 
-	urlPath, err := url.JoinPath(newHost, request.RequestURI)
+	urlPath, err := url.JoinPath(newHost.URL, request.RequestURI)
 	if err != nil {
 		RespondWithError(writer, err, http.StatusInternalServerError)
 		return
@@ -67,6 +69,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	for key, value := range response.Header {
 		writer.Header()[key] = value
 	}
+	writer.Header()[origin] = []string{newHost.Name}
 
 	writer.WriteHeader(response.StatusCode)
 	if response.ContentLength > 0 {

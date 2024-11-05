@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,8 +68,8 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (string, error) {
-				return "", expectedErr
+			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+				return config.GatewayConfig{}, expectedErr
 			},
 		})
 
@@ -84,8 +85,10 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (string, error) {
-				return "AAAA", nil
+			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+				return config.GatewayConfig{
+					URL: "AAAA",
+				}, nil
 			},
 		})
 
@@ -102,8 +105,10 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (string, error) {
-				return "unknown host", nil
+			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+				return config.GatewayConfig{
+					URL: "unknown host",
+				}, nil
 			},
 		})
 
@@ -134,8 +139,10 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		defer testHttp.Close()
 
 		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (string, error) {
-				return testHttp.URL, nil
+			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+				return config.GatewayConfig{
+					URL: testHttp.URL,
+				}, nil
 			},
 		})
 
