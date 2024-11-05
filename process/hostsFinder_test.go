@@ -466,6 +466,8 @@ func TestHostsFinder_LoadedGateways(t *testing.T) {
 		cfg[2],
 		cfg[0],
 	}
+	expectedResult[2].NonceEnd = "latest"
+	expectedResult[2].EpochEnd = "latest"
 
 	assert.Equal(t, expectedResult, finder.LoadedGateways())
 }
