@@ -455,3 +455,17 @@ func TestHostsFinder_FindHost(t *testing.T) {
 		})
 	})
 }
+
+func TestHostsFinder_LoadedGateways(t *testing.T) {
+	t.Parallel()
+
+	cfg := createTestConfigs()
+	finder, _ := NewHostsFinder(cfg)
+	expectedResult := []config.GatewayConfig{
+		cfg[1],
+		cfg[2],
+		cfg[0],
+	}
+
+	assert.Equal(t, expectedResult, finder.LoadedGateways())
+}

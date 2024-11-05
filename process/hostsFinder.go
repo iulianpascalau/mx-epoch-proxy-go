@@ -197,6 +197,16 @@ func (finder *hostsFinder) parseToUint64(urlValues map[string][]string, key stri
 	return uint64(val), true, err
 }
 
+// LoadedGateways returns the loaded config in the order that will be used
+func (finder *hostsFinder) LoadedGateways() []config.GatewayConfig {
+	results := make([]config.GatewayConfig, 0, len(finder.gateways))
+	for _, cfg := range finder.gateways {
+		results = append(results, cfg.GatewayConfig)
+	}
+
+	return results
+}
+
 // IsInterfaceNil returns true if the value under the interface is nil
 func (finder *hostsFinder) IsInterfaceNil() bool {
 	return finder == nil
