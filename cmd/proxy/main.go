@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -25,25 +26,18 @@ const (
 	logFileLifeSpanInSec = 86400 // 24h
 	logFileLifeSpanInMB  = 1024  // 1GB
 	configFile           = "config/config.toml"
+	swaggerPath          = "./swagger/"
 )
 
-// commitID and appVersion should be populated at build time using ldflags
-//
+// appVersion should be populated at build time using ldflags
 // Usage examples:
 // linux/mac:
 //
-//	go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty) -X main.commitID=$(git rev-parse HEAD)"
-//
-// windows:
-//
-//	for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
-//	go build -i -v -ldflags="-X main.appVersion=%VERS%"
-var commitID = "undefined"
+//	go build -v -ldflags="-X main.appVersion=$(git describe --all | cut -c7-32)
 var appVersion = "undefined"
 
 var (
-	memoryBallastObject []byte
-	proxyHelpTemplate   = `NAME:
+	proxyHelpTemplate = `NAME:
    {{.Name}} - {{.Usage}}
 USAGE:
    {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}
@@ -133,7 +127,7 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
-	log.Info("starting epoch proxy", "pid", os.Getpid())
+	log.Info("starting epoch proxy", "version", appVersion, "pid", os.Getpid())
 
 	cfg, err := loadConfig(configFile)
 	if err != nil {
@@ -166,7 +160,13 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	engine, err := api.NewAPIEngine(fmt.Sprintf(":%d", cfg.Port), requestsProcessor)
+	handlers := map[string]http.Handler{
+		"*": requestsProcessor,
+	}
+
+	fs := http.FS(os.DirFS(swaggerPath))
+	demuxer := process.NewDemuxer(handlers, http.FileServer(fs))
+	engine, err := api.NewAPIEngine(fmt.Sprintf(":%d", cfg.Port), demuxer)
 	if err != nil {
 		return err
 	}
