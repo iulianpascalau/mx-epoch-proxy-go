@@ -40,12 +40,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		return
 	}
 
-	urlPath, err := url.JoinPath(newHost.URL, request.RequestURI)
-	if err != nil {
-		RespondWithError(writer, err, http.StatusInternalServerError)
-		return
-	}
-
+	urlPath := newHost.URL + request.RequestURI
 	req, err := http.NewRequest(request.Method, urlPath, request.Body)
 	if err != nil {
 		log.Error("can not create request", "target host", newHost, "error", err)
@@ -64,6 +59,9 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		RespondWithError(writer, err, http.StatusInternalServerError)
 		return
 	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	// pass through the response header attributes
 	for key, value := range response.Header {
@@ -71,10 +69,15 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	}
 	writer.Header()[origin] = []string{newHost.Name}
 
-	writer.WriteHeader(response.StatusCode)
-	if response.ContentLength > 0 {
-		_, _ = io.CopyN(writer, response.Body, response.ContentLength)
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		RespondWithError(writer, err, http.StatusInternalServerError)
+		return
 	}
+
+	writer.WriteHeader(response.StatusCode)
+
+	_, _ = writer.Write(bodyBytes)
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil
