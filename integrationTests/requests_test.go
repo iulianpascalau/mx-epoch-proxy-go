@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -14,6 +15,10 @@ import (
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	swaggerPath = "../cmd/proxy/swagger/"
 )
 
 var log = logger.GetOrCreate("integrationTests")
@@ -66,7 +71,14 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	processor, err := process.NewRequestsProcessor(hostsFinder)
 	require.Nil(t, err)
 
-	engine, err := api.NewAPIEngine("localhost:0", processor)
+	handlers := map[string]http.Handler{
+		"*": processor,
+	}
+
+	fs := http.FS(os.DirFS(swaggerPath))
+	demuxer := process.NewDemuxer(handlers, http.FileServer(fs))
+
+	engine, err := api.NewAPIEngine("localhost:0", demuxer)
 	require.Nil(t, err)
 	defer func() {
 		_ = engine.Close()
@@ -86,15 +98,19 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	url = fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
+	url = fmt.Sprintf("http://%s/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c", engine.Address())
+	_, _ = http.DefaultClient.Get(url)
+
 	expectedHandlerAValues := []string{
-		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true&blockNonce=100&hintEpoch=456",
-		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true&hintEpoch=99",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&hintEpoch=99",
 	}
 	assert.Equal(t, expectedHandlerAValues, handlerAValues)
 
 	expectedHandlerBValues := []string{
-		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true",
-		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b%3FwithResults=true&blockNonce=10000",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true",
+		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000",
+		"/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c",
 	}
 	assert.Equal(t, expectedHandlerBValues, handlerBValues)
 
