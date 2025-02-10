@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
@@ -12,17 +13,22 @@ import (
 const origin = "Origin"
 
 type requestsProcessor struct {
-	hostFinder HostFinder
+	hostFinder      HostFinder
+	closedEndpoints []string
 }
 
 // NewRequestsProcessor creates a new requests processor
-func NewRequestsProcessor(hostFinder HostFinder) (*requestsProcessor, error) {
+func NewRequestsProcessor(
+	hostFinder HostFinder,
+	closedEndpoints []string,
+) (*requestsProcessor, error) {
 	if check.IfNil(hostFinder) {
 		return nil, errNilHostsFinder
 	}
 
 	return &requestsProcessor{
-		hostFinder: hostFinder,
+		hostFinder:      hostFinder,
+		closedEndpoints: closedEndpoints,
 	}, nil
 }
 
@@ -41,6 +47,12 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	}
 
 	urlPath := newHost.URL + request.RequestURI
+
+	if processor.isEndpointClosed(urlPath) {
+		RespondWithStatusCode(writer, http.StatusNotFound)
+		return
+	}
+
 	req, err := http.NewRequest(request.Method, urlPath, request.Body)
 	if err != nil {
 		log.Error("can not create request", "target host", newHost, "error", err)
@@ -78,6 +90,16 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	writer.WriteHeader(response.StatusCode)
 
 	_, _ = writer.Write(bodyBytes)
+}
+
+func (processor *requestsProcessor) isEndpointClosed(url string) bool {
+	for _, endoint := range processor.closedEndpoints {
+		if strings.Contains(url, endoint) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

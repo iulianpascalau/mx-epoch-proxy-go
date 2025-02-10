@@ -18,6 +18,12 @@ Gateways = [
 	{URL="http://192.168.167.33:9090", EpochStart="1001", EpochEnd="1400", NonceStart="14401001", NonceEnd="20175801", Name="R2"},
 	{URL="http://192.168.167.44:9095", EpochStart="1401", EpochEnd="latest", NonceStart="20175802", NonceEnd="latest", Name="R3"},
 ]
+
+ClosedEndpoints = [
+    "/transaction/send/",
+    "/transaction/send-multiple",
+    "/transaction/send-user-funds"
+]
 `
 
 	expectedCfg := Config{
@@ -48,6 +54,11 @@ Gateways = [
 			},
 		},
 		Port: 8080,
+		ClosedEndpoints: []string{
+			"/transaction/send/",
+			"/transaction/send-multiple",
+			"/transaction/send-user-funds",
+		},
 	}
 
 	cfg := Config{}

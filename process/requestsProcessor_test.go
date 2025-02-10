@@ -18,14 +18,14 @@ func TestNewRequestsProcessor(t *testing.T) {
 	t.Run("nil hosts finder should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, err := NewRequestsProcessor(nil)
+		processor, err := NewRequestsProcessor(nil, make([]string, 0))
 		assert.Nil(t, processor)
 		assert.Equal(t, errNilHostsFinder, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		processor, err := NewRequestsProcessor(&testscommon.HostsFinderStub{})
+		processor, err := NewRequestsProcessor(&testscommon.HostsFinderStub{}, make([]string, 0))
 		assert.NotNil(t, processor)
 		assert.Nil(t, err)
 	})
@@ -54,7 +54,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 	t.Run("parse query errors, should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{})
+		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{}, make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.URL.RawQuery = "a=b;c=d"
@@ -71,7 +71,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
 				return config.GatewayConfig{}, expectedErr
 			},
-		})
+		}, make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.URL.RawQuery = "a=b"
@@ -90,7 +90,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 					URL: "AAAA",
 				}, nil
 			},
-		})
+		}, make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Method = "invalid method"
@@ -110,7 +110,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 					URL: "unknown host",
 				}, nil
 			},
-		})
+		}, make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Header["c"] = []string{"d"}
@@ -121,6 +121,31 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 		assert.Contains(t, recorder.Body.String(), "unknown%20host")
 		assert.Contains(t, recorder.Body.String(), "unsupported protocol scheme")
+	})
+	t.Run("should return page not found if closed endpoint", func(t *testing.T) {
+		t.Parallel()
+
+		testHttp := httptest.NewServer(&testscommon.HttpHandlerStub{
+			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {},
+		})
+		defer testHttp.Close()
+
+		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
+			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+				return config.GatewayConfig{
+					URL: testHttp.URL,
+				}, nil
+			},
+		}, []string{"/test/"})
+
+		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
+		request.Header["c"] = []string{"d"}
+		request.URL.RawQuery = "a=b"
+		recorder := httptest.NewRecorder()
+		processor.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+		assert.Empty(t, recorder.Body.String())
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -144,7 +169,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 					URL: testHttp.URL,
 				}, nil
 			},
-		})
+		}, make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Header["c"] = []string{"d"}

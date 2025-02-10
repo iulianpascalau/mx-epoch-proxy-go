@@ -3,3 +3,9 @@ Port = 8080
 Gateways = [
     {URL="http://127.0.0.1:8079", EpochStart="0", EpochEnd="latest", NonceStart="0", NonceEnd="latest", Name="R640"},
 ]
+
+ClosedEndpoints = [
+    "/transaction/send/",
+    "/transaction/send-multiple",
+    "/transaction/send-user-funds"
+]
