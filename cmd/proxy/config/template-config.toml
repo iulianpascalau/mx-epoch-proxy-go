@@ -5,7 +5,7 @@ Gateways = [
 ]
 
 ClosedEndpoints = [
-    "/transaction/send/",
+    "/transaction/send",
     "/transaction/send-multiple",
     "/transaction/send-user-funds"
 ]

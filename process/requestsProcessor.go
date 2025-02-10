@@ -49,7 +49,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	urlPath := newHost.URL + request.RequestURI
 
 	if processor.isEndpointClosed(urlPath) {
-		RespondWithStatusCode(writer, http.StatusNotFound)
+		http.NotFound(writer, request)
 		return
 	}
 

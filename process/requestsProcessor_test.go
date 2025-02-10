@@ -145,7 +145,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		processor.ServeHTTP(recorder, request)
 
 		assert.Equal(t, http.StatusNotFound, recorder.Code)
-		assert.Empty(t, recorder.Body.String())
+		assert.Equal(t, "404 page not found\n", recorder.Body.String())
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
