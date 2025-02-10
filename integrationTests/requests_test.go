@@ -68,7 +68,11 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	hostsFinder, err := process.NewHostsFinder(gateways)
 	require.Nil(t, err)
 
-	processor, err := process.NewRequestsProcessor(hostsFinder)
+	processor, err := process.NewRequestsProcessor(
+		hostsFinder,
+		[]string{
+			"/transaction/send",
+		})
 	require.Nil(t, err)
 
 	handlers := map[string]http.Handler{
@@ -100,6 +104,10 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 
 	url = fmt.Sprintf("http://%s/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
+
+	// this call will be ignored
+	url = fmt.Sprintf("http://%s/transaction/send", engine.Address())
+	_, _ = http.DefaultClient.Post(url, "content", nil)
 
 	expectedHandlerAValues := []string{
 		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456",
