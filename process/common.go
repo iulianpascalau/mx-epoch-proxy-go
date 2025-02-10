@@ -22,7 +22,6 @@ const (
 )
 
 var jsonContentType = []string{"application/json; charset=utf-8"}
-var plainContentType = []string{"text/plain; charset=utf-8"}
 var log = logger.GetOrCreate("process")
 
 // GenericAPIResponse defines the structure of all responses on API endpoints
@@ -38,12 +37,6 @@ func RespondWithError(writer http.ResponseWriter, err error, statusCode int) {
 	writeContentType(writer, jsonContentType)
 
 	trySendResponse(writer, err)
-}
-
-// RespondWithStatusCode should be called when the request cannot be satisfied due to an error
-func RespondWithStatusCode(writer http.ResponseWriter, statusCode int) {
-	writer.WriteHeader(statusCode)
-	writeContentType(writer, plainContentType)
 }
 
 func trySendResponse(writer http.ResponseWriter, err error) {
