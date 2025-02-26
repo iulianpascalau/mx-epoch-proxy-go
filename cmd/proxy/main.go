@@ -155,7 +155,16 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	requestsProcessor, err := process.NewRequestsProcessor(hostFinder, cfg.ClosedEndpoints)
+	accessChecker, err := process.NewAccessChecker(cfg.AccessKeys)
+	if err != nil {
+		return err
+	}
+
+	requestsProcessor, err := process.NewRequestsProcessor(
+		hostFinder,
+		accessChecker,
+		cfg.ClosedEndpoints,
+	)
 	if err != nil {
 		return err
 	}

@@ -31,6 +31,20 @@ func createTestHTTPServer(handler func(w http.ResponseWriter, r *http.Request)) 
 	return server
 }
 
+func createTestAccessChecker(tb testing.TB) process.AccessChecker {
+	instance, err := process.NewAccessChecker(
+		[]config.AccessKeyConfig{
+			{
+				Key:   "e05d2cdbce887650f5f26f770e55570b",
+				Alias: "test",
+			},
+		},
+	)
+
+	require.Nil(tb, err)
+	return instance
+}
+
 func TestRequestsArePassedCorrectly(t *testing.T) {
 	handlerAValues := make([]string, 0)
 	handlerA := func(w http.ResponseWriter, r *http.Request) {
@@ -70,6 +84,7 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 
 	processor, err := process.NewRequestsProcessor(
 		hostsFinder,
+		createTestAccessChecker(t),
 		[]string{
 			"/transaction/send",
 		})
@@ -90,23 +105,23 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 
 	log.Info("API engine running", "interface", engine.Address())
 
-	url := fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456", engine.Address())
+	url := fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
-	url = fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&hintEpoch=99", engine.Address())
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&hintEpoch=99", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
-	url = fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true", engine.Address())
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
-	url = fmt.Sprintf("http://%s/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000", engine.Address())
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
-	url = fmt.Sprintf("http://%s/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c", engine.Address())
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c", engine.Address())
 	_, _ = http.DefaultClient.Get(url)
 
 	// this call will be ignored
-	url = fmt.Sprintf("http://%s/transaction/send", engine.Address())
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/send", engine.Address())
 	_, _ = http.DefaultClient.Post(url, "content", nil)
 
 	expectedHandlerAValues := []string{
