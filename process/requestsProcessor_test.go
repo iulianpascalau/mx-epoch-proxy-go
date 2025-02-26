@@ -9,7 +9,9 @@ import (
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/testscommon"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewRequestsProcessor(t *testing.T) {
@@ -18,14 +20,33 @@ func TestNewRequestsProcessor(t *testing.T) {
 	t.Run("nil hosts finder should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, err := NewRequestsProcessor(nil, make([]string, 0))
+		processor, err := NewRequestsProcessor(
+			nil,
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0),
+		)
 		assert.Nil(t, processor)
 		assert.Equal(t, errNilHostsFinder, err)
+	})
+	t.Run("nil access checker should error", func(t *testing.T) {
+		t.Parallel()
+
+		processor, err := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{},
+			nil,
+			make([]string, 0),
+		)
+		assert.Nil(t, processor)
+		assert.Equal(t, errNilAccessChecker, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		processor, err := NewRequestsProcessor(&testscommon.HostsFinderStub{}, make([]string, 0))
+		processor, err := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{},
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0),
+		)
 		assert.NotNil(t, processor)
 		assert.Nil(t, err)
 	})
@@ -54,7 +75,11 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 	t.Run("parse query errors, should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{}, make([]string, 0))
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{},
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0),
+		)
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.URL.RawQuery = "a=b;c=d"
@@ -64,14 +89,45 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 		assert.Contains(t, recorder.Body.String(), "invalid semicolon separator in query while parsing query")
 	})
+	t.Run("access checker errors, should error", func(t *testing.T) {
+		t.Parallel()
+
+		log.SetLevel(logger.LogTrace)
+
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{
+				FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+					require.Fail(t, "should have not called the host finder")
+					return config.GatewayConfig{}, nil
+				},
+			},
+			&testscommon.AccessCheckerStub{
+				ShouldProcessRequestHandler: func(header http.Header, requestURI string) (string, error) {
+					return "", expectedErr
+				},
+			},
+			make([]string, 0))
+
+		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
+		request.URL.RawQuery = "a=b"
+		request.Header["api"] = []string{"token"}
+		recorder := httptest.NewRecorder()
+		processor.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "expected error")
+	})
 	t.Run("hosts finder errors, should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
-				return config.GatewayConfig{}, expectedErr
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{
+				FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+					return config.GatewayConfig{}, expectedErr
+				},
 			},
-		}, make([]string, 0))
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.URL.RawQuery = "a=b"
@@ -84,13 +140,17 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 	t.Run("can not assemble request, should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
-				return config.GatewayConfig{
-					URL: "AAAA",
-				}, nil
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{
+				FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+					return config.GatewayConfig{
+						URL: "AAAA",
+					}, nil
+				},
 			},
-		}, make([]string, 0))
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0),
+		)
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Method = "invalid method"
@@ -104,13 +164,17 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 	t.Run("request fails, should error", func(t *testing.T) {
 		t.Parallel()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
-				return config.GatewayConfig{
-					URL: "unknown host",
-				}, nil
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{
+				FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+					return config.GatewayConfig{
+						URL: "unknown host",
+					}, nil
+				},
 			},
-		}, make([]string, 0))
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0),
+		)
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Header["c"] = []string{"d"}
@@ -130,13 +194,17 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		})
 		defer testHttp.Close()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
-				return config.GatewayConfig{
-					URL: testHttp.URL,
-				}, nil
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{
+				FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+					return config.GatewayConfig{
+						URL: testHttp.URL,
+					}, nil
+				},
 			},
-		}, []string{"/test/"})
+			&testscommon.AccessCheckerStub{},
+			[]string{"/test/"},
+		)
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Header["c"] = []string{"d"}
@@ -163,13 +231,17 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		})
 		defer testHttp.Close()
 
-		processor, _ := NewRequestsProcessor(&testscommon.HostsFinderStub{
-			FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
-				return config.GatewayConfig{
-					URL: testHttp.URL,
-				}, nil
+		processor, _ := NewRequestsProcessor(
+			&testscommon.HostsFinderStub{
+				FindHostCalled: func(urlValues map[string][]string) (config.GatewayConfig, error) {
+					return config.GatewayConfig{
+						URL: testHttp.URL,
+					}, nil
+				},
 			},
-		}, make([]string, 0))
+			&testscommon.AccessCheckerStub{},
+			make([]string, 0),
+		)
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
 		request.Header["c"] = []string{"d"}

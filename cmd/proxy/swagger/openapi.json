@@ -2,50 +2,10 @@
   "openapi": "3.0.3",
   "info": {
     "title": "MultiversX Deep-History Gateway API",
-    "description": "![MultiversX](/mvx-icon.png)\n\nThe documentation describes the endpoints that are available also on the mx-chain-proxy-go project. \n\nGithub URL: `https://github.com/multiversx/mx-chain-proxy-go`\n\nThis is used to serve all gateway endpoints requests also on all historical data from the genesis an up to the latest blocks.\n\nMore info can be found here: `https://docs.multiversx.com/integrators/deep-history-squad/` \n\nThis API is organized around REST principles, so if you've interacted with RESTful APIs before, many of the concepts will look familiar.\n\n## Request / Response Format\n\nJSON will be returned for all responses, including errors. Empty or blank fields are omitted. Requests with a message body use JSON as well. Successful requests will return a `2xx` HTTP status.\n\nThe general structure of a response is:\n``` JSON\n{\n  data  anything\n  error string\n  code  string\n}\n```\nWhere:\n- data: the expected result if the request was successful. `null` otherwise\n- error: if the request failed, the reason will be returned in this field. empty otherwise\n- code: the internal code for the request. can be `successful`, `internal_issue` or `bad_request`\n",
+    "description": "![MultiversX](/mvx-icon.png)\n\nThe documentation describes the endpoints that are available also on the mx-epoch-proxy-go project. \n\nGithub URL: `https://github.com/iulianpascalau/mx-chain-epoch-proxy-go`\n\nThis is used to serve all gateway endpoints requests also on all historical data from the genesis an up to the latest blocks.\n\nMore info can be found here: `https://docs.multiversx.com/integrators/deep-history-squad/` \n\nThis API is organized around REST principles, so if you've interacted with RESTful APIs before, many of the concepts will look familiar.\n\n## Request / Response Format\n\nJSON will be returned for all responses, including errors. Empty or blank fields are omitted. Requests with a message body use JSON as well. Successful requests will return a `2xx` HTTP status.\n\nThe general structure of a response is:\n``` JSON\n{\n  data  anything\n  error string\n  code  string\n}\n```\nWhere:\n- data: the expected result if the request was successful. `null` otherwise\n- error: if the request failed, the reason will be returned in this field. empty otherwise\n- code: the internal code for the request. can be `successful`, `internal_issue` or `bad_request`\n\n## API keys\n\nThe API keys can be provided directly in the URL in the form: `https://<epoch-proxy-address>/v1/<API-TOKEN>/endpoints` or specifying as a value in the header's `X-API-KEY` key.",
     "version": "1.1.0"
   },
   "paths": {
-    "/about": {
-      "get": {
-        "tags": [
-          "about"
-        ],
-        "summary": "returns the proxy's version and the commit hash",
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenericResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/about/nodes-versions": {
-      "get": {
-        "tags": [
-          "about"
-        ],
-        "summary": "returns the app versions of the nodes behind the proxy",
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenericResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/address/{address}": {
       "get": {
         "tags": [
@@ -75,7 +35,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/balance": {
@@ -107,7 +72,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/nonce": {
@@ -139,7 +109,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/username": {
@@ -171,7 +146,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/code-hash": {
@@ -203,7 +183,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/keys": {
@@ -235,7 +220,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/shard": {
@@ -267,7 +257,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/transactions": {
@@ -299,7 +294,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/key/{key}": {
@@ -340,7 +340,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/esdt": {
@@ -372,7 +377,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/esdt/roles": {
@@ -404,7 +414,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/esdts-with-role/{role}": {
@@ -446,7 +461,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/esdt/{tokenIdentifier}": {
@@ -488,7 +508,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/registered-nfts": {
@@ -520,7 +545,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/nft/{tokenIdentifier}/nonce/{nonce}": {
@@ -571,7 +601,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/address/{address}/guardian-data": {
@@ -603,7 +638,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/block-atlas/{shard}/{nonce}": {
@@ -643,7 +683,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/block-atlas/{shard}/by-hash/{hash}": {
@@ -683,7 +728,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/blocks/by-round/{round}": {
@@ -714,7 +764,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/block/{shard}/by-nonce/{nonce}": {
@@ -754,7 +809,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/block/{shard}/by-nonce/{nonce}?withTxs=true": {
@@ -794,7 +854,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/block/{shard}/by-hash/{hash}": {
@@ -834,7 +899,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/block/{shard}/by-hash/{hash}?withTxs=true": {
@@ -874,7 +944,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/hyperblock/by-nonce/{nonce}": {
@@ -905,7 +980,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/hyperblock/by-hash/{hash}": {
@@ -936,7 +1016,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/config": {
@@ -956,7 +1041,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/status/{shard}": {
@@ -988,7 +1078,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/economics": {
@@ -1008,7 +1103,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/esdts": {
@@ -1028,7 +1128,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/esdt/fungible-tokens": {
@@ -1048,7 +1153,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/esdt/semi-fungible-tokens": {
@@ -1068,7 +1178,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/esdt/non-fungible-tokens": {
@@ -1088,7 +1203,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/esdt/supply/{token}": {
@@ -1120,7 +1240,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/direct-staked-info": {
@@ -1140,7 +1265,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/delegated-info": {
@@ -1160,7 +1290,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/enable-epochs": {
@@ -1180,7 +1315,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/ratings": {
@@ -1200,7 +1340,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/genesis-nodes": {
@@ -1220,7 +1365,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/gas-configs": {
@@ -1240,7 +1390,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/network/trie-statistics/{shard}": {
@@ -1272,7 +1427,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/status/metrics": {
@@ -1292,7 +1452,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/status/prometheus-metrics": {
@@ -1312,7 +1477,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/actions/reload-observers": {
@@ -1332,7 +1502,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/actions/reload-full-history-observers": {
@@ -1352,7 +1527,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/node/heartbeatstatus": {
@@ -1372,7 +1552,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/node/old-storage-token/{token}/nonce/{nonce}": {
@@ -1415,7 +1600,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/node/waiting-epochs-left/{key}": {
@@ -1449,7 +1639,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/proof/root-hash/{roothash}/address/{address}": {
@@ -1489,7 +1684,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/proof/address/{address}": {
@@ -1521,7 +1721,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/proof/address/{address}/key/{key}": {
@@ -1563,7 +1768,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/proof/verify": {
@@ -1602,7 +1812,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/{shard}/raw/block/by-nonce/{nonce}": {
@@ -1645,7 +1860,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/{shard}/raw/block/by-hash/{hash}": {
@@ -1688,7 +1908,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/{shard}/json/block/by-nonce/{nonce}": {
@@ -1731,7 +1956,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/{shard}/json/block/by-hash/{hash}": {
@@ -1774,7 +2004,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/{shard}/raw/miniblock/by-hash/{hash}/epoch/{epoch}": {
@@ -1826,7 +2061,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/{shard}/json/miniblock/by-hash/{hash}/epoch/{epoch}": {
@@ -1878,7 +2118,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/raw/startofepoch/metablock/by-epoch/{epoch}": {
@@ -1912,7 +2157,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/internal/json/startofepoch/metablock/by-epoch/{epoch}": {
@@ -1946,51 +2196,12 @@
           "400": {
             "description": "validation error"
           }
-        }
-      }
-    },
-    "/transaction/send": {
-      "post": {
-        "tags": [
-          "transaction"
-        ],
-        "summary": "sends a transaction to the network",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Transaction"
-              },
-              "example": {
-                "nonce": 0,
-                "value": "999",
-                "receiver": "erd12dnfhej64s6c56ka369gkyj3hwv5ms0y5rxgsk2k7hkd2vuk7rvqxkalsa",
-                "sender": "erd14t6l0x27w4d4354sqfm40wuv9p0r49uzl9598eka290x9kws2nvqlkc36j",
-                "gasPrice": 1000000000,
-                "gasLimit": 50000,
-                "data": "dGVzdA==",
-                "chainID": "1",
-                "version": 1,
-                "signature": "5f9f8ede6c993944095ffa9c4356ccbbafc0a2d98df2fff93ad9e000366e42af332a8c907d93fe43f22f5b4763b408152bb3fb6a454c73473c86a509f011ba0f"
-              }
-            }
-          }
         },
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenericResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation error"
+        "security": [
+          {
+            "api_key": []
           }
-        }
+        ]
       }
     },
     "/transaction/cost": {
@@ -2034,7 +2245,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/simulate?checkSignature=false": {
@@ -2078,7 +2294,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}": {
@@ -2110,7 +2331,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/pool": {
@@ -2151,7 +2377,12 @@
           "400": {
             "description": "validation error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}?withResults=true": {
@@ -2186,7 +2417,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}?sender={senderAddress}": {
@@ -2228,7 +2464,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}?sender={senderAddress}&withResults=true": {
@@ -2270,7 +2511,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}/status?sender={senderAddress}": {
@@ -2312,7 +2558,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}/status": {
@@ -2344,7 +2595,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/{txHash}/process-status": {
@@ -2376,7 +2632,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/transaction/simulate": {
@@ -2420,78 +2681,12 @@
           "400": {
             "description": "validation error"
           }
-        }
-      }
-    },
-    "/transaction/send-multiple": {
-      "post": {
-        "tags": [
-          "transaction"
-        ],
-        "summary": "sends a bulk of transactions to the network",
-        "parameters": [
+        },
+        "security": [
           {
-            "name": "transactions",
-            "in": "query",
-            "required": true,
-            "description": "the array of transactions",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/components/schemas/Transaction"
-              }
-            }
+            "api_key": []
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenericResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation error"
-          }
-        }
-      }
-    },
-    "/transaction/send-user-funds": {
-      "post": {
-        "tags": [
-          "transaction"
-        ],
-        "summary": "receives a request containing `receiver`, `numOfTxs` and `value` and will select a random account from the PEM file in the same shard as the address received. Will return the transaction's hash if successful or the interceptor error otherwise",
-        "parameters": [
-          {
-            "name": "request",
-            "in": "path",
-            "description": "the request containing the required fields",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/FundsRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenericResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "validation error"
-          }
-        }
+        ]
       }
     },
     "/validator/statistics": {
@@ -2511,7 +2706,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/vm-values/int": {
@@ -2544,7 +2744,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/vm-values/hex": {
@@ -2577,7 +2782,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/vm-values/string": {
@@ -2610,7 +2820,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/vm-values/query": {
@@ -2643,7 +2858,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     }
   },
@@ -2670,7 +2890,7 @@
       "Fields": {
         "name": "fields",
         "in": "query",
-        "description": "the requested transaction fields, comma sepparated. If none provided, only hash is returned. Possible values are: hash, nonce, sender, receiver, gaslimit, gasprice, receiverusername, data, value",
+        "description": "the requested transaction fields, comma separated. If none provided, only hash is returned. Possible values are: hash, nonce, sender, receiver, gaslimit, gasprice, receiverusername, data, value",
         "schema" : {
           "type": "string",
           "default": null
@@ -3268,6 +3488,13 @@
             }
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "api_key": {
+        "type": "apiKey",
+        "name": "X-Api-Key",
+        "in": "header"
       }
     }
   }

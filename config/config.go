@@ -5,6 +5,7 @@ type Config struct {
 	Gateways        []GatewayConfig
 	Port            uint64
 	ClosedEndpoints []string
+	AccessKeys      []AccessKeyConfig
 }
 
 // GatewayConfig defines a gateway and its set epochs
@@ -15,4 +16,10 @@ type GatewayConfig struct {
 	NonceStart string
 	NonceEnd   string
 	Name       string
+}
+
+// AccessKeyConfig defines an access key value
+type AccessKeyConfig struct {
+	Key   string
+	Alias string
 }
