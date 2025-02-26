@@ -1,18 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/metrics"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -21,12 +25,13 @@ import (
 )
 
 const (
-	defaultLogsPath      = "logs"
-	logFilePrefix        = "epoch-proxy"
-	logFileLifeSpanInSec = 86400 // 24h
-	logFileLifeSpanInMB  = 1024  // 1GB
-	configFile           = "config/config.toml"
-	swaggerPath          = "./swagger/"
+	defaultLogsPath          = "logs"
+	logFilePrefix            = "epoch-proxy"
+	logFileLifeSpanInSec     = 86400 // 24h
+	logFileLifeSpanInMB      = 1024  // 1GB
+	configFile               = "config/config.toml"
+	swaggerPath              = "./swagger/"
+	printMetricsTimeinterval = time.Minute
 )
 
 // appVersion should be populated at build time using ldflags
@@ -160,9 +165,15 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	requestsMetrics, cancelFunc, err := createRequestsMetrics(cfg.Redis)
+	if err != nil {
+		return err
+	}
+
 	requestsProcessor, err := process.NewRequestsProcessor(
 		hostFinder,
 		accessChecker,
+		requestsMetrics,
 		cfg.ClosedEndpoints,
 	)
 	if err != nil {
@@ -188,6 +199,7 @@ func run(ctx *cli.Context) error {
 	<-sigs
 
 	log.Info("application closing, calling Close on all subcomponents...")
+	cancelFunc()
 	err = engine.Close()
 
 	return err
@@ -222,4 +234,34 @@ func loadConfig(filepath string) (config.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func createRequestsMetrics(redisCfg config.RedisConfig) (process.RequestMetrics, func(), error) {
+	if !redisCfg.Enabled {
+		return &metrics.DisabledRequestsMetrics{}, func() {}, nil
+	}
+
+	storer := storage.NewRedisWrapper(redisCfg.URL, "")
+	metricsInstance, err := metrics.NewRequestMetrics(storer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				_ = storer.Close()
+				log.Info("stopped Redis wrapper")
+				log.Info("stopping metrics go routine...")
+				return
+			case <-time.After(printMetricsTimeinterval):
+				log.Info("Redis key-values",
+					"metrics", "\n"+strings.Join(metricsInstance.GetAllKeyValues(), "\n"))
+			}
+		}
+	}()
+
+	return metricsInstance, cancel, nil
 }

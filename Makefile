@@ -17,10 +17,10 @@ help:
 cmd_dir = cmd/proxy
 binary = proxy
 
-clean-test:
+clean-tests:
 	go clean -testcache
 
-test: clean-test
+tests: clean-tests
 	go test ./...
 
 build:
@@ -32,3 +32,8 @@ build:
 run: build
 	cd ${cmd_dir} && \
 		./${binary} --log-level="*:DEBUG"
+
+redis-tests: clean-tests
+	@docker compose -f docker-compose.yml build
+	@docker compose -f ocker-compose.yml up & go test ./storage/... -v -timeout 20m -tags redis
+	@docker compose -f docker-compose.yml down -v

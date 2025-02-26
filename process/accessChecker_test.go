@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -85,6 +86,20 @@ func TestNewAccessChecker(t *testing.T) {
 		assert.NotNil(t, checker)
 		assert.Nil(t, err)
 	})
+	t.Run("should work ALL alias", func(t *testing.T) {
+		t.Parallel()
+
+		accessKeys := []config.AccessKeyConfig{
+			{
+				Key:   "",
+				Alias: common.AllAliases,
+			},
+		}
+		checker, err := NewAccessChecker(accessKeys)
+		assert.NotNil(t, checker)
+		assert.Nil(t, err)
+		assert.Empty(t, checker.keys)
+	})
 }
 
 func TestAccessChecker_IsInterfaceNil(t *testing.T) {
@@ -108,22 +123,25 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 		t.Run("no token provided - short endpoint", func(t *testing.T) {
 			t.Parallel()
 
-			uri, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/a?withParam=true&nonce=0")
+			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/a?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, common.AllAliases, alias)
 			assert.Equal(t, "/a?withParam=true&nonce=0", uri)
 		})
 		t.Run("no token provided - long endpoint", func(t *testing.T) {
 			t.Parallel()
 
-			uri, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, common.AllAliases, alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("token provided in URL", func(t *testing.T) {
 			t.Parallel()
 
-			uri, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/token/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/token/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, common.AllAliases, alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("token provided in header", func(t *testing.T) {
@@ -131,8 +149,9 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"token"}
-			uri, err := instanceWithNoAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, common.AllAliases, alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("token provided in both places", func(t *testing.T) {
@@ -140,8 +159,9 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"token"}
-			uri, err := instanceWithNoAccessKeys.ShouldProcessRequest(header, "/v1/token/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(header, "/v1/token/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, common.AllAliases, alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 	})
@@ -151,8 +171,9 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 		t.Run("token provided in URL", func(t *testing.T) {
 			t.Parallel()
 
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEy1/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEy1/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, "Alias1", alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("token provided in header", func(t *testing.T) {
@@ -160,7 +181,8 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"KeY2"}
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
+			assert.Equal(t, "Alias2", alias)
 			assert.Nil(t, err)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
@@ -169,7 +191,8 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEy3"}
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
+			assert.Equal(t, "Alias1", alias)
 			assert.Nil(t, err)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
@@ -178,8 +201,9 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEyX"}
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, "Alias1", alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("correct token in header values and wrong token in URL should return true", func(t *testing.T) {
@@ -187,8 +211,9 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEy1"}
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
+			assert.Equal(t, "Alias1", alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 	})
@@ -198,15 +223,17 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 		t.Run("no key provided", func(t *testing.T) {
 			t.Parallel()
 
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong token provided in URL", func(t *testing.T) {
 			t.Parallel()
 
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEyX/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEyX/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong token provided in url values", func(t *testing.T) {
@@ -214,8 +241,9 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"KeYY"}
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong tokens provided in both places", func(t *testing.T) {
@@ -223,9 +251,17 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEyX"}
-			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
+			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
 	})
+}
+
+func TestAccessChecker_GetAllAliases(t *testing.T) {
+	t.Parallel()
+
+	wrapper, _ := NewAccessChecker(generateTestAccessKeys())
+	assert.Equal(t, []string{"Alias1", "Alias2", "Alias3"}, wrapper.GetAllAliases())
 }
