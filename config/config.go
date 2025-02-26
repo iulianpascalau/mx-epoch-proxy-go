@@ -2,8 +2,9 @@ package config
 
 // Config specify all config options this proxy will use
 type Config struct {
-	Gateways        []GatewayConfig
 	Port            uint64
+	Redis           RedisConfig
+	Gateways        []GatewayConfig
 	ClosedEndpoints []string
 	AccessKeys      []AccessKeyConfig
 }
@@ -22,4 +23,10 @@ type GatewayConfig struct {
 type AccessKeyConfig struct {
 	Key   string
 	Alias string
+}
+
+// RedisConfig defines the Redis configuration
+type RedisConfig struct {
+	Enabled bool
+	URL     string
 }

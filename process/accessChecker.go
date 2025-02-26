@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 )
 
 const headerApiKey = "X-Api-Key"
 const uriSeparator = "/"
-const all = "*"
 
 var allowedVersions = []string{"v1"}
 
@@ -37,6 +37,10 @@ func checkKeys(accessKeys []config.AccessKeyConfig) ([]config.AccessKeyConfig, e
 	for i, key := range accessKeys {
 		key.Key = strings.TrimSpace(key.Key)
 		key.Alias = strings.TrimSpace(key.Alias)
+
+		if strings.ToLower(key.Alias) == strings.ToLower(common.AllAliases) {
+			continue
+		}
 
 		if len(key.Key) == 0 {
 			return nil, fmt.Errorf("%w for key at position %d", errEmptyKey, i)
@@ -66,21 +70,21 @@ func checkKeys(accessKeys []config.AccessKeyConfig) ([]config.AccessKeyConfig, e
 }
 
 // ShouldProcessRequest returns true if the request is allowed to be processed
-func (checker *accessChecker) ShouldProcessRequest(header http.Header, requestURI string) (string, error) {
+func (checker *accessChecker) ShouldProcessRequest(header http.Header, requestURI string) (string, string, error) {
 	accessKey, processedRequestURI := processRequestURI(requestURI)
 	alias := checker.getAllowedAlias(accessKey)
 	if len(alias) > 0 {
 		// authorized, useless to check the header
-		return processedRequestURI, nil
+		return processedRequestURI, alias, nil
 	}
 
 	accessKey = parseHeaderForAccessKey(header)
 	alias = checker.getAllowedAlias(accessKey)
 	if len(alias) > 0 {
-		return processedRequestURI, nil
+		return processedRequestURI, alias, nil
 	}
 
-	return "", errUnauthorized
+	return "", "", errUnauthorized
 }
 
 func processRequestURI(inputRequestURI string) (*config.AccessKeyConfig, string) {
@@ -112,7 +116,7 @@ func checkVersion(version string) bool {
 
 func (checker *accessChecker) getAllowedAlias(accessKey *config.AccessKeyConfig) string {
 	if len(checker.keys) == 0 {
-		return all
+		return common.AllAliases
 	}
 
 	if accessKey == nil {
@@ -136,6 +140,16 @@ func parseHeaderForAccessKey(header http.Header) *config.AccessKeyConfig {
 	return &config.AccessKeyConfig{
 		Key: strings.ToLower(val),
 	}
+}
+
+// GetAllAliases return all aliases stored
+func (checker *accessChecker) GetAllAliases() []string {
+	aliases := make([]string, 0, len(checker.keys))
+	for _, accessKey := range checker.keys {
+		aliases = append(aliases, accessKey.Alias)
+	}
+
+	return aliases
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

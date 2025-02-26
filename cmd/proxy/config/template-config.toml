@@ -14,5 +14,10 @@ ClosedEndpoints = [
 
 # AccessKeys defines the keys that are allowed to use this proxy
 AccessKeys = [
-    {Key="e05d2cdbce887650f5f26f770e55570b", Alias="test"}
+    {Key="", Alias="ALL"}
 ]
+
+# Redis configuration for metrics storage
+[Redis]
+    Enabled = false
+    URL = "127.0.0.1:6379"

@@ -1,6 +1,9 @@
+//go:build redis
+
 package integrationTests
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +13,9 @@ import (
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/metrics"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/testscommon"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +23,8 @@ import (
 )
 
 const (
-	swaggerPath = "../cmd/proxy/swagger/"
+	swaggerPath    = "../cmd/proxy/swagger/"
+	redisDockerURL = "127.0.0.1:6379"
 )
 
 var log = logger.GetOrCreate("integrationTests")
@@ -36,7 +42,7 @@ func createTestAccessChecker(tb testing.TB) process.AccessChecker {
 		[]config.AccessKeyConfig{
 			{
 				Key:   "e05d2cdbce887650f5f26f770e55570b",
-				Alias: "test",
+				Alias: "integration-test01",
 			},
 		},
 	)
@@ -82,9 +88,16 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	hostsFinder, err := process.NewHostsFinder(gateways)
 	require.Nil(t, err)
 
+	storer := storage.NewRedisWrapper(redisDockerURL, "")
+	requestsMetrics, err := metrics.NewRequestMetrics(storer)
+	require.Nil(t, err)
+	_ = storer.Delete(context.Background(), "integration-test01_total")
+	_ = storer.Delete(context.Background(), "ALL_total")
+
 	processor, err := process.NewRequestsProcessor(
 		hostsFinder,
 		createTestAccessChecker(t),
+		requestsMetrics,
 		[]string{
 			"/transaction/send",
 		})
@@ -138,4 +151,15 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	assert.Equal(t, expectedHandlerBValues, handlerBValues)
 
 	time.Sleep(time.Second)
+
+	keyValues := requestsMetrics.GetAllKeyValues()
+	expectedKeyValues := map[string]struct{}{
+		"    integration-test01_total: 6": {},
+		"    ALL_total: 6":                {},
+	}
+	for _, keyVal := range keyValues {
+		delete(expectedKeyValues, keyVal)
+	}
+
+	assert.Empty(t, expectedKeyValues)
 }
