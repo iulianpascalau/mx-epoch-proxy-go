@@ -35,5 +35,5 @@ run: build
 
 redis-tests: clean-tests
 	@docker compose -f docker-compose.yml build
-	@docker compose -f ocker-compose.yml up & go test ./storage/... -v -timeout 20m -tags redis
+	@docker compose -f docker-compose.yml up & go test ./storage/... -v -timeout 20m -tags redis
 	@docker compose -f docker-compose.yml down -v
