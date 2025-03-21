@@ -29,6 +29,9 @@ build:
 		-o ${binary} \
 		-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
 
+
+
+
 run: build
 	cd ${cmd_dir} && \
 		./${binary} --log-level="*:DEBUG"
