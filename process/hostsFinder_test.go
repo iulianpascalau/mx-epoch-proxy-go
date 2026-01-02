@@ -43,6 +43,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(make([]config.GatewayConfig, 0))
 		assert.Equal(t, errNoGatewayDefined, err)
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("epoch start is not a valid number, should error", func(t *testing.T) {
 		t.Parallel()
@@ -52,6 +53,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(cfg)
 		assert.Contains(t, err.Error(), "epoch start at index 1")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("nonce start is not a valid number, should error", func(t *testing.T) {
 		t.Parallel()
@@ -61,6 +63,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(cfg)
 		assert.Contains(t, err.Error(), "nonce start at index 1")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("2 gateways with latest data, should error", func(t *testing.T) {
 		t.Parallel()
@@ -70,6 +73,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(cfg)
 		assert.ErrorIs(t, err, errMoreThanOneLatestDataGatewayFound)
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("epoch end is not a valid number, should error", func(t *testing.T) {
 		t.Parallel()
@@ -79,6 +83,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(cfg)
 		assert.Contains(t, err.Error(), "epoch end at index 1")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("nonce end is not a valid number, should error", func(t *testing.T) {
 		t.Parallel()
@@ -88,6 +93,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(cfg)
 		assert.Contains(t, err.Error(), "nonce end at index 1")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("epoch end is lower than epoch start, should error", func(t *testing.T) {
 		t.Parallel()
@@ -98,6 +104,7 @@ func TestNewHostsFinder(t *testing.T) {
 		assert.ErrorIs(t, err, errBadGatewayInterval)
 		assert.Contains(t, err.Error(), "when checking epoch end & epoch start at index 1")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("nonce end is lower than nonce start, should error", func(t *testing.T) {
 		t.Parallel()
@@ -108,6 +115,7 @@ func TestNewHostsFinder(t *testing.T) {
 		assert.ErrorIs(t, err, errBadGatewayInterval)
 		assert.Contains(t, err.Error(), "when checking nonce end & nonce start at index 1")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("missing interval, should error", func(t *testing.T) {
 		t.Parallel()
@@ -118,6 +126,7 @@ func TestNewHostsFinder(t *testing.T) {
 		assert.ErrorIs(t, err, errUnexpectedIntervalStart)
 		assert.Contains(t, err.Error(), "EpochStart: 50, current epoch: 49, NonceStart: 5000, current nonce: 4998")
 		assert.Nil(t, finder)
+		assert.True(t, finder.IsInterfaceNil())
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -125,6 +134,7 @@ func TestNewHostsFinder(t *testing.T) {
 		finder, err := NewHostsFinder(createTestConfigs())
 		assert.Nil(t, err)
 		assert.NotNil(t, finder)
+		assert.False(t, finder.IsInterfaceNil())
 
 		expectedGateways := []gatewayConfig{
 			{
@@ -175,16 +185,6 @@ func TestNewHostsFinder(t *testing.T) {
 		assert.Equal(t, expectedGateways, finder.gateways)
 		assert.Equal(t, expectedGateways[2], *finder.latestDataGateway)
 	})
-}
-
-func TestHostsFinder_IsInterfaceNil(t *testing.T) {
-	t.Parallel()
-
-	var instance *hostsFinder
-	assert.True(t, instance.IsInterfaceNil())
-
-	instance = &hostsFinder{}
-	assert.False(t, instance.IsInterfaceNil())
 }
 
 func TestHostsFinder_FindHost(t *testing.T) {

@@ -26,24 +26,10 @@ ClosedEndpoints = [
     "/transaction/send-multiple",
     "/transaction/send-user-funds"
 ]
-
-# AccessKeys defines the keys that are allowed to use this proxy
-AccessKeys = [
-    {Key="e05d2cdbce887650f5f26f770e55570b", Alias="test"}
-]
-
-# Redis configuration for metrics storage
-[Redis]
-	Enabled = true
-	URL = "127.0.0.1:6379"
 `
 
 	expectedCfg := Config{
 		Port: 8080,
-		Redis: RedisConfig{
-			Enabled: true,
-			URL:     "127.0.0.1:6379",
-		},
 		Gateways: []GatewayConfig{
 			{
 				URL:        "http://192.168.167.22:8080",
@@ -74,12 +60,6 @@ AccessKeys = [
 			"/transaction/send/",
 			"/transaction/send-multiple",
 			"/transaction/send-user-funds",
-		},
-		AccessKeys: []AccessKeyConfig{
-			{
-				Alias: "test",
-				Key:   "e05d2cdbce887650f5f26f770e55570b",
-			},
 		},
 	}
 

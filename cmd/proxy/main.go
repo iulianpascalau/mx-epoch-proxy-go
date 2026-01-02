@@ -1,20 +1,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/metrics"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
 	"github.com/multiversx/mx-chain-core-go/core"
@@ -25,13 +23,14 @@ import (
 )
 
 const (
-	defaultLogsPath          = "logs"
-	logFilePrefix            = "epoch-proxy"
-	logFileLifeSpanInSec     = 86400 // 24h
-	logFileLifeSpanInMB      = 1024  // 1GB
-	configFile               = "config/config.toml"
-	swaggerPath              = "./swagger/"
-	printMetricsTimeinterval = time.Minute
+	defaultLogsPath      = "logs"
+	defaultDataPath      = "data"
+	dbFile               = "sqlite.db"
+	logFilePrefix        = "epoch-proxy"
+	logFileLifeSpanInSec = 86400 // 24h
+	logFileLifeSpanInMB  = 1024  // 1GB
+	configFile           = "config/config.toml"
+	swaggerPath          = "./swagger/"
 )
 
 // appVersion should be populated at build time using ldflags
@@ -160,12 +159,14 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	accessChecker, err := process.NewAccessChecker(cfg.AccessKeys)
+	var sqliteWrapper *storage.SQLiteWrapper
+	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
+	sqliteWrapper, err = storage.NewSQLiteWrapper(sqlitePath)
 	if err != nil {
 		return err
 	}
 
-	requestsMetrics, cancelFunc, err := createRequestsMetrics(cfg.Redis)
+	accessChecker, err := process.NewAccessChecker(sqliteWrapper)
 	if err != nil {
 		return err
 	}
@@ -173,15 +174,26 @@ func run(ctx *cli.Context) error {
 	requestsProcessor, err := process.NewRequestsProcessor(
 		hostFinder,
 		accessChecker,
-		requestsMetrics,
 		cfg.ClosedEndpoints,
 	)
 	if err != nil {
 		return err
 	}
 
+	accessKeysHandler, err := api.NewAccessKeysHandler(sqliteWrapper)
+	if err != nil {
+		return err
+	}
+
+	usersHandler, err := api.NewUsersHandler(sqliteWrapper)
+	if err != nil {
+		return err
+	}
+
 	handlers := map[string]http.Handler{
-		"*": requestsProcessor,
+		"/admin-access-keys": accessKeysHandler,
+		"/admin-users":       usersHandler,
+		"*":                  requestsProcessor,
 	}
 
 	fs := http.FS(os.DirFS(swaggerPath))
@@ -199,8 +211,10 @@ func run(ctx *cli.Context) error {
 	<-sigs
 
 	log.Info("application closing, calling Close on all subcomponents...")
-	cancelFunc()
 	err = engine.Close()
+	if sqliteWrapper != nil {
+		err = sqliteWrapper.Close()
+	}
 
 	return err
 }
@@ -234,34 +248,4 @@ func loadConfig(filepath string) (config.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func createRequestsMetrics(redisCfg config.RedisConfig) (process.RequestMetrics, func(), error) {
-	if !redisCfg.Enabled {
-		return &metrics.DisabledRequestsMetrics{}, func() {}, nil
-	}
-
-	storer := storage.NewRedisWrapper(redisCfg.URL, "")
-	metricsInstance, err := metrics.NewRequestMetrics(storer)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				_ = storer.Close()
-				log.Info("stopped Redis wrapper")
-				log.Info("stopping metrics go routine...")
-				return
-			case <-time.After(printMetricsTimeinterval):
-				log.Info("Redis key-values",
-					"metrics", "\n"+strings.Join(metricsInstance.GetAllKeyValues(), "\n"))
-			}
-		}
-	}()
-
-	return metricsInstance, cancel, nil
 }

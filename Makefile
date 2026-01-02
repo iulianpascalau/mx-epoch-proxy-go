@@ -32,8 +32,3 @@ build:
 run: build
 	cd ${cmd_dir} && \
 		./${binary} --log-level="*:DEBUG"
-
-redis-tests: clean-tests
-	@docker compose -f docker-compose.yml build
-	@docker compose -f docker-compose.yml up & go test ./storage/... -v -timeout 20m -tags redis
-	@docker compose -f docker-compose.yml down -v
