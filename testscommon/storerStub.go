@@ -1,41 +1,84 @@
 package testscommon
 
-import (
-	"context"
-)
+import "github.com/iulianpascalau/mx-epoch-proxy-go/common"
 
 // StorerStub -
 type StorerStub struct {
-	IncrementHandler  func(ctx context.Context, key string) error
-	GetAllKeysHandler func(ctx context.Context) ([]string, error)
-	GetHandler        func(ctx context.Context, key string) (string, bool, error)
+	AddUserHandler      func(username string, password string, isAdmin bool, maxRequests uint64) error
+	AddKeyHandler       func(username string, password string, key string) error
+	RemoveKeyHandler    func(username string, password string, key string) error
+	GetAllKeysHandler   func(username string, password string) (map[string]common.AccessKeyDetails, error)
+	GetAllUsersHandler  func() (map[string]common.UsersDetails, error)
+	IsKeyAllowedHandler func(key string) error
+	IsAdminHandler      func(username string, password string) error
+	CloseHandler        func() error
 }
 
-// Increment -
-func (stub *StorerStub) Increment(ctx context.Context, key string) error {
-	if stub.IncrementHandler != nil {
-		return stub.IncrementHandler(ctx, key)
+func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64) error {
+	if stub.AddUserHandler != nil {
+		return stub.AddUserHandler(username, password, isAdmin, maxRequests)
+	}
+	return nil
+}
+
+func (stub *StorerStub) IsAdmin(username string, password string) error {
+	if stub.IsAdminHandler != nil {
+		return stub.IsAdminHandler(username, password)
+	}
+	return nil
+}
+
+func (stub *StorerStub) AddKey(username string, password string, key string) error {
+	if stub.AddKeyHandler != nil {
+		return stub.AddKeyHandler(username, password, key)
+	}
+
+	return nil
+}
+
+// RemoveKey -
+func (stub *StorerStub) RemoveKey(username string, password string, key string) error {
+	if stub.RemoveKeyHandler != nil {
+		return stub.RemoveKeyHandler(username, password, key)
+	}
+
+	return nil
+}
+
+// IsKeyAllowed -
+func (stub *StorerStub) IsKeyAllowed(key string) error {
+	if stub.IsKeyAllowedHandler != nil {
+		return stub.IsKeyAllowedHandler(key)
 	}
 
 	return nil
 }
 
 // GetAllKeys -
-func (stub *StorerStub) GetAllKeys(ctx context.Context) ([]string, error) {
+func (stub *StorerStub) GetAllKeys(username string, password string) (map[string]common.AccessKeyDetails, error) {
 	if stub.GetAllKeysHandler != nil {
-		return stub.GetAllKeysHandler(ctx)
+		return stub.GetAllKeysHandler(username, password)
 	}
 
-	return make([]string, 0), nil
+	return make(map[string]common.AccessKeyDetails), nil
 }
 
-// Get -
-func (stub *StorerStub) Get(ctx context.Context, key string) (string, bool, error) {
-	if stub.GetHandler != nil {
-		return stub.GetHandler(ctx, key)
+// GetAllUsers -
+func (stub *StorerStub) GetAllUsers() (map[string]common.UsersDetails, error) {
+	if stub.GetAllUsersHandler != nil {
+		return stub.GetAllUsersHandler()
 	}
 
-	return "", false, nil
+	return make(map[string]common.UsersDetails), nil
+}
+
+// Close -
+func (stub *StorerStub) Close() error {
+	if stub.CloseHandler != nil {
+		return stub.CloseHandler()
+	}
+
+	return nil
 }
 
 // IsInterfaceNil -

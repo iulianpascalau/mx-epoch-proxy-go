@@ -1,9 +1,6 @@
-//go:build redis
-
 package integrationTests
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +10,6 @@ import (
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/metrics"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/testscommon"
@@ -23,8 +19,7 @@ import (
 )
 
 const (
-	swaggerPath    = "../cmd/proxy/swagger/"
-	redisDockerURL = "127.0.0.1:6379"
+	swaggerPath = "../cmd/proxy/swagger/"
 )
 
 var log = logger.GetOrCreate("integrationTests")
@@ -35,20 +30,6 @@ func createTestHTTPServer(handler func(w http.ResponseWriter, r *http.Request)) 
 	})
 
 	return server
-}
-
-func createTestAccessChecker(tb testing.TB) process.AccessChecker {
-	instance, err := process.NewAccessChecker(
-		[]config.AccessKeyConfig{
-			{
-				Key:   "e05d2cdbce887650f5f26f770e55570b",
-				Alias: "integration-test01",
-			},
-		},
-	)
-
-	require.Nil(tb, err)
-	return instance
 }
 
 func TestRequestsArePassedCorrectly(t *testing.T) {
@@ -88,16 +69,21 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	hostsFinder, err := process.NewHostsFinder(gateways)
 	require.Nil(t, err)
 
-	storer := storage.NewRedisWrapper(redisDockerURL, "")
-	requestsMetrics, err := metrics.NewRequestMetrics(storer)
+	tmpfile, err := os.CreateTemp(t.TempDir(), "sqlite.db")
+	require.NoError(t, err)
+	dbPath := tmpfile.Name()
+	_ = tmpfile.Close()
+	storer, _ := storage.NewSQLiteWrapper(dbPath)
+	_ = storer.AddUser("test", "test", true, 0)
+	err = storer.AddKey("test", "test", "e05d2cdbce887650f5f26f770e55570b")
 	require.Nil(t, err)
-	_ = storer.Delete(context.Background(), "integration-test01_total")
-	_ = storer.Delete(context.Background(), "ALL_total")
+
+	accessChecker, err := process.NewAccessChecker(storer)
+	assert.Nil(t, err)
 
 	processor, err := process.NewRequestsProcessor(
 		hostsFinder,
-		createTestAccessChecker(t),
-		requestsMetrics,
+		accessChecker,
 		[]string{
 			"/transaction/send",
 		})
@@ -152,14 +138,8 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	keyValues := requestsMetrics.GetAllKeyValues()
-	expectedKeyValues := map[string]struct{}{
-		"    integration-test01_total: 6": {},
-		"    ALL_total: 6":                {},
-	}
-	for _, keyVal := range keyValues {
-		delete(expectedKeyValues, keyVal)
-	}
+	keys, err := storer.GetAllKeys("test", "test")
+	assert.Nil(t, err)
 
-	assert.Empty(t, expectedKeyValues)
+	assert.Equal(t, uint64(6), keys["e05d2cdbce887650f5f26f770e55570b"].GlobalCounter)
 }

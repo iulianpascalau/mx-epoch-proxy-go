@@ -81,13 +81,13 @@ func TestDemuxer_ServeHTTP(t *testing.T) {
 		}
 
 		handlers := map[string]http.Handler{
-			"route1": handler1,
-			"route2": handler2,
+			"/route1": handler1,
+			"/route2": handler2,
 		}
 		instance := NewDemuxer(handlers, nil)
 
 		recorder := httptest.NewRecorder()
-		instance.ServeHTTP(recorder, &http.Request{RequestURI: "route1"})
+		instance.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/route1", nil))
 		assert.Equal(t, http.StatusOK, recorder.Code)
 		assert.Equal(t, "response", recorder.Body.String())
 	})
@@ -107,13 +107,13 @@ func TestDemuxer_ServeHTTP(t *testing.T) {
 		}
 
 		handlers := map[string]http.Handler{
-			"route1": handler1,
-			"*":      handler2,
+			"/route1": handler1,
+			"*":       handler2,
 		}
 		instance := NewDemuxer(handlers, nil)
 
 		recorder := httptest.NewRecorder()
-		instance.ServeHTTP(recorder, &http.Request{RequestURI: "route1"})
+		instance.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/route1", nil))
 		assert.Equal(t, http.StatusOK, recorder.Code)
 		assert.Equal(t, "response", recorder.Body.String())
 	})

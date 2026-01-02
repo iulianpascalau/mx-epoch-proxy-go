@@ -1,0 +1,286 @@
+package integrationTests
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"testing"
+
+	"github.com/iulianpascalau/mx-epoch-proxy-go/api"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const adminUser = "admin"
+const adminPass = "adminPass"
+
+const endpointKeys = "/admin-access-keys"
+const endpointUsers = "/admin-users"
+
+func TestKeysAccess(t *testing.T) {
+	storer := setupStorer(t)
+	ensureAdmin(t, storer)
+
+	accessKeysHandler, err := api.NewAccessKeysHandler(storer)
+	require.Nil(t, err)
+
+	usersHandler, err := api.NewUsersHandler(storer)
+	require.Nil(t, err)
+
+	handlers := map[string]http.Handler{
+		endpointKeys:  accessKeysHandler,
+		endpointUsers: usersHandler,
+	}
+
+	fs := http.FS(os.DirFS(swaggerPath))
+	demuxer := process.NewDemuxer(handlers, http.FileServer(fs))
+
+	engine, err := api.NewAPIEngine("localhost:0", demuxer)
+	require.Nil(t, err)
+	defer func() {
+		_ = engine.Close()
+	}()
+
+	log.Info("API engine running", "interface", engine.Address())
+
+	// get users while not authenticated
+	testGetUsers(t, engine.Address(), "", "", http.StatusForbidden)
+	// get users while authenticated
+	testGetUsers(t, engine.Address(), adminUser, adminPass, http.StatusOK, adminUser)
+
+	// create user while not authenticated
+	createUser(t, engine.Address(), "user1", "pass1", "user1", "pass1", true, 100, http.StatusForbidden)
+	// create user while authenticated with admin
+	createUser(t, engine.Address(), adminUser, adminPass, "user1", "pass1", true, 100, http.StatusOK)
+
+	// get users while not authenticated
+	testGetUsers(t, engine.Address(), "", "", http.StatusForbidden)
+	// get users while authenticated
+	testGetUsers(t, engine.Address(), adminUser, adminPass, http.StatusOK, adminUser, "user1")
+
+	// invalid user
+	addKeyToUser(t, engine.Address(), "invalid-user", "no-pass", "key", http.StatusInternalServerError)
+	// valid user
+	addKeyToUser(t, engine.Address(), "user1", "pass1", "key1-user1", http.StatusOK)
+	addKeyToUser(t, engine.Address(), "user1", "pass1", "key2-user1", http.StatusOK)
+
+	// get users while not authenticated
+	testGetUsers(t, engine.Address(), "", "", http.StatusForbidden)
+	// get users while authenticated
+	testGetUsers(t, engine.Address(), adminUser, adminPass, http.StatusOK, adminUser, "user1")
+
+	// invalid user should return empty
+	testGetKeys(t, engine.Address(), "invalid-user", "no-pass", http.StatusOK)
+	// no keys on user should return empty
+	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK)
+	// should work
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1")
+
+	// create user while authenticated with user1
+	createUser(t, engine.Address(), "user1", "pass1", "user2", "pass2", false, 100, http.StatusOK)
+
+	// invalid user
+	testGetUsers(t, engine.Address(), "user2", "pass2", http.StatusForbidden)
+	// get users while authenticated
+	testGetUsers(t, engine.Address(), adminUser, adminPass, http.StatusOK, adminUser, "user1", "user2")
+	testGetUsers(t, engine.Address(), "user1", "pass1", http.StatusOK, adminUser, "user1", "user2")
+
+	addKeyToUser(t, engine.Address(), "user2", "pass2", "key1-user2", http.StatusOK)
+	addKeyToUser(t, engine.Address(), "user1", "pass1", "key3-user1", http.StatusOK)
+
+	// invalid user should return empty
+	testGetKeys(t, engine.Address(), "invalid-user", "no-pass", http.StatusOK)
+	// no keys on user should return empty
+	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK)
+	// should work
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1", "key3-user1")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+
+	// invalid user should error
+	removeKey(t, engine.Address(), "invalid-user", "no-pass", "key1-user1", http.StatusInternalServerError)
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1", "key3-user1")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+
+	// can not delete another user's key
+	removeKey(t, engine.Address(), "user1", "pass1", "key1-user2", http.StatusOK)
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1", "key3-user1")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+
+	// should work
+	removeKey(t, engine.Address(), "user1", "pass1", "key1-user1", http.StatusOK)
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key2-user1", "key3-user1")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+
+	//addKeyToUser()
+	//
+	//createUser()
+	//addKeyToUser()
+	//
+	//testGetKeysForUser()
+	//testGetKeysForUser()
+	//
+	//createUser()
+	//addKeyToUser()
+	//addKeyToUser()
+	//addKeyToUser()
+	//
+	//testGetKeysForUser()
+	//testGetKeysForUser()
+	//testGetKeysForUser()
+	//
+	//testCanGetUsersWhileAdmin()
+	//
+	//testRemoveUser()
+	//testCanGetUsersWhileAdmin()
+	//testGetKeysForUser()
+	//testGetKeysForUser()
+	//testGetKeysForUser()
+}
+
+func setupStorer(tb testing.TB) api.KeyAccessProvider {
+	tmpfile, err := os.CreateTemp(tb.TempDir(), "sqlite.db")
+	require.NoError(tb, err)
+	dbPath := tmpfile.Name()
+	_ = tmpfile.Close()
+	storer, _ := storage.NewSQLiteWrapper(dbPath)
+
+	return storer
+}
+
+func ensureAdmin(tb testing.TB, storer api.KeyAccessProvider) {
+	users, err := storer.GetAllUsers()
+	require.Nil(tb, err)
+	for _, val := range users {
+		if val.IsAdmin {
+			// an admin was found
+			return
+		}
+	}
+
+	err = storer.AddUser(adminUser, adminPass, true, 0)
+	require.Nil(tb, err)
+}
+
+func testGetUsers(tb testing.TB, engineAddress string, username string, password string, httpCode int, users ...string) {
+	resp := getUsersByAPICall(tb, engineAddress, username, password)
+	assert.Equal(tb, httpCode, resp.StatusCode)
+	if httpCode != http.StatusOK {
+		return
+	}
+
+	var keys map[string]common.AccessKeyDetails
+	err := json.NewDecoder(resp.Body).Decode(&keys)
+	assert.Nil(tb, err)
+
+	assert.Equal(tb, len(users), len(keys))
+	for _, key := range keys {
+		assert.Contains(tb, users, key.Username)
+	}
+
+	_ = resp.Body.Close()
+}
+
+func getUsersByAPICall(tb testing.TB, address string, adminUser string, adminPass string) *http.Response {
+	url := fmt.Sprintf("http://%s"+endpointUsers, address)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	require.Nil(tb, err)
+
+	req.SetBasicAuth(adminUser, adminPass)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(tb, err)
+
+	return resp
+}
+
+func createUser(tb testing.TB, address string, adminUser, adminPass, username, password string, isAdmin bool, maxRequests uint64, httpCode int) {
+	url := fmt.Sprintf("http://%s"+endpointUsers, address)
+
+	userDTO := struct {
+		MaxRequests uint64 `json:"max_requests"`
+		Username    string `json:"username"`
+		Password    string `json:"password"`
+		IsAdmin     bool   `json:"is_admin"`
+	}{
+		Username:    username,
+		Password:    password,
+		MaxRequests: maxRequests,
+		IsAdmin:     isAdmin,
+	}
+
+	bodyBytes, _ := json.Marshal(userDTO)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	assert.Nil(tb, err)
+	req.SetBasicAuth(adminUser, adminPass)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(tb, err)
+	assert.Equal(tb, httpCode, resp.StatusCode)
+}
+
+func addKeyToUser(tb testing.TB, address string, user string, password string, key string, httpCode int) {
+	url := fmt.Sprintf("http://%s"+endpointKeys, address)
+	keyDTO := struct {
+		Key string `json:"key"`
+	}{
+		Key: key,
+	}
+
+	bodyBytes, _ := json.Marshal(keyDTO)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	assert.Nil(tb, err)
+	req.SetBasicAuth(user, password)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(tb, err)
+	assert.Equal(tb, httpCode, resp.StatusCode)
+}
+
+func testGetKeys(tb testing.TB, engineAddress string, username string, password string, httpCode int, keys ...string) {
+	resp := getKeysByAPICall(tb, engineAddress, username, password)
+	assert.Equal(tb, httpCode, resp.StatusCode)
+	if httpCode != http.StatusOK {
+		return
+	}
+
+	var keysMap map[string]common.AccessKeyDetails
+	err := json.NewDecoder(resp.Body).Decode(&keysMap)
+	assert.Nil(tb, err)
+
+	assert.Equal(tb, len(keys), len(keysMap))
+	for key := range keysMap {
+		assert.Contains(tb, keys, key)
+	}
+
+	_ = resp.Body.Close()
+}
+
+func getKeysByAPICall(tb testing.TB, address string, adminUser string, adminPass string) *http.Response {
+	url := fmt.Sprintf("http://%s"+endpointKeys, address)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	require.Nil(tb, err)
+
+	req.SetBasicAuth(adminUser, adminPass)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(tb, err)
+
+	return resp
+}
+
+func removeKey(tb testing.TB, address string, user, pass, key string, httpCode int) {
+	url := fmt.Sprintf("http://%s"+endpointKeys+"?key="+key, address)
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	assert.Nil(tb, err)
+	req.SetBasicAuth(user, pass)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(tb, err)
+	assert.Equal(tb, httpCode, resp.StatusCode)
+}
