@@ -220,7 +220,7 @@ func run(ctx *cli.Context) error {
 	}
 
 	demuxer := process.NewDemuxer(handlers, nil)
-	engine, err := api.NewAPIEngine(fmt.Sprintf(":%d", cfg.Port), demuxer)
+	engine, err := api.NewAPIEngine(fmt.Sprintf(":%d", cfg.Port), api.CORSMiddleware(demuxer))
 	if err != nil {
 		return err
 	}
