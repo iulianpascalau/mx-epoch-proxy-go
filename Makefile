@@ -14,8 +14,7 @@ help:
 # Base commands
 # #########################
 
-cmd_dir = cmd/proxy
-binary = proxy
+binary = epoch-proxy-server
 
 clean-tests:
 	go clean -testcache
@@ -24,7 +23,6 @@ tests: clean-tests
 	go test ./...
 
 build:
-	cd ${cmd_dir} && \
 		go build -v \
 		-o ${binary} \
 		-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"

@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"os"
+	"path"
 	"strings"
 	"testing"
 
@@ -9,20 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTestDB(tb testing.TB) *SQLiteWrapper {
-	// Create a temporary file for the database
-	tmpfile, err := os.CreateTemp(tb.TempDir(), "sqlite.db")
-	require.NoError(tb, err)
-	dbPath := tmpfile.Name()
-	_ = tmpfile.Close()
-
-	wrapper, err := NewSQLiteWrapper(dbPath)
+func createTestDB(tb testing.TB) *sqliteWrapper {
+	wrapper, err := NewSQLiteWrapper(path.Join(tb.TempDir(), "data", "sqlite.db"))
 	require.NoError(tb, err)
 
 	return wrapper
 }
 
-func closeWrapper(wrapper *SQLiteWrapper) {
+func closeWrapper(wrapper *sqliteWrapper) {
 	_ = wrapper.Close()
 }
 

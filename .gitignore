@@ -21,7 +21,12 @@
 go.work
 go.work.sum
 
-/cmd/proxy/config/config.toml
-
-# env file
+# env file & configs
 .env
+config.toml
+
+# binary and other output directories
+data/
+logs/
+.idea/
+epoch-proxy-server
