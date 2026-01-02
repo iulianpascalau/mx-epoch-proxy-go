@@ -15,6 +15,7 @@ import (
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
+	"github.com/joho/godotenv"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -23,14 +24,18 @@ import (
 )
 
 const (
-	defaultLogsPath      = "logs"
-	defaultDataPath      = "data"
-	dbFile               = "sqlite.db"
-	logFilePrefix        = "epoch-proxy"
-	logFileLifeSpanInSec = 86400 // 24h
-	logFileLifeSpanInMB  = 1024  // 1GB
-	configFile           = "config/config.toml"
-	swaggerPath          = "./swagger/"
+	defaultLogsPath            = "logs"
+	defaultDataPath            = "data"
+	dbFile                     = "sqlite.db"
+	logFilePrefix              = "epoch-proxy"
+	logFileLifeSpanInSec       = 86400 // 24h
+	logFileLifeSpanInMB        = 1024  // 1GB
+	configFile                 = "./config.toml"
+	swaggerPath                = "./swagger/"
+	envFileVarJwtKey           = "JWT_KEY"
+	envFileVarInitialAdminUser = "INITIAL_ADMIN_USER"
+	envFileVarInitialAdminPass = "INITIAL_ADMIN_PASSWORD"
+	envFileVarInitialAdminKey  = "INITIAL_ADMIN_KEY"
 )
 
 // appVersion should be populated at build time using ldflags
@@ -79,6 +84,9 @@ VERSION:
 		Usage: "This flag specifies the `directory` where the node will store databases and logs.",
 		Value: "",
 	}
+
+	envFileVars     = []string{envFileVarJwtKey, envFileVarInitialAdminUser, envFileVarInitialAdminPass, envFileVarInitialAdminKey}
+	envFileContents = make(map[string]string)
 )
 
 func main() {
@@ -133,6 +141,11 @@ func run(ctx *cli.Context) error {
 
 	log.Info("starting epoch proxy", "version", appVersion, "pid", os.Getpid())
 
+	err = readEnvFile(envFileContents)
+	if err != nil {
+		return err
+	}
+
 	cfg, err := loadConfig(configFile)
 	if err != nil {
 		return err
@@ -159,9 +172,13 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	var sqliteWrapper *storage.SQLiteWrapper
 	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
-	sqliteWrapper, err = storage.NewSQLiteWrapper(sqlitePath)
+	sqliteWrapper, err := storage.NewSQLiteWrapper(sqlitePath)
+	if err != nil {
+		return err
+	}
+
+	err = ensureAdmin(sqliteWrapper)
 	if err != nil {
 		return err
 	}
@@ -248,4 +265,65 @@ func loadConfig(filepath string) (config.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func readEnvFile(m map[string]string) error {
+	err := godotenv.Load()
+	if err != nil {
+		return err
+	}
+
+	for _, v := range envFileVars {
+		val := os.Getenv(v)
+		if len(val) == 0 {
+			return fmt.Errorf("%s is not set in the .env file", v)
+		}
+
+		m[v] = val
+	}
+
+	return nil
+}
+
+func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
+	foundAdmin, err := checkAdminIsPresent(sqliteWrapper)
+	if err != nil {
+		return err
+	}
+
+	if foundAdmin {
+		log.Info("admin user found, skipping adding new admin")
+		return nil
+	}
+
+	log.Info("creating admin user from .env file")
+
+	err = sqliteWrapper.AddUser(
+		envFileContents[envFileVarInitialAdminUser],
+		envFileContents[envFileVarInitialAdminPass],
+		true,
+		0)
+	if err != nil {
+		return err
+	}
+
+	return sqliteWrapper.AddKey(
+		envFileContents[envFileVarInitialAdminUser],
+		envFileContents[envFileVarInitialAdminPass],
+		envFileContents[envFileVarInitialAdminKey])
+}
+
+func checkAdminIsPresent(sqliteWrapper api.KeyAccessProvider) (bool, error) {
+	users, err := sqliteWrapper.GetAllUsers()
+	if err != nil {
+		return false, err
+	}
+
+	for _, userDetails := range users {
+		if userDetails.IsAdmin {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

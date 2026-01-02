@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
@@ -14,16 +16,17 @@ import (
 
 const maxPassLen = 72
 
-// SQLiteWrapper handles the connection to the SQLite database
-type SQLiteWrapper struct {
+// sqliteWrapper handles the connection to the SQLite database
+type sqliteWrapper struct {
 	db *sql.DB
 }
 
 // NewSQLiteWrapper creates a new instance of SQLiteWrapper
-func NewSQLiteWrapper(dbPath string) (*SQLiteWrapper, error) {
-	// Ensure the directory exists
-	// We can get the directory from the path. If it's just a filename, this is fine.
-	// But assuming it might be something like "data/proxy.db"
+func NewSQLiteWrapper(dbPath string) (*sqliteWrapper, error) {
+	err := prepareDirectories(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create initial empty DB file: %w", err)
+	}
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -46,7 +49,7 @@ func NewSQLiteWrapper(dbPath string) (*SQLiteWrapper, error) {
 		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
 	}
 
-	wrapper := &SQLiteWrapper{db: db}
+	wrapper := &sqliteWrapper{db: db}
 	err = wrapper.initializeTables()
 	if err != nil {
 		_ = db.Close()
@@ -56,7 +59,11 @@ func NewSQLiteWrapper(dbPath string) (*SQLiteWrapper, error) {
 	return wrapper, nil
 }
 
-func (wrapper *SQLiteWrapper) initializeTables() error {
+func prepareDirectories(dbPath string) error {
+	return os.MkdirAll(filepath.Dir(dbPath), os.ModePerm)
+}
+
+func (wrapper *sqliteWrapper) initializeTables() error {
 	usersTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		username TEXT PRIMARY KEY,
@@ -102,7 +109,7 @@ func processKey(key string) (string, error) {
 }
 
 // AddUser creates the associated user
-func (wrapper *SQLiteWrapper) AddUser(username string, password string, isAdmin bool, maxRequests uint64) error {
+func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin bool, maxRequests uint64) error {
 	if len(password) > maxPassLen {
 		return fmt.Errorf("password is too long (maximum %d characters allowed)", maxPassLen)
 	}
@@ -135,7 +142,7 @@ func (wrapper *SQLiteWrapper) AddUser(username string, password string, isAdmin 
 }
 
 // AddKey adds a new access key after checking user's credentials
-func (wrapper *SQLiteWrapper) AddKey(username string, password string, key string) error {
+func (wrapper *sqliteWrapper) AddKey(username string, password string, key string) error {
 	key, err := processKey(key)
 	if err != nil {
 		return err
@@ -177,7 +184,7 @@ func (wrapper *SQLiteWrapper) AddKey(username string, password string, key strin
 }
 
 // RemoveKey removes the provided access key after checking user's credentials
-func (wrapper *SQLiteWrapper) RemoveKey(username string, password string, key string) error {
+func (wrapper *sqliteWrapper) RemoveKey(username string, password string, key string) error {
 	key, err := processKey(key)
 	if err != nil {
 		return err
@@ -219,7 +226,7 @@ func (wrapper *SQLiteWrapper) RemoveKey(username string, password string, key st
 }
 
 // IsKeyAllowed returns true if the key is allowed to do requests and false otherwise
-func (wrapper *SQLiteWrapper) IsKeyAllowed(key string) error {
+func (wrapper *sqliteWrapper) IsKeyAllowed(key string) error {
 	key, err := processKey(key)
 	if err != nil {
 		return err
@@ -280,7 +287,7 @@ func (wrapper *SQLiteWrapper) IsKeyAllowed(key string) error {
 }
 
 // IsAdmin checks if the user with the given username and password is an admin
-func (wrapper *SQLiteWrapper) IsAdmin(username string, password string) error {
+func (wrapper *sqliteWrapper) IsAdmin(username string, password string) error {
 	query := `SELECT hashed_password, is_admin FROM users WHERE username = ?`
 	var hashedPassword string
 	var isAdmin bool
@@ -315,7 +322,7 @@ func checkPassword(passwordPlain string, hexHashedPass string) error {
 }
 
 // GetAllKeys returns all access keys and their details
-func (wrapper *SQLiteWrapper) GetAllKeys(username string, password string) (map[string]common.AccessKeyDetails, error) {
+func (wrapper *sqliteWrapper) GetAllKeys(username string, password string) (map[string]common.AccessKeyDetails, error) {
 	query := `
 		SELECT k.key, u.max_requests, u.request_count AS global_counter, k.request_count as key_counter, u.username, u.hashed_password, u.is_admin 
 		FROM access_keys k
@@ -349,7 +356,7 @@ func (wrapper *SQLiteWrapper) GetAllKeys(username string, password string) (map[
 }
 
 // GetAllUsers returns all access keys and their details
-func (wrapper *SQLiteWrapper) GetAllUsers() (map[string]common.UsersDetails, error) {
+func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, error) {
 	query := `
 		SELECT max_requests, request_count, username, hashed_password, is_admin 
 		FROM users
@@ -375,11 +382,11 @@ func (wrapper *SQLiteWrapper) GetAllUsers() (map[string]common.UsersDetails, err
 }
 
 // Close closes the database connection
-func (wrapper *SQLiteWrapper) Close() error {
+func (wrapper *sqliteWrapper) Close() error {
 	return wrapper.db.Close()
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil
-func (wrapper *SQLiteWrapper) IsInterfaceNil() bool {
+func (wrapper *sqliteWrapper) IsInterfaceNil() bool {
 	return wrapper == nil
 }
