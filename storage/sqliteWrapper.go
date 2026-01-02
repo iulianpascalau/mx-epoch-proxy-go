@@ -28,7 +28,7 @@ func NewSQLiteWrapper(dbPath string) (*sqliteWrapper, error) {
 		return nil, fmt.Errorf("failed to create initial empty DB file: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite3", dbPath+"?_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite db: %w", err)
 	}
@@ -47,6 +47,11 @@ func NewSQLiteWrapper(dbPath string) (*sqliteWrapper, error) {
 	_, err = db.Exec("PRAGMA synchronous=NORMAL;")
 	if err != nil {
 		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
+	}
+
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
 	wrapper := &sqliteWrapper{db: db}
@@ -141,8 +146,8 @@ func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin 
 	return tx.Commit()
 }
 
-// AddKey adds a new access key after checking user's credentials
-func (wrapper *sqliteWrapper) AddKey(username string, password string, key string) error {
+// AddKey adds a new access key without checking user's credentials (trusted caller)
+func (wrapper *sqliteWrapper) AddKey(username string, key string) error {
 	key, err := processKey(key)
 	if err != nil {
 		return err
@@ -156,25 +161,7 @@ func (wrapper *sqliteWrapper) AddKey(username string, password string, key strin
 		_ = tx.Rollback()
 	}()
 
-	// Get User limits via Key
-	query := `
-		SELECT hashed_password
-		FROM users 
-		WHERE username = ?
-	`
-	var hashedPassword string
-
-	err = tx.QueryRow(query, username).Scan(&hashedPassword)
-	if err != nil {
-		return err
-	}
-
-	err = checkPassword(password, hashedPassword)
-	if err != nil {
-		return err
-	}
-
-	query = `INSERT INTO access_keys (key, username) VALUES (?, ?)`
+	query := `INSERT INTO access_keys (key, username) VALUES (?, ?)`
 	_, err = tx.Exec(query, key, username)
 	if err != nil {
 		return fmt.Errorf("failed to insert key: %w", err)
@@ -183,8 +170,8 @@ func (wrapper *sqliteWrapper) AddKey(username string, password string, key strin
 	return tx.Commit()
 }
 
-// RemoveKey removes the provided access key after checking user's credentials
-func (wrapper *sqliteWrapper) RemoveKey(username string, password string, key string) error {
+// RemoveKey removes the provided access key without checking user's credentials (trusted caller)
+func (wrapper *sqliteWrapper) RemoveKey(username string, key string) error {
 	key, err := processKey(key)
 	if err != nil {
 		return err
@@ -198,25 +185,7 @@ func (wrapper *sqliteWrapper) RemoveKey(username string, password string, key st
 		_ = tx.Rollback()
 	}()
 
-	// Get User limits via Key
-	query := `
-		SELECT hashed_password
-		FROM users 
-		WHERE username = ?
-	`
-	var hashedPassword string
-
-	err = tx.QueryRow(query, username).Scan(&hashedPassword)
-	if err != nil {
-		return err
-	}
-
-	err = checkPassword(password, hashedPassword)
-	if err != nil {
-		return err
-	}
-
-	query = `DELETE FROM access_keys WHERE key = ? and username = ?`
+	query := `DELETE FROM access_keys WHERE key = ? and username = ?`
 	_, err = tx.Exec(query, strings.ToLower(key), username)
 	if err != nil {
 		return fmt.Errorf("failed to remove key: %w", err)
@@ -286,25 +255,24 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) error {
 	return nil
 }
 
-// IsAdmin checks if the user with the given username and password is an admin
-func (wrapper *sqliteWrapper) IsAdmin(username string, password string) error {
-	query := `SELECT hashed_password, is_admin FROM users WHERE username = ?`
-	var hashedPassword string
-	var isAdmin bool
-
-	err := wrapper.db.QueryRow(query, username).Scan(&hashedPassword, &isAdmin)
+// CheckUserCredentials checks if the user with the given username and password exists and returns details
+func (wrapper *sqliteWrapper) CheckUserCredentials(username string, password string) (*common.UsersDetails, error) {
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin FROM users WHERE username = ?`
+	var details common.UsersDetails
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("user not found")
+			return nil, fmt.Errorf("user not found")
 		}
-		return fmt.Errorf("error querying user: %w", err)
+		return nil, fmt.Errorf("error querying user: %w", err)
 	}
 
-	if !isAdmin {
-		return fmt.Errorf("user is not an admin")
+	err = checkPassword(password, details.HashedPassword)
+	if err != nil {
+		return nil, err
 	}
 
-	return checkPassword(password, hashedPassword)
+	return &details, nil
 }
 
 func checkPassword(passwordPlain string, hexHashedPass string) error {
@@ -322,7 +290,7 @@ func checkPassword(passwordPlain string, hexHashedPass string) error {
 }
 
 // GetAllKeys returns all access keys and their details
-func (wrapper *sqliteWrapper) GetAllKeys(username string, password string) (map[string]common.AccessKeyDetails, error) {
+func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.AccessKeyDetails, error) {
 	query := `
 		SELECT k.key, u.max_requests, u.request_count AS global_counter, k.request_count as key_counter, u.username, u.hashed_password, u.is_admin 
 		FROM access_keys k
@@ -346,11 +314,6 @@ func (wrapper *sqliteWrapper) GetAllKeys(username string, password string) (map[
 			return nil, err
 		}
 		result[strings.ToLower(key)] = details
-
-		err = checkPassword(password, details.HashedPassword)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return result, rows.Err()
 }

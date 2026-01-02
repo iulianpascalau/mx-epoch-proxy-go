@@ -25,16 +25,14 @@ func NewUsersHandler(keyAccessProvider KeyAccessProvider) (*usersHandler, error)
 
 // ServeHTTP implements http.Handler interface
 func (handler *usersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	username, password, ok := r.BasicAuth()
-	if !ok {
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	claims, err := CheckAuth(r)
+	if err != nil {
+		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	err := handler.keyAccessProvider.IsAdmin(username, password)
-	if err != nil {
-		http.Error(w, "Forbidden: "+err.Error(), http.StatusForbidden)
+	if !claims.IsAdmin {
+		http.Error(w, "Forbidden: Only admins can manage users", http.StatusForbidden)
 		return
 	}
 

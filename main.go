@@ -207,14 +207,19 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	api.SetJwtKey(envFileContents[envFileVarJwtKey])
+	loginHandler := api.NewLoginHandler(sqliteWrapper)
+
 	handlers := map[string]http.Handler{
-		"/admin-access-keys": accessKeysHandler,
-		"/admin-users":       usersHandler,
-		"*":                  requestsProcessor,
+		"/api/admin-access-keys": accessKeysHandler,
+		"/api/admin-users":       usersHandler,
+		"/api/login":             loginHandler,
+		"/swagger/":              http.StripPrefix("/swagger/", http.FileServer(http.Dir(swaggerPath))),
+		"/":                      http.RedirectHandler("/swagger/", http.StatusFound),
+		"*":                      requestsProcessor,
 	}
 
-	fs := http.FS(os.DirFS(swaggerPath))
-	demuxer := process.NewDemuxer(handlers, http.FileServer(fs))
+	demuxer := process.NewDemuxer(handlers, nil)
 	engine, err := api.NewAPIEngine(fmt.Sprintf(":%d", cfg.Port), demuxer)
 	if err != nil {
 		return err
@@ -309,7 +314,6 @@ func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
 
 	return sqliteWrapper.AddKey(
 		envFileContents[envFileVarInitialAdminUser],
-		envFileContents[envFileVarInitialAdminPass],
 		envFileContents[envFileVarInitialAdminKey])
 }
 

@@ -19,8 +19,8 @@ type ReturnCode string
 const (
 	// ReturnCodeRequestError defines a request which hasn't been executed successfully due to a bad request received
 	ReturnCodeRequestError ReturnCode = "bad_request"
-	loggerName                        = "process"
 )
+const loggerName = "process"
 
 var jsonContentType = []string{"application/json; charset=utf-8"}
 var log = logger.GetOrCreate(loggerName)

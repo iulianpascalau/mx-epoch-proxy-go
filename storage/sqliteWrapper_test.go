@@ -132,40 +132,28 @@ func TestSQLiteWrapper_AddKey(t *testing.T) {
 	defer closeWrapper(wrapper)
 
 	t.Run("no user created should not work", func(t *testing.T) {
-		err := wrapper.AddKey("user", "pass", "key")
+		err := wrapper.AddKey("user", "key")
 		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "sql: no rows in result set")
 	})
 
 	_ = wrapper.AddUser("user", "pass", false, 0)
 
 	t.Run("key is empty", func(t *testing.T) {
-		err := wrapper.AddKey("user", "pass", "   ")
+		err := wrapper.AddKey("user", "   ")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 
-		err = wrapper.AddKey("user", "pass", "")
+		err = wrapper.AddKey("user", "")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 
-		err = wrapper.AddKey("user", "pass", "\n")
+		err = wrapper.AddKey("user", "\n")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 
-		err = wrapper.AddKey("user", "pass", "\t")
+		err = wrapper.AddKey("user", "\t")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
-	})
-
-	t.Run("password do not match", func(t *testing.T) {
-		err := wrapper.AddKey("user", "wrong pass", "key1234")
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "invalid password")
-
-		var count int
-		err = wrapper.db.QueryRow("SELECT count(*) FROM access_keys WHERE key = ?", "key1234").Scan(&count)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, count)
 	})
 
 	t.Run("should add key successfully", func(t *testing.T) {
-		err := wrapper.AddKey("user", "pass", "KeY0")
+		err := wrapper.AddKey("user", "KeY0")
 		assert.NoError(t, err)
 
 		// Verify directly in DB via JOIN or querying both tables
@@ -190,15 +178,15 @@ func TestSQLiteWrapper_AddKey(t *testing.T) {
 	})
 
 	t.Run("should not allow adding the same key more than once", func(t *testing.T) {
-		err := wrapper.AddKey("user", "pass", "KeY1")
+		err := wrapper.AddKey("user", "KeY1")
 		assert.NoError(t, err)
 
-		err = wrapper.AddKey("user", "pass", "KeY1")
+		err = wrapper.AddKey("user", "KeY1")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "failed to insert key")
 
 		_ = wrapper.AddUser("user-alt", "pass-alt", false, 0)
-		err = wrapper.AddKey("user-alt", "pass-alt", "KeY1")
+		err = wrapper.AddKey("user-alt", "KeY1")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "failed to insert key")
 
@@ -232,36 +220,25 @@ func TestSQLiteWrapper_RemoveKey(t *testing.T) {
 
 	_ = wrapper.AddUser("user1", "pass1", false, 0)
 	_ = wrapper.AddUser("user2", "pass2", false, 0)
-	_ = wrapper.AddKey("user1", "pass1", "key1-user1")
+	_ = wrapper.AddKey("user1", "key1-user1")
 
 	t.Run("key is empty", func(t *testing.T) {
-		err := wrapper.RemoveKey("user1", "pass1", "   ")
+		err := wrapper.RemoveKey("user1", "   ")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 
-		err = wrapper.RemoveKey("user1", "pass1", "")
+		err = wrapper.RemoveKey("user1", "")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 
-		err = wrapper.RemoveKey("user1", "pass1", "\n")
+		err = wrapper.RemoveKey("user1", "\n")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 
-		err = wrapper.RemoveKey("user1", "pass1", "\t")
+		err = wrapper.RemoveKey("user1", "\t")
 		assert.ErrorIs(t, err, errKeyIsEmpty)
 	})
 
 	t.Run("should not remove key when called from another user", func(t *testing.T) {
-		err := wrapper.RemoveKey("user2", "pass2", "key1-user1")
+		err := wrapper.RemoveKey("user2", "key1-user1")
 		assert.NoError(t, err)
-
-		var count int
-		err = wrapper.db.QueryRow("SELECT count(*) FROM access_keys WHERE key = ?", "key1-user1").Scan(&count)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, count)
-	})
-
-	t.Run("password do not match", func(t *testing.T) {
-		err := wrapper.RemoveKey("user1", "wrong pass", "key1-user1")
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "invalid password")
 
 		var count int
 		err = wrapper.db.QueryRow("SELECT count(*) FROM access_keys WHERE key = ?", "key1-user1").Scan(&count)
@@ -270,7 +247,7 @@ func TestSQLiteWrapper_RemoveKey(t *testing.T) {
 	})
 
 	t.Run("should remove key", func(t *testing.T) {
-		err := wrapper.RemoveKey("user1", "pass1", "key1-user1")
+		err := wrapper.RemoveKey("user1", "key1-user1")
 		assert.NoError(t, err)
 
 		var count int
@@ -280,7 +257,7 @@ func TestSQLiteWrapper_RemoveKey(t *testing.T) {
 	})
 
 	t.Run("should not error when removing non-existent key", func(t *testing.T) {
-		err := wrapper.RemoveKey("user1", "pass1", "non-existent")
+		err := wrapper.RemoveKey("user1", "non-existent")
 		assert.NoError(t, err)
 	})
 }
@@ -307,7 +284,7 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 
 	t.Run("should allow requests within limit", func(t *testing.T) {
 		_ = wrapper.AddUser("admin1", "pass", true, 3)
-		_ = wrapper.AddKey("admin1", "pass", "kEy1")
+		_ = wrapper.AddKey("admin1", "kEy1")
 
 		// First request
 		err := wrapper.IsKeyAllowed("keY1")
@@ -331,7 +308,7 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 
 	t.Run("should deny requests exceeding limit", func(t *testing.T) {
 		_ = wrapper.AddUser("admin2", "pass", true, 1)
-		_ = wrapper.AddKey("admin2", "pass", "kEy2")
+		_ = wrapper.AddKey("admin2", "kEy2")
 
 		// First request - ok
 		err := wrapper.IsKeyAllowed("keY2")
@@ -356,7 +333,7 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 
 	t.Run("should allow unlimited requests if max_requests is 0", func(t *testing.T) {
 		_ = wrapper.AddUser("admin3", "pass", true, 0)
-		_ = wrapper.AddKey("admin3", "pass", "kEy3")
+		_ = wrapper.AddKey("admin3", "kEy3")
 
 		for i := 0; i < 5000; i++ {
 			err := wrapper.IsKeyAllowed("keY3")
@@ -382,12 +359,12 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 		_ = wrapper.AddUser("user1", "passUser1", false, 100)
 		_ = wrapper.AddUser("user2", "passUser2", false, 0)
 
-		_ = wrapper.AddKey("user1", "passUser1", "key1-user1")
-		_ = wrapper.AddKey("user1", "passUser1", "key2-user1")
+		_ = wrapper.AddKey("user1", "key1-user1")
+		_ = wrapper.AddKey("user1", "key2-user1")
 
-		_ = wrapper.AddKey("user2", "passUser2", "key1-user2")
+		_ = wrapper.AddKey("user2", "key1-user2")
 
-		keys, err := wrapper.GetAllKeys("user1", "passUser1")
+		keys, err := wrapper.GetAllKeys("user1")
 		assert.NoError(t, err)
 		assert.Len(t, keys, 2)
 
@@ -401,7 +378,7 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 		assert.NotEmpty(t, keys["key2-user1"].HashedPassword)
 		assert.False(t, keys["key2-user1"].IsAdmin)
 
-		keys, err = wrapper.GetAllKeys("user2", "passUser2")
+		keys, err = wrapper.GetAllKeys("user2")
 		assert.NoError(t, err)
 		assert.Len(t, keys, 1)
 
@@ -410,23 +387,8 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 		assert.NotEmpty(t, keys["key1-user2"].HashedPassword)
 		assert.False(t, keys["key1-user2"].IsAdmin)
 
-		keys, err = wrapper.GetAllKeys("admin", "passAdmin")
+		keys, err = wrapper.GetAllKeys("admin")
 		assert.NoError(t, err)
-		assert.Len(t, keys, 0)
-	})
-
-	t.Run("should error if user and passwords mismatch", func(t *testing.T) {
-		_ = wrapper.AddUser("user3", "passUser3", false, 100)
-		_ = wrapper.AddUser("user4", "passUser4", false, 0)
-
-		_ = wrapper.AddKey("user3", "passUser3", "key1-user3")
-		_ = wrapper.AddKey("user3", "passUser3", "key2-user3")
-
-		_ = wrapper.AddKey("user4", "passUser2", "key1-user4")
-
-		keys, err := wrapper.GetAllKeys("user3", "passUser4")
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "invalid password")
 		assert.Len(t, keys, 0)
 	})
 
@@ -434,7 +396,7 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 		// Clear db first
 		_, _ = wrapper.db.Exec("DELETE FROM access_keys")
 
-		keys, err := wrapper.GetAllKeys("user1", "passUser1")
+		keys, err := wrapper.GetAllKeys("user1")
 		assert.NoError(t, err)
 		assert.Empty(t, keys)
 	})
@@ -451,10 +413,10 @@ func TestSQLiteWrapper_GetAllUsers(t *testing.T) {
 		_ = wrapper.AddUser("user1", "passUser1", false, 100)
 		_ = wrapper.AddUser("user2", "passUser2", false, 0)
 
-		_ = wrapper.AddKey("user1", "passUser1", "key1-user1")
-		_ = wrapper.AddKey("user1", "passUser1", "key2-user1")
+		_ = wrapper.AddKey("user1", "key1-user1")
+		_ = wrapper.AddKey("user1", "key2-user1")
 
-		_ = wrapper.AddKey("user2", "passUser2", "key1-user2")
+		_ = wrapper.AddKey("user2", "key1-user2")
 
 		keys, err := wrapper.GetAllUsers()
 		assert.NoError(t, err)
@@ -478,6 +440,7 @@ func TestSQLiteWrapper_GetAllUsers(t *testing.T) {
 
 	t.Run("should return empty map if no keys", func(t *testing.T) {
 		// Clear db first
+		_, _ = wrapper.db.Exec("DELETE FROM access_keys")
 		_, _ = wrapper.db.Exec("DELETE FROM users")
 
 		keys, err := wrapper.GetAllUsers()
@@ -486,40 +449,45 @@ func TestSQLiteWrapper_GetAllUsers(t *testing.T) {
 	})
 }
 
-func TestSQLiteWrapper_IsAdmin(t *testing.T) {
+func TestSqliteWrapper_CheckUserCredentials(t *testing.T) {
 	t.Parallel()
 
 	wrapper := createTestDB(t)
 	defer closeWrapper(wrapper)
 
 	_ = wrapper.AddUser("admin", "adminPass", true, 0)
-	_ = wrapper.AddUser("user", "userPass", false, 0)
+	_ = wrapper.AddUser("user", "userPass", false, 100)
 
-	t.Run("should succeed for admin with correct password", func(t *testing.T) {
-		err := wrapper.IsAdmin("admin", "adminPass")
-		assert.NoError(t, err)
-	})
-
-	t.Run("should fail for admin with incorrect password", func(t *testing.T) {
-		err := wrapper.IsAdmin("admin", "wrongPass")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid password")
-	})
-
-	t.Run("should fail for non-admin user", func(t *testing.T) {
-		err := wrapper.IsAdmin("user", "userPass")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "user is not an admin")
-
-		err = wrapper.IsAdmin("user", "wrongPass")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "user is not an admin")
-	})
-
-	t.Run("should fail for non-existent user", func(t *testing.T) {
-		err := wrapper.IsAdmin("unknown", "pass")
-		assert.Error(t, err)
+	t.Run("user not found should error", func(t *testing.T) {
+		userDetails, err := wrapper.CheckUserCredentials("missing-user", "pass")
+		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "user not found")
+		assert.Nil(t, userDetails)
+	})
+
+	t.Run("password mismatch should error", func(t *testing.T) {
+		userDetails, err := wrapper.CheckUserCredentials("admin", "wrong-pass")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "invalid password")
+		assert.Nil(t, userDetails)
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		userDetails, err := wrapper.CheckUserCredentials("admin", "adminPass")
+		assert.Nil(t, err)
+		assert.Equal(t, "admin", userDetails.Username)
+		assert.Equal(t, true, userDetails.IsAdmin)
+		assert.NotEmpty(t, userDetails.HashedPassword)
+		assert.Equal(t, uint64(0), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(0), userDetails.MaxRequests)
+
+		userDetails, err = wrapper.CheckUserCredentials("user", "userPass")
+		assert.Nil(t, err)
+		assert.Equal(t, "user", userDetails.Username)
+		assert.Equal(t, false, userDetails.IsAdmin)
+		assert.NotEmpty(t, userDetails.HashedPassword)
+		assert.Equal(t, uint64(0), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(100), userDetails.MaxRequests)
 	})
 }
 
@@ -527,7 +495,7 @@ func BenchmarkSQLiteWrapper_IsKeyAllowed(b *testing.B) {
 	wrapper := createTestDB(b)
 	defer closeWrapper(wrapper)
 	_ = wrapper.AddUser("admin3", "pass", true, 0)
-	_ = wrapper.AddKey("admin3", "pass", "kEy3")
+	_ = wrapper.AddKey("admin3", "kEy3")
 
 	for i := 0; i < b.N; i++ {
 		b.StartTimer()

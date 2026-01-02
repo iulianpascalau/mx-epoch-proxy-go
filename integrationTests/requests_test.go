@@ -75,7 +75,7 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	_ = tmpfile.Close()
 	storer, _ := storage.NewSQLiteWrapper(dbPath)
 	_ = storer.AddUser("test", "test", true, 0)
-	err = storer.AddKey("test", "test", "e05d2cdbce887650f5f26f770e55570b")
+	err = storer.AddKey("test", "e05d2cdbce887650f5f26f770e55570b")
 	require.Nil(t, err)
 
 	accessChecker, err := process.NewAccessChecker(storer)
@@ -138,7 +138,7 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	keys, err := storer.GetAllKeys("test", "test")
+	keys, err := storer.GetAllKeys("test")
 	assert.Nil(t, err)
 
 	assert.Equal(t, uint64(6), keys["e05d2cdbce887650f5f26f770e55570b"].GlobalCounter)

@@ -26,29 +26,26 @@ func NewAccessKeysHandler(keyAccessProvider KeyAccessProvider) (*accessKeysHandl
 
 // ServeHTTP implements http.Handler interface
 func (handler *accessKeysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := r.BasicAuth()
-	if !ok {
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	claims, err := CheckAuth(r)
+	if err != nil {
+		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		handler.handleGet(w, r)
+		handler.handleGet(w, r, claims)
 	case http.MethodPost:
-		handler.handlePost(w, r)
+		handler.handlePost(w, r, claims)
 	case http.MethodDelete:
-		handler.handleDelete(w, r)
+		handler.handleDelete(w, r, claims)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func (handler *accessKeysHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	username, password, _ := r.BasicAuth()
-
-	keys, err := handler.keyAccessProvider.GetAllKeys(username, password)
+func (handler *accessKeysHandler) handleGet(w http.ResponseWriter, _ *http.Request, claims *Claims) {
+	keys, err := handler.keyAccessProvider.GetAllKeys(claims.Username)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -62,9 +59,7 @@ type addKeyRequest struct {
 	Key string `json:"key"`
 }
 
-func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Request) {
-	username, password, _ := r.BasicAuth()
-
+func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Request, claims *Claims) {
 	var req addKeyRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -79,7 +74,7 @@ func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Add key
-	err = handler.keyAccessProvider.AddKey(username, password, strings.ToLower(req.Key))
+	err = handler.keyAccessProvider.AddKey(claims.Username, strings.ToLower(req.Key))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -88,16 +83,14 @@ func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
-func (handler *accessKeysHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
-	username, password, _ := r.BasicAuth()
-
+func (handler *accessKeysHandler) handleDelete(w http.ResponseWriter, r *http.Request, claims *Claims) {
 	key := r.URL.Query().Get("key")
 	if key == "" {
 		http.Error(w, "key parameter is required", http.StatusBadRequest)
 		return
 	}
 
-	err := handler.keyAccessProvider.RemoveKey(username, password, strings.ToLower(key))
+	err := handler.keyAccessProvider.RemoveKey(claims.Username, strings.ToLower(key))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
