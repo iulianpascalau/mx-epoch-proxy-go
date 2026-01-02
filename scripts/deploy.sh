@@ -47,7 +47,7 @@ else
     exit 1
 fi
 
-$GO_CMD build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o server main.go
+$GO_CMD build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
 if [ $? -ne 0 ]; then
     echo "Backend build failed!"
     exit 1
