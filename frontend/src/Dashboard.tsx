@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAccessKey, clearAuth, getUserInfo, type User as AuthUser } from './auth';
+import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw } from 'lucide-react';
 import axios from 'axios';
@@ -49,8 +49,32 @@ export const Dashboard = () => {
             navigate('/login');
             return;
         }
+
+        const decoded = parseJwt(token);
+        let timer: ReturnType<typeof setTimeout>;
+
+        if (decoded && decoded.exp) {
+            const expirationTime = decoded.exp * 1000;
+            const now = Date.now();
+
+            if (now >= expirationTime) {
+                clearAuth();
+                navigate('/login');
+                return;
+            }
+
+            timer = setTimeout(() => {
+                clearAuth();
+                navigate('/login');
+            }, expirationTime - now);
+        }
+
         setUser(info);
         fetchData(info.is_admin);
+
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, [navigate]);
 
     const fetchData = async (isAdmin: boolean) => {
