@@ -10,8 +10,9 @@ On the target VM the following steps should be completed:
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Git
-sudo apt install -y git
+# Install prerequisites packages so the go build will succeed
+sudo apt install -y git curl zip rsync jq gcc wget
+sudo apt install -y build-essential
 
 # Install Go (Adjust version if needed, your go.mod says 1.24 so you need a very recent version)
 GO_LATEST_TESTED="1.24.11"
@@ -44,7 +45,7 @@ git pull origin main
 
 # --- Build Backend ---
 # Create a binary named 'server'
-go build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o server main.go
+go build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
 
 # --- Build Frontend ---
 cd frontend
