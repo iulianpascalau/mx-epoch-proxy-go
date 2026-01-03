@@ -92,8 +92,9 @@ export const Dashboard = () => {
             setShowKeyModal(false);
             setNewKeyVal('');
             fetchData(user?.is_admin || false);
-        } catch (e) {
-            alert('Failed to create key');
+        } catch (e: any) {
+            const msg = e.response?.data ? String(e.response.data).trim() : 'Failed to create key';
+            alert(msg);
         }
     };
 
@@ -104,8 +105,9 @@ export const Dashboard = () => {
                 headers: { Authorization: `Bearer ${getAccessKey()}` }
             });
             fetchData(user?.is_admin || false);
-        } catch (e) {
-            alert('Failed to delete key');
+        } catch (e: any) {
+            const msg = e.response?.data ? String(e.response.data).trim() : 'Failed to delete key';
+            alert(msg);
         }
     };
 
@@ -122,8 +124,9 @@ export const Dashboard = () => {
             setShowUserModal(false);
             setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false });
             fetchData(true);
-        } catch (e) {
-            alert('Failed to create user');
+        } catch (e: any) {
+            const msg = e.response?.data ? String(e.response.data).trim() : 'Failed to create user';
+            alert(msg);
         }
     };
 
@@ -283,7 +286,7 @@ export const Dashboard = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setShowKeyModal(false)} className="px-4 py-2 hover:bg-white/5 rounded text-slate-300">Cancel</button>
+                                <button type="button" onClick={() => { setShowKeyModal(false); setNewKeyVal(''); }} className="px-4 py-2 hover:bg-white/5 rounded text-slate-300">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-white">Create</button>
                             </div>
                         </form>

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
@@ -67,9 +68,12 @@ func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Basic validation
+	// Basic validation and generation
 	if req.Key == "" {
-		http.Error(w, "key is required", http.StatusBadRequest)
+		req.Key = common.GenerateKey()
+	}
+	if len(req.Key) < 12 {
+		http.Error(w, "key must be at least 12 characters long", http.StatusBadRequest)
 		return
 	}
 

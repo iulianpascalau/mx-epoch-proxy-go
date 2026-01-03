@@ -73,7 +73,7 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - success", func(t *testing.T) {
 		t.Parallel()
 
-		expectedKey := "key1"
+		expectedKey := "key1_longer_than_12_chars"
 		expectedUsername := "admin"
 		token, _ := GenerateToken(expectedUsername, true)
 
@@ -99,6 +99,52 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 		handler.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("post - empty key generates key", func(t *testing.T) {
+		t.Parallel()
+
+		expectedUsername := "admin"
+		token, _ := GenerateToken(expectedUsername, true)
+
+		provider := &testscommon.StorerStub{
+			AddKeyHandler: func(username string, key string) error {
+				assert.Equal(t, expectedUsername, username)
+				assert.Len(t, key, 32)
+				return nil
+			},
+		}
+
+		handler, err := NewAccessKeysHandler(provider)
+		require.Nil(t, err)
+
+		reqBody := addKeyRequest{Key: ""}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-access-keys", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("post - short key failure", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("admin", true)
+		handler, _ := NewAccessKeysHandler(&testscommon.StorerStub{})
+
+		reqBody := addKeyRequest{Key: "short"}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-access-keys", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "key must be at least 12 characters long")
 	})
 
 	t.Run("delete - success", func(t *testing.T) {
