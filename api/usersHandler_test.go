@@ -135,7 +135,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 		expectedMaxRequests := uint64(500)
 
 		provider := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
 				assert.Equal(t, expectedUsername, username)
 				assert.Equal(t, expectedPassword, password)
 				assert.True(t, isAdmin)
@@ -205,7 +205,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 		expectedMaxRequests := uint64(1000)
 
 		provider := &testscommon.StorerStub{
-			UpdateUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64) error {
+			UpdateUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
 				assert.Fail(t, "should have not called this")
 				return nil
 			},
@@ -237,7 +237,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 		expectedMaxRequests := uint64(1000)
 
 		provider := &testscommon.StorerStub{
-			UpdateUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64) error {
+			UpdateUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
 				assert.Equal(t, expectedUsername, username)
 				assert.Equal(t, expectedPassword, password)
 				assert.False(t, isAdmin)

@@ -63,7 +63,7 @@ func (handler *usersHandler) handlePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = handler.keyAccessProvider.UpdateUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests)
+	err = handler.keyAccessProvider.UpdateUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, req.AccountType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -104,6 +104,7 @@ type addUserRequest struct {
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	IsAdmin     bool   `json:"is_admin"`
+	AccountType string `json:"account_type"`
 }
 
 func (handler *usersHandler) handlePost(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +121,7 @@ func (handler *usersHandler) handlePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_ = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests)
+	_ = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, req.AccountType)
 
 	w.WriteHeader(http.StatusOK)
 }

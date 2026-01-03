@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -183,7 +184,22 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	accessChecker, err := process.NewAccessChecker(sqliteWrapper)
+	if cfg.FreeAccount.ClearPeriodInSeconds == 0 {
+		return fmt.Errorf("can not start as the config contains a 0 value for FreeAccount.ClearPeriodInSeconds")
+	}
+
+	keyCounter := common.NewKeyCounter()
+	limitPeriod := time.Duration(cfg.FreeAccount.ClearPeriodInSeconds) * time.Second
+	common.CronJobStarter(context.Background(), func() {
+		log.Debug("Clearing the keys counters")
+		keyCounter.Clear()
+	}, limitPeriod)
+
+	accessChecker, err := process.NewAccessChecker(
+		sqliteWrapper,
+		keyCounter,
+		cfg.FreeAccount.MaxCalls,
+	)
 	if err != nil {
 		return err
 	}
@@ -307,7 +323,8 @@ func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
 		envFileContents[envFileVarInitialAdminUser],
 		envFileContents[envFileVarInitialAdminPass],
 		true,
-		0)
+		0,
+		"premium")
 	if err != nil {
 		return err
 	}

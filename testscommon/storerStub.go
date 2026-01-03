@@ -5,13 +5,13 @@ import "github.com/iulianpascalau/mx-epoch-proxy-go/common"
 // StorerStub -
 type StorerStub struct {
 	RemoveUserHandler           func(username string) error
-	UpdateUserHandler           func(username string, password string, isAdmin bool, maxRequests uint64) error
-	AddUserHandler              func(username string, password string, isAdmin bool, maxRequests uint64) error
+	UpdateUserHandler           func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
+	AddUserHandler              func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
 	AddKeyHandler               func(username string, key string) error
 	RemoveKeyHandler            func(username string, key string) error
 	GetAllKeysHandler           func(username string) (map[string]common.AccessKeyDetails, error)
 	GetAllUsersHandler          func() (map[string]common.UsersDetails, error)
-	IsKeyAllowedHandler         func(key string) error
+	IsKeyAllowedHandler         func(key string) (string, common.AccountType, error)
 	CloseHandler                func() error
 	CheckUserCredentialsHandler func(username string, password string) (*common.UsersDetails, error)
 }
@@ -23,16 +23,16 @@ func (stub *StorerStub) RemoveUser(username string) error {
 	return nil
 }
 
-func (stub *StorerStub) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64) error {
+func (stub *StorerStub) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
 	if stub.UpdateUserHandler != nil {
-		return stub.UpdateUserHandler(username, password, isAdmin, maxRequests)
+		return stub.UpdateUserHandler(username, password, isAdmin, maxRequests, accountType)
 	}
 	return nil
 }
 
-func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64) error {
+func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
 	if stub.AddUserHandler != nil {
-		return stub.AddUserHandler(username, password, isAdmin, maxRequests)
+		return stub.AddUserHandler(username, password, isAdmin, maxRequests, accountType)
 	}
 	return nil
 }
@@ -55,12 +55,12 @@ func (stub *StorerStub) RemoveKey(username string, key string) error {
 }
 
 // IsKeyAllowed -
-func (stub *StorerStub) IsKeyAllowed(key string) error {
+func (stub *StorerStub) IsKeyAllowed(key string) (string, common.AccountType, error) {
 	if stub.IsKeyAllowedHandler != nil {
 		return stub.IsKeyAllowedHandler(key)
 	}
 
-	return nil
+	return "", "", nil
 }
 
 // GetAllKeys -

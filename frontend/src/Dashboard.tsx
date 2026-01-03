@@ -19,6 +19,7 @@ interface UserDetails {
     MaxRequests: number;
     GlobalCounter: number;
     IsAdmin: boolean;
+    AccountType: string;
 }
 
 export const Dashboard = () => {
@@ -40,7 +41,8 @@ export const Dashboard = () => {
         username: '',
         password: '',
         maxRequests: 0,
-        isAdmin: false
+        isAdmin: false,
+        accountType: 'free'
     });
 
     // Pagination & Sorting State
@@ -165,19 +167,22 @@ export const Dashboard = () => {
                     username: newUserState.username,
                     password: newUserState.password, // Optional in backend
                     max_requests: newUserState.maxRequests,
-                    is_admin: newUserState.isAdmin
+                    is_admin: newUserState.isAdmin,
+                    account_type: newUserState.accountType
                 }, { headers: { Authorization: `Bearer ${getAccessKey()}` } });
             } else {
                 await axios.post('/api/admin-users', {
                     username: newUserState.username,
                     password: newUserState.password,
                     max_requests: newUserState.maxRequests,
-                    is_admin: newUserState.isAdmin
+                    is_admin: newUserState.isAdmin,
+                    account_type: newUserState.accountType
                 }, { headers: { Authorization: `Bearer ${getAccessKey()}` } });
             }
 
             setShowUserModal(false);
-            setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false });
+            setShowUserModal(false);
+            setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false, accountType: 'free' });
             setIsEditingUser(false);
             fetchData(true);
         } catch (e: any) {
@@ -208,14 +213,15 @@ export const Dashboard = () => {
             username: u.Username,
             password: '', // Password not shown
             maxRequests: u.MaxRequests,
-            isAdmin: u.IsAdmin
+            isAdmin: u.IsAdmin,
+            accountType: u.AccountType || 'free'
         });
         setIsEditingUser(true);
         setShowUserModal(true);
     };
 
     const openCreateUserModal = () => {
-        setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false });
+        setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false, accountType: 'free' });
         setIsEditingUser(false);
         setShowUserModal(true);
     };
@@ -424,6 +430,7 @@ export const Dashboard = () => {
                                                 </div>
                                             </th>
                                             <th className="py-3 px-4">Role</th>
+                                            <th className="py-3 px-4">Account Type</th>
                                             <th className="py-3 px-4">Limits (Req)</th>
                                             <th className="py-3 px-4">Current Usage</th>
                                             <th className="py-3 px-4 text-right">Actions</th>
@@ -436,6 +443,11 @@ export const Dashboard = () => {
                                                 <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${u.IsAdmin ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
                                                         {u.IsAdmin ? 'ADMIN' : 'USER'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${u.AccountType === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-500/20 text-slate-300'}`}>
+                                                        {(u.AccountType || 'free').toUpperCase()}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
@@ -569,6 +581,17 @@ export const Dashboard = () => {
                                         value={newUserState.maxRequests}
                                         onChange={e => setNewUserState({ ...newUserState, maxRequests: parseInt(e.target.value) })}
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-slate-400 mb-1">Account Type</label>
+                                    <select
+                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        value={newUserState.accountType}
+                                        onChange={e => setNewUserState({ ...newUserState, accountType: e.target.value })}
+                                    >
+                                        <option value="free">Free</option>
+                                        <option value="premium">Premium</option>
+                                    </select>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <input
