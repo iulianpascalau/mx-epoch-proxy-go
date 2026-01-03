@@ -62,7 +62,7 @@ func TestDemuxer_ServeHTTP(t *testing.T) {
 		instance := NewDemuxer(handlers, nil)
 
 		recorder := httptest.NewRecorder()
-		instance.ServeHTTP(recorder, &http.Request{RequestURI: "unknown"})
+		instance.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/unknown", nil))
 		assert.Equal(t, http.StatusNotFound, recorder.Code)
 	})
 	t.Run("a defined route without default should call the handler", func(t *testing.T) {
@@ -139,19 +139,14 @@ func TestDemuxer_ServeHTTP(t *testing.T) {
 		instance := NewDemuxer(handlers, nil)
 
 		recorder := httptest.NewRecorder()
-		instance.ServeHTTP(recorder, &http.Request{RequestURI: "route2"})
+		instance.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/route2", nil))
 		assert.Equal(t, http.StatusOK, recorder.Code)
 		assert.Equal(t, "response", recorder.Body.String())
 	})
-	t.Run("should work with a root handler", func(t *testing.T) {
+	t.Run("should match prefix routes", func(t *testing.T) {
 		t.Parallel()
 
 		handler := &testscommon.HttpHandlerStub{
-			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				assert.Fail(t, "should have not called this handler")
-			},
-		}
-		rootHandler := &testscommon.HttpHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
 				_, _ = writer.Write([]byte("response"))
 				writer.WriteHeader(http.StatusOK)
@@ -159,17 +154,12 @@ func TestDemuxer_ServeHTTP(t *testing.T) {
 		}
 
 		handlers := map[string]http.Handler{
-			"*": handler,
+			"/api/": handler,
 		}
-		instance := NewDemuxer(handlers, rootHandler)
+		instance := NewDemuxer(handlers, nil)
 
 		recorder := httptest.NewRecorder()
-		instance.ServeHTTP(recorder, &http.Request{RequestURI: "/"})
-		assert.Equal(t, http.StatusOK, recorder.Code)
-		assert.Equal(t, "response", recorder.Body.String())
-
-		recorder = httptest.NewRecorder()
-		instance.ServeHTTP(recorder, &http.Request{RequestURI: "/index.html"})
+		instance.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/test", nil))
 		assert.Equal(t, http.StatusOK, recorder.Code)
 		assert.Equal(t, "response", recorder.Body.String())
 	})

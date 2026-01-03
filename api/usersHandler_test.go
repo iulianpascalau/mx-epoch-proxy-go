@@ -37,28 +37,42 @@ func TestNewUsersHandler(t *testing.T) {
 func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
-	t.Run("unauthorized - missing basic auth", func(t *testing.T) {
+	SetJwtKey("test_key")
+
+	t.Run("method not allowed", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("admin", true)
+
+		handler, _ := NewUsersHandler(&testscommon.StorerStub{})
+		req := httptest.NewRequest(http.MethodTrace, "/api/admin-users", nil)
+		resp := httptest.NewRecorder()
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.Code)
+	})
+
+	t.Run("unauthorized - missing token", func(t *testing.T) {
 		t.Parallel()
 
 		handler, _ := NewUsersHandler(&testscommon.StorerStub{})
-		req := httptest.NewRequest(http.MethodGet, "/admin-users", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
-	t.Run("forbidden - invalid credentials", func(t *testing.T) {
+	t.Run("forbidden - not admin", func(t *testing.T) {
 		t.Parallel()
 
-		provider := &testscommon.StorerStub{
-			IsAdminHandler: func(username, password string) error {
-				return errors.New("invalid credentials")
-			},
-		}
+		token, _ := GenerateToken("user", false)
+
+		provider := &testscommon.StorerStub{}
 		handler, _ := NewUsersHandler(provider)
-		req := httptest.NewRequest(http.MethodGet, "/admin-users", nil)
-		req.SetBasicAuth("user", "pass")
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -68,10 +82,9 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("authorized - get users", func(t *testing.T) {
 		t.Parallel()
 
+		token, _ := GenerateToken("admin", true)
+
 		provider := &testscommon.StorerStub{
-			IsAdminHandler: func(username, password string) error {
-				return nil
-			},
 			GetAllUsersHandler: func() (map[string]common.UsersDetails, error) {
 				return map[string]common.UsersDetails{
 					"user1": {Username: "user1", IsAdmin: false},
@@ -79,8 +92,8 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 			},
 		}
 		handler, _ := NewUsersHandler(provider)
-		req := httptest.NewRequest(http.MethodGet, "/admin-users", nil)
-		req.SetBasicAuth("admin", "pass")
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -96,17 +109,16 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("error getting users", func(t *testing.T) {
 		t.Parallel()
 
+		token, _ := GenerateToken("admin", true)
+
 		provider := &testscommon.StorerStub{
-			IsAdminHandler: func(username, password string) error {
-				return nil
-			},
 			GetAllUsersHandler: func() (map[string]common.UsersDetails, error) {
 				return nil, errors.New("db error")
 			},
 		}
 		handler, _ := NewUsersHandler(provider)
-		req := httptest.NewRequest(http.MethodGet, "/admin-users", nil)
-		req.SetBasicAuth("admin", "pass")
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -116,14 +128,13 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - success", func(t *testing.T) {
 		t.Parallel()
 
+		token, _ := GenerateToken("admin", true)
+
 		expectedUsername := "user2"
 		expectedPassword := "password"
 		expectedMaxRequests := uint64(500)
 
 		provider := &testscommon.StorerStub{
-			IsAdminHandler: func(username, password string) error {
-				return nil
-			},
 			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64) error {
 				assert.Equal(t, expectedUsername, username)
 				assert.Equal(t, expectedPassword, password)
@@ -141,8 +152,8 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 			MaxRequests: expectedMaxRequests,
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
-		req := httptest.NewRequest(http.MethodPost, "/admin-users", bytes.NewBuffer(bodyBytes))
-		req.SetBasicAuth("admin", "pass")
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-users", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -152,15 +163,13 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - invalid request body", func(t *testing.T) {
 		t.Parallel()
 
-		provider := &testscommon.StorerStub{
-			IsAdminHandler: func(username, password string) error {
-				return nil
-			},
-		}
+		token, _ := GenerateToken("admin", true)
+
+		provider := &testscommon.StorerStub{}
 		handler, _ := NewUsersHandler(provider)
 
-		req := httptest.NewRequest(http.MethodPost, "/admin-users", bytes.NewBufferString("invalid json"))
-		req.SetBasicAuth("admin", "pass")
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-users", bytes.NewBufferString("invalid json"))
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
@@ -170,22 +179,130 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - missing username", func(t *testing.T) {
 		t.Parallel()
 
-		provider := &testscommon.StorerStub{
-			IsAdminHandler: func(username, password string) error {
-				return nil
-			},
-		}
+		token, _ := GenerateToken("admin", true)
+
+		provider := &testscommon.StorerStub{}
 		handler, _ := NewUsersHandler(provider)
 
 		reqBody := addUserRequest{
 			Password: "pass",
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
-		req := httptest.NewRequest(http.MethodPost, "/admin-users", bytes.NewBuffer(bodyBytes))
-		req.SetBasicAuth("admin", "pass")
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-users", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusBadRequest, resp.Code)
+	})
+
+	t.Run("put fails if no username is provided", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("admin", true)
+
+		expectedPassword := "newpassword"
+		expectedMaxRequests := uint64(1000)
+
+		provider := &testscommon.StorerStub{
+			UpdateUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64) error {
+				assert.Fail(t, "should have not called this")
+				return nil
+			},
+		}
+		handler, _ := NewUsersHandler(provider)
+
+		reqBody := addUserRequest{
+			Username:    "",
+			Password:    expectedPassword,
+			IsAdmin:     false,
+			MaxRequests: expectedMaxRequests,
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPut, "/api/admin-users", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusBadRequest, resp.Code)
+	})
+
+	t.Run("put - success", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("admin", true)
+
+		expectedUsername := "user2"
+		expectedPassword := "newpassword"
+		expectedMaxRequests := uint64(1000)
+
+		provider := &testscommon.StorerStub{
+			UpdateUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64) error {
+				assert.Equal(t, expectedUsername, username)
+				assert.Equal(t, expectedPassword, password)
+				assert.False(t, isAdmin)
+				assert.Equal(t, expectedMaxRequests, maxRequests)
+				return nil
+			},
+		}
+		handler, _ := NewUsersHandler(provider)
+
+		reqBody := addUserRequest{
+			Username:    expectedUsername,
+			Password:    expectedPassword,
+			IsAdmin:     false,
+			MaxRequests: expectedMaxRequests,
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPut, "/api/admin-users", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+	})
+
+	t.Run("delete fails if no username is provided", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("admin", true)
+
+		provider := &testscommon.StorerStub{
+			RemoveUserHandler: func(username string) error {
+				assert.Fail(t, "should have not called this")
+				return nil
+			},
+		}
+		handler, _ := NewUsersHandler(provider)
+
+		req := httptest.NewRequest(http.MethodDelete, "/api/admin-users?username=", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusBadRequest, resp.Code)
+	})
+
+	t.Run("delete - success", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("admin", true)
+
+		expectedUsername := "user2"
+
+		provider := &testscommon.StorerStub{
+			RemoveUserHandler: func(username string) error {
+				assert.Equal(t, expectedUsername, username)
+				return nil
+			},
+		}
+		handler, _ := NewUsersHandler(provider)
+
+		req := httptest.NewRequest(http.MethodDelete, "/api/admin-users?username="+expectedUsername, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
 	})
 }

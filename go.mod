@@ -3,6 +3,7 @@ module github.com/iulianpascalau/mx-epoch-proxy-go
 go 1.24
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/multiversx/mx-chain-core-go v1.4.1
