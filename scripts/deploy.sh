@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 PROJECT_DIR="/home/ubuntu/epoch-proxy"
-BACKEND_SERVICE="epoch-proxy-server"
+BACKEND_SERVICE="epoch-proxy-backend"
 FRONTEND_SERVICE="epoch-proxy-frontend"
 
 # Check argument
