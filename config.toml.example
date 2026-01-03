@@ -1,7 +1,4 @@
 Port = 8080
-RegistrationLinkPattern = "http://localhost:8080/api/activate?token=%s"
-ActivationRedirectURL = "http://localhost:5173/#/login?activated=true"
-
 
 # Gateways defines the list of gateways that will be used by this proxy
 Gateways = [
@@ -19,3 +16,8 @@ ClosedEndpoints = [
 [FreeAccount]
     MaxCalls = 100
     ClearPeriodInSeconds = 60
+
+# AppDomains configures the app domains (mainly used for redirects)
+[AppDomains]
+    Backend = "http://localhost:8080"
+    Frontend = "http://localhost:5173"

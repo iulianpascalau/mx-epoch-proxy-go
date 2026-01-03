@@ -7,20 +7,20 @@ import (
 	"regexp"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 const emailTokenPrefix = "EMAILTOKEN"
 
 type registrationHandler struct {
-	keyAccessProvider       KeyAccessProvider
-	emailSender             EmailSender
-	registrationLinkPattern string
-	activationRedirectURL   string
+	keyAccessProvider KeyAccessProvider
+	emailSender       EmailSender
+	appDomainsConfig  config.AppDomainsConfig
 }
 
 // NewRegistrationHandler creates a new registrationHandler instance
-func NewRegistrationHandler(keyAccessProvider KeyAccessProvider, emailSender EmailSender, registrationLinkPattern string, activationRedirectURL string) (*registrationHandler, error) {
+func NewRegistrationHandler(keyAccessProvider KeyAccessProvider, emailSender EmailSender, appDomainsConfig config.AppDomainsConfig) (*registrationHandler, error) {
 	if check.IfNil(keyAccessProvider) {
 		return nil, errNilKeyAccessChecker
 	}
@@ -29,10 +29,9 @@ func NewRegistrationHandler(keyAccessProvider KeyAccessProvider, emailSender Ema
 	}
 
 	return &registrationHandler{
-		keyAccessProvider:       keyAccessProvider,
-		emailSender:             emailSender,
-		registrationLinkPattern: registrationLinkPattern,
-		activationRedirectURL:   activationRedirectURL,
+		keyAccessProvider: keyAccessProvider,
+		emailSender:       emailSender,
+		appDomainsConfig:  appDomainsConfig,
 	}, nil
 }
 
@@ -121,13 +120,16 @@ func (handler *registrationHandler) handleActivate(w http.ResponseWriter, r *htt
 	}
 
 	// Redirect to login page with a success flag
-	http.Redirect(w, r, handler.activationRedirectURL, http.StatusFound)
+	activationRedirectURL := handler.appDomainsConfig.Frontend + EndpointFrontendLogin + "?activated=true"
+	http.Redirect(w, r, activationRedirectURL, http.StatusFound)
 }
 
 func (handler *registrationHandler) sendActivationEmail(to string, token string) error {
+	registrationURL := handler.appDomainsConfig.Backend + EndpointApiActivate + "?token=" + token
+
 	subject := "Activate your account for the MultiversX Deep History Access"
 	body := "In order to activate your newly registered account for the MultiversX Deep History Access you need to click on the link below:<br><br>" +
-		"<b><a href=\"" + fmt.Sprintf(handler.registrationLinkPattern, token) + "\">Activate with token " + token + "</a></b>"
+		"<b><a href=\"" + registrationURL + "\">Activate with token " + token + "</a></b>"
 
 	return handler.emailSender.SendEmail(to, subject, body)
 }

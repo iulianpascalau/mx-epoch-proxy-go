@@ -242,20 +242,24 @@ func run(ctx *cli.Context) error {
 		Password: envFileContents[envFileVarSmtpPassword],
 	})
 
-	registrationHandler, err := api.NewRegistrationHandler(sqliteWrapper, emailSender, cfg.RegistrationLinkPattern, cfg.ActivationRedirectURL)
+	if len(cfg.AppDomains.Backend) == 0 || len(cfg.AppDomains.Backend) == 0 {
+		return fmt.Errorf("the AppDomains section is not correctly configured in config.toml file")
+	}
+
+	registrationHandler, err := api.NewRegistrationHandler(sqliteWrapper, emailSender, cfg.AppDomains)
 	if err != nil {
 		return err
 	}
 
 	handlers := map[string]http.Handler{
-		"/api/admin-access-keys": accessKeysHandler,
-		"/api/admin-users":       usersHandler,
-		"/api/login":             loginHandler,
-		"/api/register":          registrationHandler,
-		"/api/activate":          registrationHandler,
-		"/swagger/":              http.StripPrefix("/swagger/", http.FileServer(http.Dir(swaggerPath))),
-		"/":                      http.RedirectHandler("/swagger/", http.StatusFound),
-		"*":                      requestsProcessor,
+		api.EndpointApiAccessKeys: accessKeysHandler,
+		api.EndpointApiAdminUsers: usersHandler,
+		api.EndpointApiLogin:      loginHandler,
+		api.EndpointApiRegister:   registrationHandler,
+		api.EndpointApiActivate:   registrationHandler,
+		api.EndpointSwagger:       http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
+		api.EndpointRoot:          http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
+		"*":                       requestsProcessor,
 	}
 
 	demuxer := process.NewDemuxer(handlers, nil)
