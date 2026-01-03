@@ -11,3 +11,7 @@ ClosedEndpoints = [
     "/transaction/send-multiple",
     "/transaction/send-user-funds"
 ]
+
+[FreeAccount]
+    MaxCalls = 100
+    ClearPeriodInSeconds = 60

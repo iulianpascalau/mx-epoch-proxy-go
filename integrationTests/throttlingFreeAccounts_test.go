@@ -3,7 +3,6 @@ package integrationTests
 import (
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -13,27 +12,11 @@ import (
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/process"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/storage"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/testscommon"
-	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	swaggerPath = "../cmd/proxy/swagger/"
-)
-
-var log = logger.GetOrCreate("integrationTests")
-
-func createTestHTTPServer(handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
-	server := httptest.NewServer(&testscommon.HttpHandlerStub{
-		ServeHTTPCalled: handler,
-	})
-
-	return server
-}
-
-func TestRequestsArePassedCorrectly(t *testing.T) {
+func TestThrottlingFreeAccounts(t *testing.T) {
 	handlerAValues := make([]string, 0)
 	handlerA := func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("A: %+v\n", r)
@@ -75,11 +58,12 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	dbPath := tmpfile.Name()
 	_ = tmpfile.Close()
 	storer, _ := storage.NewSQLiteWrapper(dbPath)
-	_ = storer.AddUser("test", "test", true, 0, "premium")
+	_ = storer.AddUser("test", "test", true, 0, string(common.FreeAccountType))
 	err = storer.AddKey("test", "e05d2cdbce887650f5f26f770e55570b")
 	require.Nil(t, err)
 
-	accessChecker, err := process.NewAccessChecker(storer, common.NewKeyCounter(), 100)
+	keyCounter := common.NewKeyCounter()
+	accessChecker, err := process.NewAccessChecker(storer, keyCounter, 3)
 	assert.Nil(t, err)
 
 	processor, err := process.NewRequestsProcessor(
@@ -106,23 +90,43 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	log.Info("API engine running", "interface", engine.Address())
 
 	url := fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456", engine.Address())
-	_, _ = http.DefaultClient.Get(url)
+	resp, _ := http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&hintEpoch=99", engine.Address())
-	_, _ = http.DefaultClient.Get(url)
+	resp, _ = http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true", engine.Address())
-	_, _ = http.DefaultClient.Get(url)
+	resp, _ = http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
+	// this call errors as the account is throttled
 	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000", engine.Address())
-	_, _ = http.DefaultClient.Get(url)
+	resp, _ = http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
+	// this call also errors as the account is throttled
 	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c", engine.Address())
-	_, _ = http.DefaultClient.Get(url)
+	resp, _ = http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	//resetting the throttling
+	keyCounter.Clear()
 
 	// this call will be ignored
 	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/send", engine.Address())
 	_, _ = http.DefaultClient.Post(url, "content", nil)
+
+	// this call works now
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=10000", engine.Address())
+	resp, _ = http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// also this call works now
+	url = fmt.Sprintf("http://%s/v1/e05d2cdbce887650f5f26f770e55570b/address/erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqpf0llllsccsy0c", engine.Address())
+	resp, _ = http.DefaultClient.Get(url)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	expectedHandlerAValues := []string{
 		"/transaction/8a64d0ad29f70595bf942c8d2e241a21a3988d9712ae268a9e33efbaffc16b3b?withResults=true&blockNonce=100&hintEpoch=456",
@@ -142,5 +146,5 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	keys, err := storer.GetAllKeys("test")
 	assert.Nil(t, err)
 
-	assert.Equal(t, uint64(6), keys["e05d2cdbce887650f5f26f770e55570b"].GlobalCounter)
+	assert.Equal(t, uint64(8), keys["e05d2cdbce887650f5f26f770e55570b"].GlobalCounter)
 }

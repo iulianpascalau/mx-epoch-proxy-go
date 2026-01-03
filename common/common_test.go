@@ -1,8 +1,11 @@
 package common
 
 import (
+	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -39,5 +42,42 @@ func TestAnonymizeKey(t *testing.T) {
 		anonymizedKey := AnonymizeKey(key)
 		fmt.Printf("Anonymized API key: %s\n", anonymizedKey)
 		assert.Equal(t, key[:3]+"**************************"+key[29:], anonymizedKey)
+	})
+}
+
+func TestCronJob(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should work", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		counter := uint64(0)
+		handler := func() {
+			atomic.AddUint64(&counter, 1)
+		}
+
+		CronJobStarter(ctx, handler, time.Millisecond*100)
+
+		time.Sleep(time.Millisecond * 350) // 350ms => 3 calls => counter should be 3
+
+		assert.Equal(t, uint64(3), atomic.LoadUint64(&counter))
+	})
+	t.Run("context done should stop", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		counter := uint64(0)
+		handler := func() {
+			atomic.AddUint64(&counter, 1)
+		}
+
+		CronJobStarter(ctx, handler, time.Millisecond*100)
+
+		time.Sleep(time.Millisecond * 350) // 35oms => 3 calls => counter should be 3
+		cancel()
+
+		time.Sleep(time.Millisecond * 350) // wait another 350ms just to be safe
+
+		assert.Equal(t, uint64(3), atomic.LoadUint64(&counter))
 	})
 }

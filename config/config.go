@@ -3,6 +3,7 @@ package config
 // Config specify all config options this proxy will use
 type Config struct {
 	Port            uint64
+	FreeAccount     FreeAccountConfig
 	Gateways        []GatewayConfig
 	ClosedEndpoints []string
 }
@@ -15,4 +16,10 @@ type GatewayConfig struct {
 	NonceStart string
 	NonceEnd   string
 	Name       string
+}
+
+// FreeAccountConfig the configuration struct for free accounts
+type FreeAccountConfig struct {
+	MaxCalls             uint64
+	ClearPeriodInSeconds uint64
 }
