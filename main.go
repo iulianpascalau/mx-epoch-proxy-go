@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -37,6 +38,10 @@ const (
 	envFileVarInitialAdminUser = "INITIAL_ADMIN_USER"
 	envFileVarInitialAdminPass = "INITIAL_ADMIN_PASSWORD"
 	envFileVarInitialAdminKey  = "INITIAL_ADMIN_KEY"
+	envFileVarSmtpHost         = "SMTP_HOST"
+	envFileVarSmtpPort         = "SMTP_PORT"
+	envFileVarSmtpFrom         = "SMTP_FROM"
+	envFileVarSmtpPassword     = "SMTP_PASSWORD"
 )
 
 // appVersion should be populated at build time using ldflags
@@ -86,7 +91,7 @@ VERSION:
 		Value: "",
 	}
 
-	envFileVars     = []string{envFileVarJwtKey, envFileVarInitialAdminUser, envFileVarInitialAdminPass, envFileVarInitialAdminKey}
+	envFileVars     = []string{envFileVarJwtKey, envFileVarInitialAdminUser, envFileVarInitialAdminPass, envFileVarInitialAdminKey, envFileVarSmtpHost, envFileVarSmtpPort, envFileVarSmtpFrom, envFileVarSmtpPassword}
 	envFileContents = make(map[string]string)
 )
 
@@ -226,10 +231,28 @@ func run(ctx *cli.Context) error {
 	api.SetJwtKey(envFileContents[envFileVarJwtKey])
 	loginHandler := api.NewLoginHandler(sqliteWrapper)
 
+	smtpPort, err := strconv.Atoi(envFileContents[envFileVarSmtpPort])
+	if err != nil {
+		return fmt.Errorf("invalid SMTP port: %w", err)
+	}
+	emailSender := process.NewSmtpSender(process.ArgsSmtpSender{
+		SmtpPort: smtpPort,
+		SmtpHost: envFileContents[envFileVarSmtpHost],
+		From:     envFileContents[envFileVarSmtpFrom],
+		Password: envFileContents[envFileVarSmtpPassword],
+	})
+
+	registrationHandler, err := api.NewRegistrationHandler(sqliteWrapper, emailSender, cfg.RegistrationLinkPattern, cfg.ActivationRedirectURL)
+	if err != nil {
+		return err
+	}
+
 	handlers := map[string]http.Handler{
 		"/api/admin-access-keys": accessKeysHandler,
 		"/api/admin-users":       usersHandler,
 		"/api/login":             loginHandler,
+		"/api/register":          registrationHandler,
+		"/api/activate":          registrationHandler,
 		"/swagger/":              http.StripPrefix("/swagger/", http.FileServer(http.Dir(swaggerPath))),
 		"/":                      http.RedirectHandler("/swagger/", http.StatusFound),
 		"*":                      requestsProcessor,
@@ -324,7 +347,9 @@ func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
 		envFileContents[envFileVarInitialAdminPass],
 		true,
 		0,
-		"premium")
+		"premium",
+		true,
+		"")
 	if err != nil {
 		return err
 	}

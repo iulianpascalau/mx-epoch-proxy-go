@@ -6,7 +6,7 @@ import "github.com/iulianpascalau/mx-epoch-proxy-go/common"
 type StorerStub struct {
 	RemoveUserHandler           func(username string) error
 	UpdateUserHandler           func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
-	AddUserHandler              func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
+	AddUserHandler              func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error
 	AddKeyHandler               func(username string, key string) error
 	RemoveKeyHandler            func(username string, key string) error
 	GetAllKeysHandler           func(username string) (map[string]common.AccessKeyDetails, error)
@@ -14,6 +14,14 @@ type StorerStub struct {
 	IsKeyAllowedHandler         func(key string) (string, common.AccountType, error)
 	CloseHandler                func() error
 	CheckUserCredentialsHandler func(username string, password string) (*common.UsersDetails, error)
+	ActivateUserHandler         func(token string) error
+}
+
+func (stub *StorerStub) ActivateUser(token string) error {
+	if stub.ActivateUserHandler != nil {
+		return stub.ActivateUserHandler(token)
+	}
+	return nil
 }
 
 func (stub *StorerStub) RemoveUser(username string) error {
@@ -30,9 +38,9 @@ func (stub *StorerStub) UpdateUser(username string, password string, isAdmin boo
 	return nil
 }
 
-func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
+func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
 	if stub.AddUserHandler != nil {
-		return stub.AddUserHandler(username, password, isAdmin, maxRequests, accountType)
+		return stub.AddUserHandler(username, password, isAdmin, maxRequests, accountType, isActive, activationToken)
 	}
 	return nil
 }

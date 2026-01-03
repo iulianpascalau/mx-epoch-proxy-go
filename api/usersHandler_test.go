@@ -135,7 +135,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 		expectedMaxRequests := uint64(500)
 
 		provider := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
 				assert.Equal(t, expectedUsername, username)
 				assert.Equal(t, expectedPassword, password)
 				assert.True(t, isAdmin)

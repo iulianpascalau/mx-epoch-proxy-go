@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { setAuth } from './auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
 
 export const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
     const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('activated') === 'true') {
+            setMessage('Account activated successfully! You can now log in.');
+        }
+    }, [location]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setMessage('');
 
         try {
             const res = await fetch('/api/login', {
@@ -36,6 +46,12 @@ export const Login = () => {
                 <h1 className="text-3xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
                     Epoch Proxy
                 </h1>
+
+                {message && (
+                    <div className="mb-6 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-200 text-sm text-center">
+                        {message}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
@@ -76,6 +92,13 @@ export const Login = () => {
                     >
                         Sign In
                     </button>
+
+                    <div className="text-center mt-4">
+                        <span className="text-slate-400 text-sm">Don't have an account? </span>
+                        <Link to="/register" className="text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors">
+                            Register
+                        </Link>
+                    </div>
                 </form>
             </div>
         </div>

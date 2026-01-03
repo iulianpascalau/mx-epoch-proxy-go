@@ -2,10 +2,12 @@ package config
 
 // Config specify all config options this proxy will use
 type Config struct {
-	Port            uint64
-	FreeAccount     FreeAccountConfig
-	Gateways        []GatewayConfig
-	ClosedEndpoints []string
+	Port                    uint64
+	FreeAccount             FreeAccountConfig
+	Gateways                []GatewayConfig
+	ClosedEndpoints         []string
+	RegistrationLinkPattern string
+	ActivationRedirectURL   string
 }
 
 // GatewayConfig defines a gateway and its set epochs

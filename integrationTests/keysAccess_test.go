@@ -142,7 +142,7 @@ func ensureAdmin(tb testing.TB, storer api.KeyAccessProvider) {
 		}
 	}
 
-	err = storer.AddUser(adminUser, adminPass, true, 0, "premium")
+	err = storer.AddUser(adminUser, adminPass, true, 0, "premium", true, "")
 	require.Nil(tb, err)
 }
 

@@ -121,7 +121,11 @@ func (handler *usersHandler) handlePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_ = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, req.AccountType)
+	err = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, req.AccountType, true, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }

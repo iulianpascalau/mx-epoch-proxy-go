@@ -1,4 +1,7 @@
 Port = 8080
+RegistrationLinkPattern = "http://localhost:8080/api/activate?token=%s"
+ActivationRedirectURL = "http://localhost:5173/#/login?activated=true"
+
 
 # Gateways defines the list of gateways that will be used by this proxy
 Gateways = [
@@ -12,6 +15,7 @@ ClosedEndpoints = [
     "/transaction/send-user-funds"
 ]
 
+# FreeAccount defines the throttling parameters for the free account type
 [FreeAccount]
     MaxCalls = 100
     ClearPeriodInSeconds = 60
