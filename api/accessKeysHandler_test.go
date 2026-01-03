@@ -84,6 +84,32 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 		assert.Len(t, keys, 1)
 	})
 
+	t.Run("authorized - get keys as admin", func(t *testing.T) {
+		username := "user1"
+		token, _ := GenerateToken(username, true)
+
+		provider := &testscommon.StorerStub{
+			GetAllKeysHandler: func(usr string) (map[string]common.AccessKeyDetails, error) {
+				assert.Equal(t, "", usr)
+				return map[string]common.AccessKeyDetails{
+					"key1": {MaxRequests: 100},
+				}, nil
+			},
+		}
+		handler, _ := NewAccessKeysHandler(provider)
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-access-keys", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+
+		var keys map[string]common.AccessKeyDetails
+		err := json.NewDecoder(resp.Body).Decode(&keys)
+		assert.Nil(t, err)
+		assert.Len(t, keys, 1)
+	})
+
 	t.Run("post - success", func(t *testing.T) {
 		t.Parallel()
 
@@ -104,6 +130,39 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 
 		reqBody := addKeyRequest{
 			Key: expectedKey,
+		}
+		bodyBytes, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-access-keys", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("post as admin - success", func(t *testing.T) {
+		t.Parallel()
+
+		expectedKey := "key1_longer_than_12_chars"
+		expectedUsername := "user1"
+		admin := "admin"
+		token, _ := GenerateToken(admin, true)
+
+		provider := &testscommon.StorerStub{
+			AddKeyHandler: func(username string, key string) error {
+				assert.Equal(t, expectedUsername, username)
+				assert.Equal(t, expectedKey, key)
+				return nil
+			},
+		}
+
+		handler, err := NewAccessKeysHandler(provider)
+		require.Nil(t, err)
+
+		reqBody := addKeyRequest{
+			Key:      expectedKey,
+			Username: expectedUsername,
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/api/admin-access-keys", bytes.NewBuffer(bodyBytes))
@@ -205,6 +264,34 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 		require.Nil(t, err)
 
 		req := httptest.NewRequest(http.MethodDelete, "/api/admin-access-keys?key="+expectedKey, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("delete as admin - success", func(t *testing.T) {
+		t.Parallel()
+
+		expectedKey := "key1"
+		expectedUsername := "user1"
+		admin := "admin"
+		token, _ := GenerateToken(admin, true)
+
+		provider := &testscommon.StorerStub{
+			RemoveKeyHandler: func(usr string, key string) error {
+				assert.Equal(t, strings.ToLower(expectedKey), key)
+				assert.Equal(t, expectedUsername, usr)
+				return nil
+			},
+		}
+
+		handler, err := NewAccessKeysHandler(provider)
+		require.Nil(t, err)
+
+		req := httptest.NewRequest(http.MethodDelete, "/api/admin-access-keys?key="+expectedKey+"&username="+expectedUsername, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		w := httptest.NewRecorder()

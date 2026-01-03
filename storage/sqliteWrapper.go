@@ -353,13 +353,25 @@ func checkPassword(passwordPlain string, hexHashedPass string) error {
 
 // GetAllKeys returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.AccessKeyDetails, error) {
-	query := `
+	var rows *sql.Rows
+	var err error
+	if username == "" {
+		query := `
+		SELECT k.key, u.max_requests, u.request_count AS global_counter, k.request_count as key_counter, u.username, u.hashed_password, u.is_admin 
+		FROM access_keys k
+		JOIN users u ON k.username = u.username
+	`
+		rows, err = wrapper.db.Query(query)
+	} else {
+		query := `
 		SELECT k.key, u.max_requests, u.request_count AS global_counter, k.request_count as key_counter, u.username, u.hashed_password, u.is_admin 
 		FROM access_keys k
 		JOIN users u ON k.username = u.username
 		WHERE u.username = ?
 	`
-	rows, err := wrapper.db.Query(query, username)
+		rows, err = wrapper.db.Query(query, username)
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,7 @@ export const Dashboard = () => {
     // Key Modal State
     const [showKeyModal, setShowKeyModal] = useState(false);
     const [newKeyVal, setNewKeyVal] = useState('');
+    const [managingKeysForUser, setManagingKeysForUser] = useState<UserDetails | null>(null);
 
     // User Modal State
     const [showUserModal, setShowUserModal] = useState(false);
@@ -111,10 +112,16 @@ export const Dashboard = () => {
     const handleCreateKey = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post('/api/admin-access-keys', { key: newKeyVal }, {
+            const payload: any = { key: newKeyVal };
+            if (managingKeysForUser) {
+                payload.username = managingKeysForUser.Username;
+            }
+            await axios.post('/api/admin-access-keys', payload, {
                 headers: { Authorization: `Bearer ${getAccessKey()}` }
             });
-            setShowKeyModal(false);
+            if (!managingKeysForUser) {
+                setShowKeyModal(false);
+            }
             setNewKeyVal('');
             fetchData(user?.is_admin || false);
         } catch (e: any) {
@@ -123,10 +130,14 @@ export const Dashboard = () => {
         }
     };
 
-    const handleDeleteKey = async (key: string) => {
+    const handleDeleteKey = async (key: string, username?: string) => {
         if (!confirm('Revoke this key?')) return;
         try {
-            await axios.delete(`/api/admin-access-keys?key=${key}`, {
+            let url = `/api/admin-access-keys?key=${key}`;
+            if (username) {
+                url += `&username=${username}`;
+            }
+            await axios.delete(url, {
                 headers: { Authorization: `Bearer ${getAccessKey()}` }
             });
             fetchData(user?.is_admin || false);
@@ -268,7 +279,7 @@ export const Dashboard = () => {
                                             </td>
                                             <td className="py-3 px-4 text-right">
                                                 <button
-                                                    onClick={() => handleDeleteKey(k)}
+                                                    onClick={() => handleDeleteKey(k, details.Username)}
                                                     className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-400/10 transition-colors"
                                                 >
                                                     <Trash2 size={16} />
@@ -325,6 +336,15 @@ export const Dashboard = () => {
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
                                                     {u.MaxRequests === 0 ? 'Unlimited' : u.MaxRequests}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <button
+                                                        onClick={() => setManagingKeysForUser(u)}
+                                                        className="flex items-center gap-1 text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition-colors text-slate-300"
+                                                    >
+                                                        <Key size={12} />
+                                                        Manage Keys
+                                                    </button>
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
                                                     <div className="flex items-center gap-2">
@@ -438,6 +458,89 @@ export const Dashboard = () => {
                                 <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white">{isEditingUser ? 'Update User' : 'Save User'}</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Manage User Keys Modal */}
+            {managingKeysForUser && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="glass-panel w-full max-w-2xl p-6 animate-in fade-in zoom-in duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <Key className="text-indigo-400" />
+                                Keys for {managingKeysForUser.Username}
+                            </h3>
+                            <button
+                                onClick={() => setManagingKeysForUser(null)}
+                                className="text-slate-400 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Add Key Form */}
+                        <form onSubmit={handleCreateKey} className="mb-6 flex gap-2">
+                            <input
+                                type="text"
+                                className="flex-1 bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                placeholder="New Key Value (Optional)"
+                                value={newKeyVal}
+                                onChange={e => setNewKeyVal(e.target.value)}
+                            />
+                            <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-white whitespace-nowrap">
+                                Add Key
+                            </button>
+                        </form>
+
+                        {/* Keys List */}
+                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-white/10 text-slate-400 text-sm uppercase">
+                                        <th className="py-2 px-4">Key Value</th>
+                                        <th className="py-2 px-4">Requests</th>
+                                        <th className="py-2 px-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(keys)
+                                        .filter(([_, details]) => details.Username === managingKeysForUser.Username)
+                                        .map(([k, details]) => (
+                                            <tr key={k} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                <td className="py-2 px-4 font-mono text-sm text-indigo-200">
+                                                    <div className="flex items-center gap-2">
+                                                        {k}
+                                                        <Copy
+                                                            size={12}
+                                                            className="cursor-pointer text-slate-500 hover:text-white"
+                                                            onClick={() => navigator.clipboard.writeText(k)}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="py-2 px-4 text-slate-300">
+                                                    {details.KeyCounter}
+                                                </td>
+                                                <td className="py-2 px-4 text-right">
+                                                    <button
+                                                        onClick={() => handleDeleteKey(k, managingKeysForUser.Username)}
+                                                        className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-400/10 transition-colors"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    {Object.values(keys).filter(k => k.Username === managingKeysForUser.Username).length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="py-4 text-center text-slate-500">
+                                                No specific keys for this user.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
