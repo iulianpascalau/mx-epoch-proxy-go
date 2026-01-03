@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -42,6 +42,16 @@ export const Dashboard = () => {
         maxRequests: 0,
         isAdmin: false
     });
+
+    // Pagination & Sorting State
+    const ITEMS_PER_PAGE = 10;
+    const [keysPage, setKeysPage] = useState(1);
+    const [usersPage, setUsersPage] = useState(1);
+    const [sortConfig, setSortConfig] = useState<{
+        type: 'keys' | 'users' | null;
+        key: string | null;
+        direction: 'asc' | 'desc';
+    }>({ type: null, key: null, direction: 'asc' });
 
     useEffect(() => {
         const token = getAccessKey();
@@ -210,6 +220,48 @@ export const Dashboard = () => {
         setShowUserModal(true);
     };
 
+    // Sorting & Pagination Logic
+    const handleSort = (type: 'keys' | 'users', key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.type === type && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ type, key, direction });
+    };
+
+    const getSortIcon = (type: 'keys' | 'users', key: string) => {
+        if (sortConfig.type !== type || sortConfig.key !== key) {
+            return <ArrowUpDown size={14} className="text-slate-600" />;
+        }
+        return sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-indigo-400" /> : <ArrowDown size={14} className="text-indigo-400" />;
+    };
+
+    const sortedKeys = Object.entries(keys)
+        .map(([k, details]) => ({ ...details, ActualKey: k })) // Ensure we have the key string
+        .sort((a, b) => {
+            if (sortConfig.type !== 'keys' || !sortConfig.key) return 0;
+            const valA = String((a as any)[sortConfig.key]).toLowerCase();
+            const valB = String((b as any)[sortConfig.key]).toLowerCase();
+            if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+    const paginatedKeys = sortedKeys.slice((keysPage - 1) * ITEMS_PER_PAGE, keysPage * ITEMS_PER_PAGE);
+    const totalKeysPages = Math.ceil(sortedKeys.length / ITEMS_PER_PAGE);
+
+    const sortedUsers = Object.values(users).sort((a, b) => {
+        if (sortConfig.type !== 'users' || !sortConfig.key) return 0;
+        const valA = String((a as any)[sortConfig.key]).toLowerCase();
+        const valB = String((b as any)[sortConfig.key]).toLowerCase();
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const paginatedUsers = sortedUsers.slice((usersPage - 1) * ITEMS_PER_PAGE, usersPage * ITEMS_PER_PAGE);
+    const totalUsersPages = Math.ceil(sortedUsers.length / ITEMS_PER_PAGE);
+
     if (!user) return null;
 
     return (
@@ -252,26 +304,42 @@ export const Dashboard = () => {
                             </button>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto min-h-[300px]">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-white/10 text-slate-400 text-sm uppercase">
-                                        <th className="py-3 px-4">Key Value</th>
-                                        {user.is_admin && <th className="py-3 px-4">Owner</th>}
+                                        <th
+                                            className="py-3 px-4 cursor-pointer hover:text-white transition-colors group"
+                                            onClick={() => handleSort('keys', 'ActualKey')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Key Value {getSortIcon('keys', 'ActualKey')}
+                                            </div>
+                                        </th>
+                                        {user.is_admin && (
+                                            <th
+                                                className="py-3 px-4 cursor-pointer hover:text-white transition-colors group"
+                                                onClick={() => handleSort('keys', 'Username')}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Owner {getSortIcon('keys', 'Username')}
+                                                </div>
+                                            </th>
+                                        )}
                                         <th className="py-3 px-4">Requests</th>
                                         <th className="py-3 px-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {Object.entries(keys).map(([k, details]) => (
-                                        <tr key={k} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    {paginatedKeys.map((details) => (
+                                        <tr key={details.ActualKey} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                             <td className="py-3 px-4 font-mono text-sm text-indigo-200">
                                                 <div className="flex items-center gap-2">
-                                                    {k}
+                                                    {details.ActualKey}
                                                     <Copy
                                                         size={14}
                                                         className="cursor-pointer text-slate-500 hover:text-white"
-                                                        onClick={() => navigator.clipboard.writeText(k)}
+                                                        onClick={() => navigator.clipboard.writeText(details.ActualKey)}
                                                     />
                                                 </div>
                                             </td>
@@ -285,7 +353,7 @@ export const Dashboard = () => {
                                             </td>
                                             <td className="py-3 px-4 text-right">
                                                 <button
-                                                    onClick={() => handleDeleteKey(k, details.Username)}
+                                                    onClick={() => handleDeleteKey(details.ActualKey, details.Username)}
                                                     className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-400/10 transition-colors"
                                                 >
                                                     <Trash2 size={16} />
@@ -293,16 +361,39 @@ export const Dashboard = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {Object.keys(keys).length === 0 && (
+                                    {paginatedKeys.length === 0 && (
                                         <tr>
-                                            <td colSpan={3} className="py-8 text-center text-slate-500">
-                                                No access keys found. Generate one to get started.
+                                            <td colSpan={user.is_admin ? 4 : 3} className="py-8 text-center text-slate-500">
+                                                No access keys found.
                                             </td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination for Keys */}
+                        {totalKeysPages > 1 && (
+                            <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
+                                <button
+                                    onClick={() => setKeysPage(p => Math.max(1, p - 1))}
+                                    disabled={keysPage === 1}
+                                    className="p-1 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-400 hover:text-white"
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <span className="text-sm text-slate-400">
+                                    Page {keysPage} of {totalKeysPages}
+                                </span>
+                                <button
+                                    onClick={() => setKeysPage(p => Math.min(totalKeysPages, p + 1))}
+                                    disabled={keysPage === totalKeysPages}
+                                    className="p-1 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-400 hover:text-white"
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Users Panel (Admin Only) */}
@@ -320,11 +411,18 @@ export const Dashboard = () => {
                                 </button>
                             </div>
 
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto min-h-[300px]">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="border-b border-white/10 text-slate-400 text-sm uppercase">
-                                            <th className="py-3 px-4">Username</th>
+                                            <th
+                                                className="py-3 px-4 cursor-pointer hover:text-white transition-colors group"
+                                                onClick={() => handleSort('users', 'Username')}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Username {getSortIcon('users', 'Username')}
+                                                </div>
+                                            </th>
                                             <th className="py-3 px-4">Role</th>
                                             <th className="py-3 px-4">Limits (Req)</th>
                                             <th className="py-3 px-4">Current Usage</th>
@@ -332,7 +430,7 @@ export const Dashboard = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {Object.values(users).map((u) => (
+                                        {paginatedUsers.map((u) => (
                                             <tr key={u.Username} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                                 <td className="py-3 px-4 text-slate-200 font-medium">{u.Username}</td>
                                                 <td className="py-3 px-4">
@@ -383,6 +481,29 @@ export const Dashboard = () => {
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination for Users */}
+                            {totalUsersPages > 1 && (
+                                <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
+                                    <button
+                                        onClick={() => setUsersPage(p => Math.max(1, p - 1))}
+                                        disabled={usersPage === 1}
+                                        className="p-1 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-400 hover:text-white"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
+                                    <span className="text-sm text-slate-400">
+                                        Page {usersPage} of {totalUsersPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setUsersPage(p => Math.min(totalUsersPages, p + 1))}
+                                        disabled={usersPage === totalUsersPages}
+                                        className="p-1 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-400 hover:text-white"
+                                    >
+                                        <ChevronRight size={20} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
