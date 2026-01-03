@@ -46,7 +46,11 @@ func (handler *accessKeysHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 }
 
 func (handler *accessKeysHandler) handleGet(w http.ResponseWriter, _ *http.Request, claims *Claims) {
-	keys, err := handler.keyAccessProvider.GetAllKeys(claims.Username)
+	username := claims.Username
+	if claims.IsAdmin {
+		username = "" // Get all keys
+	}
+	keys, err := handler.keyAccessProvider.GetAllKeys(username)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -57,7 +61,8 @@ func (handler *accessKeysHandler) handleGet(w http.ResponseWriter, _ *http.Reque
 }
 
 type addKeyRequest struct {
-	Key string `json:"key"`
+	Key      string `json:"key"`
+	Username string `json:"username,omitempty"`
 }
 
 func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Request, claims *Claims) {
@@ -77,8 +82,13 @@ func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	targetUser := claims.Username
+	if claims.IsAdmin && req.Username != "" {
+		targetUser = req.Username
+	}
+
 	// Add key
-	err = handler.keyAccessProvider.AddKey(claims.Username, strings.ToLower(req.Key))
+	err = handler.keyAccessProvider.AddKey(targetUser, strings.ToLower(req.Key))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -94,7 +104,13 @@ func (handler *accessKeysHandler) handleDelete(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err := handler.keyAccessProvider.RemoveKey(claims.Username, strings.ToLower(key))
+	targetUser := claims.Username
+	reqUser := r.URL.Query().Get("username")
+	if claims.IsAdmin && reqUser != "" {
+		targetUser = reqUser
+	}
+
+	err := handler.keyAccessProvider.RemoveKey(targetUser, strings.ToLower(key))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

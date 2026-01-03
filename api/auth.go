@@ -9,6 +9,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const tokenExpirationTime = time.Hour
+
 var jwtKey []byte
 
 // SetJwtKey sets the key used for signing tokens
@@ -25,7 +27,7 @@ type Claims struct {
 
 // GenerateToken generates a new JWT token
 func GenerateToken(username string, isAdmin bool) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(tokenExpirationTime)
 	claims := &Claims{
 		Username: username,
 		IsAdmin:  isAdmin,

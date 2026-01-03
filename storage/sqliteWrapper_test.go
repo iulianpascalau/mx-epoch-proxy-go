@@ -392,6 +392,36 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 		assert.Len(t, keys, 0)
 	})
 
+	t.Run("should return all keys", func(t *testing.T) {
+		_ = wrapper.AddUser("admin", "passAdmin", true, 0)
+		_ = wrapper.AddUser("user1", "passUser1", false, 100)
+		_ = wrapper.AddUser("user2", "passUser2", false, 0)
+
+		_ = wrapper.AddKey("user1", "key1-user1")
+		_ = wrapper.AddKey("user1", "key2-user1")
+
+		_ = wrapper.AddKey("user2", "key1-user2")
+
+		keys, err := wrapper.GetAllKeys("")
+		assert.NoError(t, err)
+		assert.Len(t, keys, 3)
+
+		assert.Equal(t, uint64(100), keys["key1-user1"].MaxRequests)
+		assert.Equal(t, "user1", keys["key1-user1"].Username)
+		assert.NotEmpty(t, keys["key1-user1"].HashedPassword)
+		assert.False(t, keys["key1-user1"].IsAdmin)
+
+		assert.Equal(t, uint64(100), keys["key2-user1"].MaxRequests)
+		assert.Equal(t, "user1", keys["key2-user1"].Username)
+		assert.NotEmpty(t, keys["key2-user1"].HashedPassword)
+		assert.False(t, keys["key2-user1"].IsAdmin)
+
+		assert.Equal(t, uint64(0), keys["key1-user2"].MaxRequests)
+		assert.Equal(t, "user2", keys["key1-user2"].Username)
+		assert.NotEmpty(t, keys["key1-user2"].HashedPassword)
+		assert.False(t, keys["key1-user2"].IsAdmin)
+	})
+
 	t.Run("should return empty map if no keys", func(t *testing.T) {
 		// Clear db first
 		_, _ = wrapper.db.Exec("DELETE FROM access_keys")

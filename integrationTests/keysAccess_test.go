@@ -82,7 +82,7 @@ func TestKeysAccess(t *testing.T) {
 	// invalid user should return unauthorized
 	testGetKeys(t, engine.Address(), "invalid-user", "no-pass", http.StatusUnauthorized)
 	// no keys on user should return empty
-	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK)
+	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm")
 	// should work
 	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm")
 
@@ -101,24 +101,24 @@ func TestKeysAccess(t *testing.T) {
 	// invalid user should error
 	testGetKeys(t, engine.Address(), "invalid-user", "no-pass", http.StatusUnauthorized)
 	// no keys on user should return empty
-	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK)
+	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm", "key1-user2-abcdefghijklm")
 	// should work
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm", "key1-user2-abcdefghijklm")
 	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 
 	// invalid user should error
 	removeKey(t, engine.Address(), "invalid-user", "no-pass", "key1-user1-abcdefghijklm", http.StatusUnauthorized)
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm", "key1-user2-abcdefghijklm")
 	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 
 	// can not delete another user's key
 	removeKey(t, engine.Address(), "user1", "pass1", "key1-user2-abcdefghijklm", http.StatusOK)
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm", "key1-user2-abcdefghijklm")
 	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 
 	// should work
 	removeKey(t, engine.Address(), "user1", "pass1", "key1-user1-abcdefghijklm", http.StatusOK)
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm", "key1-user2-abcdefghijklm")
 	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 }
 
