@@ -41,9 +41,51 @@ func (handler *usersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler.handleGet(w, r)
 	case http.MethodPost:
 		handler.handlePost(w, r)
+	case http.MethodPut:
+		handler.handlePut(w, r)
+	case http.MethodDelete:
+		handler.handleDelete(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (handler *usersHandler) handlePut(w http.ResponseWriter, r *http.Request) {
+	var req addUserRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Username == "" {
+		http.Error(w, "username is required", http.StatusBadRequest)
+		return
+	}
+
+	err = handler.keyAccessProvider.UpdateUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (handler *usersHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		http.Error(w, "username parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	err := handler.keyAccessProvider.RemoveUser(username)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (handler *usersHandler) handleGet(w http.ResponseWriter, _ *http.Request) {

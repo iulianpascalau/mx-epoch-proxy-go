@@ -11,5 +11,7 @@ type KeyAccessProvider interface {
 	GetAllKeys(username string) (map[string]common.AccessKeyDetails, error)
 	AddKey(username string, key string) error
 	RemoveKey(username string, key string) error
+	RemoveUser(username string) error
+	UpdateUser(username string, password string, isAdmin bool, maxRequests uint64) error
 	IsInterfaceNil() bool
 }

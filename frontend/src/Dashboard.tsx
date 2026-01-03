@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -34,6 +34,7 @@ export const Dashboard = () => {
 
     // User Modal State
     const [showUserModal, setShowUserModal] = useState(false);
+    const [isEditingUser, setIsEditingUser] = useState(false);
     const [newUserState, setNewUserState] = useState({
         username: '',
         password: '',
@@ -114,20 +115,64 @@ export const Dashboard = () => {
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post('/api/admin-users', {
-                username: newUserState.username,
-                password: newUserState.password,
-                max_requests: newUserState.maxRequests,
-                is_admin: newUserState.isAdmin
-            }, { headers: { Authorization: `Bearer ${getAccessKey()}` } });
+            if (isEditingUser) {
+                await axios.put('/api/admin-users', {
+                    username: newUserState.username,
+                    password: newUserState.password, // Optional in backend
+                    max_requests: newUserState.maxRequests,
+                    is_admin: newUserState.isAdmin
+                }, { headers: { Authorization: `Bearer ${getAccessKey()}` } });
+            } else {
+                await axios.post('/api/admin-users', {
+                    username: newUserState.username,
+                    password: newUserState.password,
+                    max_requests: newUserState.maxRequests,
+                    is_admin: newUserState.isAdmin
+                }, { headers: { Authorization: `Bearer ${getAccessKey()}` } });
+            }
 
             setShowUserModal(false);
             setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false });
+            setIsEditingUser(false);
             fetchData(true);
         } catch (e: any) {
-            const msg = e.response?.data ? String(e.response.data).trim() : 'Failed to create user';
+            const msg = e.response?.data ? String(e.response.data).trim() : (isEditingUser ? 'Failed to update user' : 'Failed to create user');
             alert(msg);
         }
+    };
+
+    const handleRefreshUserCounters = async () => {
+        await fetchData(user?.is_admin || false);
+    };
+
+    const handleDeleteUser = async (username: string) => {
+        if (!confirm(`Are you sure you want to delete user "${username}"? This will also revoke all their keys.`)) return;
+        try {
+            await axios.delete(`/api/admin-users?username=${username}`, {
+                headers: { Authorization: `Bearer ${getAccessKey()}` }
+            });
+            fetchData(user?.is_admin || false);
+        } catch (e: any) {
+            const msg = e.response?.data ? String(e.response.data).trim() : 'Failed to delete user';
+            alert(msg);
+        }
+    };
+
+    const handleEditUser = (u: UserDetails) => {
+        setNewUserState({
+            username: u.Username,
+            password: '', // Password not shown
+            maxRequests: u.MaxRequests,
+            isAdmin: u.IsAdmin
+        });
+        setIsEditingUser(true);
+        setShowUserModal(true);
+    };
+
+    const openCreateUserModal = () => {
+        setNewUserState({ username: '', password: '', maxRequests: 0, isAdmin: false });
+        setIsEditingUser(false);
+        setShowUserModal(true);
     };
 
     if (!user) return null;
@@ -227,7 +272,7 @@ export const Dashboard = () => {
                                     <Users className="text-emerald-400" /> User Management
                                 </h2>
                                 <button
-                                    onClick={() => setShowUserModal(true)}
+                                    onClick={openCreateUserModal}
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
                                 >
                                     <Plus size={16} /> Add User
@@ -242,6 +287,7 @@ export const Dashboard = () => {
                                             <th className="py-3 px-4">Role</th>
                                             <th className="py-3 px-4">Limits (Req)</th>
                                             <th className="py-3 px-4">Current Usage</th>
+                                            <th className="py-3 px-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -257,7 +303,30 @@ export const Dashboard = () => {
                                                     {u.MaxRequests === 0 ? 'Unlimited' : u.MaxRequests}
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
-                                                    {u.GlobalCounter}
+                                                    <div className="flex items-center gap-2">
+                                                        {u.GlobalCounter}
+                                                        <button
+                                                            title="Refresh Usage Data"
+                                                            onClick={handleRefreshUserCounters}
+                                                            className="text-slate-500 hover:text-indigo-400 p-0.5 rounded transition-colors"
+                                                        >
+                                                            <RotateCcw size={14} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-4 text-right flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEditUser(u)}
+                                                        className="text-indigo-400 hover:text-indigo-300 p-1 rounded hover:bg-indigo-400/10 transition-colors"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(u.Username)}
+                                                        className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-400/10 transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -298,22 +367,24 @@ export const Dashboard = () => {
             {showUserModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="glass-panel w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-xl font-bold mb-4">Add New User</h3>
+                        <h3 className="text-xl font-bold mb-4">{isEditingUser ? 'Edit User' : 'Add New User'}</h3>
                         <form onSubmit={handleCreateUser}>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm text-slate-400 mb-1">Username</label>
                                     <input
                                         type="text" required
-                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        readOnly={isEditingUser}
+                                        className={`w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none ${isEditingUser ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         value={newUserState.username}
                                         onChange={e => setNewUserState({ ...newUserState, username: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Password</label>
+                                    <label className="block text-sm text-slate-400 mb-1">Password {isEditingUser && '(Leave empty to keep current)'}</label>
                                     <input
-                                        type="password" required
+                                        type="password"
+                                        required={!isEditingUser}
                                         className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                                         value={newUserState.password}
                                         onChange={e => setNewUserState({ ...newUserState, password: e.target.value })}
@@ -340,7 +411,7 @@ export const Dashboard = () => {
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <button type="button" onClick={() => setShowUserModal(false)} className="px-4 py-2 hover:bg-white/5 rounded text-slate-300">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white">Save User</button>
+                                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white">{isEditingUser ? 'Update User' : 'Save User'}</button>
                             </div>
                         </form>
                     </div>

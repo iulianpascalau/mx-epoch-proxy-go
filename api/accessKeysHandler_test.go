@@ -35,6 +35,20 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 
 	SetJwtKey("test_key")
 
+	t.Run("method not allowed", func(t *testing.T) {
+		username := "user1"
+		token, _ := GenerateToken(username, false)
+
+		handler, _ := NewAccessKeysHandler(&testscommon.StorerStub{})
+		req := httptest.NewRequest(http.MethodTrace, "/api/admin-access-keys", nil)
+		resp := httptest.NewRecorder()
+
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.Code)
+	})
+
 	t.Run("unauthorized - no token", func(t *testing.T) {
 		handler, _ := NewAccessKeysHandler(&testscommon.StorerStub{})
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-access-keys", nil)
@@ -145,6 +159,31 @@ func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "key must be at least 12 characters long")
+	})
+
+	t.Run("delete fails if no key is provided", func(t *testing.T) {
+		t.Parallel()
+
+		username := "admin"
+		token, _ := GenerateToken(username, true)
+
+		provider := &testscommon.StorerStub{
+			RemoveKeyHandler: func(usr string, key string) error {
+				assert.Fail(t, "should not be called")
+				return nil
+			},
+		}
+
+		handler, err := NewAccessKeysHandler(provider)
+		require.Nil(t, err)
+
+		req := httptest.NewRequest(http.MethodDelete, "/api/admin-access-keys?key=", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("delete - success", func(t *testing.T) {

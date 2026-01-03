@@ -146,6 +146,68 @@ func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin 
 	return tx.Commit()
 }
 
+// RemoveUser removes the provided user and all associated keys
+func (wrapper *sqliteWrapper) RemoveUser(username string) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// Delete associated keys first
+	queryDeleteKeys := `DELETE FROM access_keys WHERE username = ?`
+	_, err = tx.Exec(queryDeleteKeys, username)
+	if err != nil {
+		return fmt.Errorf("failed to remove associated keys: %w", err)
+	}
+
+	// Delete user
+	queryDeleteUser := `DELETE FROM users WHERE username = ?`
+	_, err = tx.Exec(queryDeleteUser, username)
+	if err != nil {
+		return fmt.Errorf("failed to remove user: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// UpdateUser updates the user's details
+func (wrapper *sqliteWrapper) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if password != "" {
+		if len(password) > maxPassLen {
+			return fmt.Errorf("password is too long (maximum %d characters allowed)", maxPassLen)
+		}
+		hash, errGenerate := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if errGenerate != nil {
+			return errGenerate
+		}
+
+		query := `UPDATE users SET hashed_password = ?, is_admin = ?, max_requests = ? WHERE username = ?`
+		_, err = tx.Exec(query, hex.EncodeToString(hash), isAdmin, maxRequests, username)
+		if err != nil {
+			return fmt.Errorf("failed to update user with password: %w", err)
+		}
+	} else {
+		query := `UPDATE users SET is_admin = ?, max_requests = ? WHERE username = ?`
+		_, err = tx.Exec(query, isAdmin, maxRequests, username)
+		if err != nil {
+			return fmt.Errorf("failed to update user: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 // AddKey adds a new access key without checking user's credentials (trusted caller)
 func (wrapper *sqliteWrapper) AddKey(username string, key string) error {
 	key, err := processKey(key)

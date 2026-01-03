@@ -449,6 +449,89 @@ func TestSQLiteWrapper_GetAllUsers(t *testing.T) {
 	})
 }
 
+func TestSQLiteWrapper_RemoveUser(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should remove user and associated keys", func(t *testing.T) {
+		username := "user_to_remove"
+		err := wrapper.AddUser(username, "cleanPass", false, 100)
+		require.NoError(t, err)
+
+		err = wrapper.AddKey(username, "key1")
+		require.NoError(t, err)
+		err = wrapper.AddKey(username, "key2")
+		require.NoError(t, err)
+
+		// Remove user
+		err = wrapper.RemoveUser(username)
+		assert.NoError(t, err)
+
+		// Verify User Gone
+		_, err = wrapper.CheckUserCredentials(username, "cleanPass")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
+
+		// Verify Keys Gone
+		keys, err := wrapper.GetAllKeys(username)
+		assert.NoError(t, err)
+		assert.Empty(t, keys)
+	})
+
+	t.Run("should not error when removing non-existent user", func(t *testing.T) {
+		err := wrapper.RemoveUser("non_existent_user")
+		assert.NoError(t, err)
+	})
+}
+
+func TestSQLiteWrapper_UpdateUser(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	username := "user_update"
+	initialPass := "pass123"
+	err := wrapper.AddUser(username, initialPass, false, 50)
+	require.NoError(t, err)
+
+	t.Run("should update details without password", func(t *testing.T) {
+		err = wrapper.UpdateUser(username, "", true, 1000)
+		assert.NoError(t, err)
+
+		// Verify Update
+		user, errUpdate := wrapper.CheckUserCredentials(username, initialPass)
+		assert.NoError(t, errUpdate)
+		assert.True(t, user.IsAdmin)
+		assert.Equal(t, uint64(1000), user.MaxRequests)
+	})
+
+	t.Run("should update details with new password", func(t *testing.T) {
+		newPass := "newPass456"
+		err = wrapper.UpdateUser(username, newPass, false, 2000)
+		assert.NoError(t, err)
+
+		// Verify Old Password Fails
+		_, err = wrapper.CheckUserCredentials(username, initialPass)
+		assert.Error(t, err)
+
+		// Verify New Password Works
+		user, errUpdate := wrapper.CheckUserCredentials(username, newPass)
+		assert.NoError(t, errUpdate)
+		assert.False(t, user.IsAdmin)
+		assert.Equal(t, uint64(2000), user.MaxRequests)
+	})
+
+	t.Run("should fail on long password", func(t *testing.T) {
+		longPass := strings.Repeat("a", 73)
+		err = wrapper.UpdateUser(username, longPass, false, 2000)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "password is too long")
+	})
+}
+
 func TestSqliteWrapper_CheckUserCredentials(t *testing.T) {
 	t.Parallel()
 

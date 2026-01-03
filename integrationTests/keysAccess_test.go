@@ -69,10 +69,10 @@ func TestKeysAccess(t *testing.T) {
 	testGetUsers(t, engine.Address(), adminUser, adminPass, http.StatusOK, adminUser, "user1")
 
 	// invalid user login fails
-	addKeyToUser(t, engine.Address(), "invalid-user", "no-pass", "key", http.StatusUnauthorized)
+	addKeyToUser(t, engine.Address(), "invalid-user", "no-pass", "key-abcdefghijklm", http.StatusUnauthorized)
 	// valid user
-	addKeyToUser(t, engine.Address(), "user1", "pass1", "key1-user1", http.StatusOK)
-	addKeyToUser(t, engine.Address(), "user1", "pass1", "key2-user1", http.StatusOK)
+	addKeyToUser(t, engine.Address(), "user1", "pass1", "key1-user1-abcdefghijklm", http.StatusOK)
+	addKeyToUser(t, engine.Address(), "user1", "pass1", "key2-user1-abcdefghijklm", http.StatusOK)
 
 	// get users while not authenticated
 	testGetUsers(t, engine.Address(), "", "", http.StatusUnauthorized)
@@ -84,7 +84,7 @@ func TestKeysAccess(t *testing.T) {
 	// no keys on user should return empty
 	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK)
 	// should work
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1")
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm")
 
 	// create user while authenticated with user1
 	createUser(t, engine.Address(), "user1", "pass1", "user2", "pass2", false, 100, http.StatusOK)
@@ -95,31 +95,31 @@ func TestKeysAccess(t *testing.T) {
 	testGetUsers(t, engine.Address(), adminUser, adminPass, http.StatusOK, adminUser, "user1", "user2")
 	testGetUsers(t, engine.Address(), "user1", "pass1", http.StatusOK, adminUser, "user1", "user2")
 
-	addKeyToUser(t, engine.Address(), "user2", "pass2", "key1-user2", http.StatusOK)
-	addKeyToUser(t, engine.Address(), "user1", "pass1", "key3-user1", http.StatusOK)
+	addKeyToUser(t, engine.Address(), "user2", "pass2", "key1-user2-abcdefghijklm", http.StatusOK)
+	addKeyToUser(t, engine.Address(), "user1", "pass1", "key3-user1-abcdefghijklm", http.StatusOK)
 
 	// invalid user should error
 	testGetKeys(t, engine.Address(), "invalid-user", "no-pass", http.StatusUnauthorized)
 	// no keys on user should return empty
 	testGetKeys(t, engine.Address(), adminUser, adminPass, http.StatusOK)
 	// should work
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1", "key3-user1")
-	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 
 	// invalid user should error
-	removeKey(t, engine.Address(), "invalid-user", "no-pass", "key1-user1", http.StatusUnauthorized)
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1", "key3-user1")
-	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+	removeKey(t, engine.Address(), "invalid-user", "no-pass", "key1-user1-abcdefghijklm", http.StatusUnauthorized)
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 
 	// can not delete another user's key
-	removeKey(t, engine.Address(), "user1", "pass1", "key1-user2", http.StatusOK)
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1", "key2-user1", "key3-user1")
-	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+	removeKey(t, engine.Address(), "user1", "pass1", "key1-user2-abcdefghijklm", http.StatusOK)
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key1-user1-abcdefghijklm", "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 
 	// should work
-	removeKey(t, engine.Address(), "user1", "pass1", "key1-user1", http.StatusOK)
-	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key2-user1", "key3-user1")
-	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2")
+	removeKey(t, engine.Address(), "user1", "pass1", "key1-user1-abcdefghijklm", http.StatusOK)
+	testGetKeys(t, engine.Address(), "user1", "pass1", http.StatusOK, "key2-user1-abcdefghijklm", "key3-user1-abcdefghijklm")
+	testGetKeys(t, engine.Address(), "user2", "pass2", http.StatusOK, "key1-user2-abcdefghijklm")
 }
 
 func setupStorer(tb testing.TB) api.KeyAccessProvider {
