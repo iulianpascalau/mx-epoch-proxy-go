@@ -257,6 +257,7 @@ export const Dashboard = () => {
                                 <thead>
                                     <tr className="border-b border-white/10 text-slate-400 text-sm uppercase">
                                         <th className="py-3 px-4">Key Value</th>
+                                        {user.is_admin && <th className="py-3 px-4">Owner</th>}
                                         <th className="py-3 px-4">Requests</th>
                                         <th className="py-3 px-4 text-right">Actions</th>
                                     </tr>
@@ -274,6 +275,11 @@ export const Dashboard = () => {
                                                     />
                                                 </div>
                                             </td>
+                                            {user.is_admin && (
+                                                <td className="py-3 px-4 text-slate-300">
+                                                    {details.Username}
+                                                </td>
+                                            )}
                                             <td className="py-3 px-4 text-slate-300">
                                                 {details.KeyCounter}
                                             </td>
