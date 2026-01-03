@@ -186,15 +186,7 @@ func testGetUsers(tb testing.TB, engineAddress string, username string, password
 	if httpCode == http.StatusUnauthorized && token == "" {
 		// Expected unauthorized and login failed (or empty creds), proceed to call endpoint without token
 	} else if token == "" && username != "" {
-		// Login failed but expected success/forbidden?
-		// If we expect Forbidden (e.g. user2 calling admin endpoint), login SHOULD succeed.
-		// If login failed, we can't test endpoint authorization.
-		// But if httpCode is Unauthorized, maybe we test "invalid creds".
-		if httpCode == http.StatusUnauthorized {
-			// proceed
-		} else {
-			require.Fail(tb, "Authentication failed")
-		}
+		require.Fail(tb, "Authentication failed")
 	}
 
 	resp := getUsersByAPICall(tb, engineAddress, token)
