@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"regexp"
 
@@ -13,25 +14,40 @@ import (
 
 const emailTokenPrefix = "EMAILTOKEN"
 
+type emailBodyObject struct {
+	ActivationURL template.HTML
+	SwaggerURL    template.HTML
+}
+
 type registrationHandler struct {
 	keyAccessProvider KeyAccessProvider
 	emailSender       EmailSender
 	appDomainsConfig  config.AppDomainsConfig
+	htmlTemplate      string
 }
 
 // NewRegistrationHandler creates a new registrationHandler instance
-func NewRegistrationHandler(keyAccessProvider KeyAccessProvider, emailSender EmailSender, appDomainsConfig config.AppDomainsConfig) (*registrationHandler, error) {
+func NewRegistrationHandler(
+	keyAccessProvider KeyAccessProvider,
+	emailSender EmailSender,
+	appDomainsConfig config.AppDomainsConfig,
+	htmlTemplate string,
+) (*registrationHandler, error) {
 	if check.IfNil(keyAccessProvider) {
 		return nil, errNilKeyAccessChecker
 	}
 	if check.IfNil(emailSender) {
 		return nil, errNilEmailSender
 	}
+	if len(htmlTemplate) == 0 {
+		return nil, errEmptyHTMLTemplate
+	}
 
 	return &registrationHandler{
 		keyAccessProvider: keyAccessProvider,
 		emailSender:       emailSender,
 		appDomainsConfig:  appDomainsConfig,
+		htmlTemplate:      htmlTemplate,
 	}, nil
 }
 
@@ -126,12 +142,16 @@ func (handler *registrationHandler) handleActivate(w http.ResponseWriter, r *htt
 
 func (handler *registrationHandler) sendActivationEmail(to string, token string) error {
 	registrationURL := handler.appDomainsConfig.Backend + EndpointApiActivate + "?token=" + token
+	swaggerURL := handler.appDomainsConfig.Backend
 
-	subject := "Activate your account for the MultiversX Deep History Access"
-	body := "In order to activate your newly registered account for the MultiversX Deep History Access you need to click on the link below:<br><br>" +
-		"<b><a href=\"" + registrationURL + "\">Activate with token " + token + "</a></b>"
+	var bodyObject = emailBodyObject{
+		ActivationURL: template.HTML(registrationURL),
+		SwaggerURL:    template.HTML(swaggerURL),
+	}
 
-	return handler.emailSender.SendEmail(to, subject, body)
+	subject := "Activate your account for the Deep History on MultiversX"
+
+	return handler.emailSender.SendEmail(to, subject, bodyObject, handler.htmlTemplate)
 }
 
 func isValidEmail(email string) bool {

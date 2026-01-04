@@ -19,13 +19,18 @@ var testAppDomainsConfig = config.AppDomainsConfig{
 	Frontend: "https://redirect.com",
 }
 
+const testHTMLTemplate = `<html><body>
+<a href="{{.ActivationURL}}">activation</a>
+<a href="{{.SwaggerURL}}">swagger</a>
+</body></html>`
+
 func TestNewRegistrationHandler(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil key access provider", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(nil, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+		handler, err := NewRegistrationHandler(nil, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 		assert.Equal(t, errNilKeyAccessChecker, err)
 		assert.Nil(t, handler)
 	})
@@ -33,15 +38,23 @@ func TestNewRegistrationHandler(t *testing.T) {
 	t.Run("nil email sender", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, nil, testAppDomainsConfig)
+		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, nil, testAppDomainsConfig, testHTMLTemplate)
 		assert.Equal(t, errNilEmailSender, err)
+		assert.Nil(t, handler)
+	})
+
+	t.Run("empty HTML template", func(t *testing.T) {
+		t.Parallel()
+
+		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, "")
+		assert.Equal(t, errEmptyHTMLTemplate, err)
 		assert.Nil(t, handler)
 	})
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 		assert.Nil(t, err)
 		assert.NotNil(t, handler)
 	})
@@ -50,7 +63,7 @@ func TestNewRegistrationHandler(t *testing.T) {
 func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+	handler, _ := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 
 	t.Run("method not allowed", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/register", nil)
@@ -96,7 +109,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 				return errors.New("db fail")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 
 		reqBody := registerRequest{Username: "test@example.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -108,7 +121,8 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		var sentTo, sentSubject, sentBody string
+		var sentTo, sentSubject string
+		var sentBody any
 		storer := &testscommon.StorerStub{
 			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
 				assert.Equal(t, "test@example.com", username)
@@ -119,14 +133,16 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 			},
 		}
 		emailSender := &testscommon.EmailSenderStub{
-			SendEmailHandler: func(to string, subject string, body string) error {
+			SendEmailHandler: func(to string, subject string, body any, htmlTemplate string) error {
 				sentTo = to
 				sentSubject = subject
+				assert.Equal(t, testHTMLTemplate, htmlTemplate)
 				sentBody = body
+
 				return nil
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, emailSender, testAppDomainsConfig)
+		h, _ := NewRegistrationHandler(storer, emailSender, testAppDomainsConfig, testHTMLTemplate)
 
 		reqBody := registerRequest{Username: "test@example.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -134,10 +150,13 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		h.ServeHTTP(resp, req)
+
+		sentBodyCast := sentBody.(emailBodyObject)
 		assert.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "test@example.com", sentTo)
 		assert.Contains(t, sentSubject, "Activate your account")
-		assert.Contains(t, sentBody, "https://link.com/")
+		assert.Contains(t, sentBodyCast.ActivationURL, "EMAILTOKEN")
+		assert.Contains(t, sentBodyCast.SwaggerURL, testAppDomainsConfig.Backend)
 	})
 
 	t.Run("email error (should NOT fail request)", func(t *testing.T) {
@@ -147,11 +166,11 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 			},
 		}
 		emailSender := &testscommon.EmailSenderStub{
-			SendEmailHandler: func(to string, subject string, body string) error {
+			SendEmailHandler: func(to string, subject string, body any, htmlTemplate string) error {
 				return errors.New("email fail")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, emailSender, testAppDomainsConfig)
+		h, _ := NewRegistrationHandler(storer, emailSender, testAppDomainsConfig, testHTMLTemplate)
 
 		reqBody := registerRequest{Username: "test@example.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -166,7 +185,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 func TestRegistrationHandler_ServeHTTP_Activate(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+	handler, _ := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 
 	t.Run("method not allowed", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/activate", nil)
@@ -191,7 +210,7 @@ func TestRegistrationHandler_ServeHTTP_Activate(t *testing.T) {
 				return errors.New("db fail")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/activate?token=val", nil)
 		resp := httptest.NewRecorder()
@@ -208,7 +227,7 @@ func TestRegistrationHandler_ServeHTTP_Activate(t *testing.T) {
 				return nil
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig)
+		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/activate?token=validToken", nil)
 		resp := httptest.NewRecorder()

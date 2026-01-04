@@ -20,6 +20,6 @@ type KeyAccessProvider interface {
 
 // EmailSender defines the operations supported by a component able to send emails
 type EmailSender interface {
-	SendEmail(to string, subject string, body string) error
+	SendEmail(to string, subject string, body any, htmlTemplate string) error
 	IsInterfaceNil() bool
 }
