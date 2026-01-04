@@ -38,7 +38,6 @@ const copyToClipboard = async (text: string) => {
             document.execCommand('copy');
             document.body.removeChild(textArea);
         }
-        alert('Copied to clipboard!');
     } catch (err) {
         console.error('Failed to copy: ', err);
         alert('Failed to copy to clipboard');
