@@ -156,6 +156,7 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Contains(t, err.Error(), "no key provided")
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong token provided in URL", func(t *testing.T) {
@@ -199,7 +200,8 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 			header := make(http.Header)
 			header[headerApiKey] = []string{"Key1"}
 			uri, err := instance.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
-			assert.Equal(t, errUnauthorized, err)
+			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Contains(t, err.Error(), "too many requests for free account")
 			assert.Empty(t, uri)
 			assert.Equal(t, 1, numCalls)
 		})

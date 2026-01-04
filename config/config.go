@@ -6,6 +6,7 @@ type Config struct {
 	FreeAccount     FreeAccountConfig
 	Gateways        []GatewayConfig
 	ClosedEndpoints []string
+	AppDomains      AppDomainsConfig
 }
 
 // GatewayConfig defines a gateway and its set epochs
@@ -22,4 +23,10 @@ type GatewayConfig struct {
 type FreeAccountConfig struct {
 	MaxCalls             uint64
 	ClearPeriodInSeconds uint64
+}
+
+// AppDomainsConfig holds the configuration structs for the application domains
+type AppDomainsConfig struct {
+	Backend  string
+	Frontend string
 }

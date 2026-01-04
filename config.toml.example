@@ -12,6 +12,12 @@ ClosedEndpoints = [
     "/transaction/send-user-funds"
 ]
 
+# FreeAccount defines the throttling parameters for the free account type
 [FreeAccount]
     MaxCalls = 100
     ClearPeriodInSeconds = 60
+
+# AppDomains configures the app domains (mainly used for redirects)
+[AppDomains]
+    Backend = "http://localhost:8080"
+    Frontend = "http://localhost:5173"

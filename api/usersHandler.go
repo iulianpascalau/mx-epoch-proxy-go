@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
@@ -32,8 +34,17 @@ func (handler *usersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !claims.IsAdmin {
-		http.Error(w, "Forbidden: Only admins can manage users", http.StatusForbidden)
-		return
+		// Allow non-admins only for GET requests targeting themselves
+		if r.Method != http.MethodGet {
+			http.Error(w, "Forbidden: Only admins can manage users", http.StatusForbidden)
+			return
+		}
+
+		requestedUser := r.URL.Query().Get("username")
+		if requestedUser == "" || requestedUser != claims.Username {
+			http.Error(w, "Forbidden: Only admins can view other users", http.StatusForbidden)
+			return
+		}
 	}
 
 	switch r.Method {
@@ -88,7 +99,25 @@ func (handler *usersHandler) handleDelete(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-func (handler *usersHandler) handleGet(w http.ResponseWriter, _ *http.Request) {
+func (handler *usersHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username != "" {
+		user, err := handler.keyAccessProvider.GetUser(username)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Return as a map to maintain consistency with GetAllUsers response format
+		result := map[string]common.UsersDetails{
+			strings.ToLower(user.Username): *user,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(result)
+		return
+	}
+
 	keys, err := handler.keyAccessProvider.GetAllUsers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -121,7 +150,11 @@ func (handler *usersHandler) handlePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_ = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, req.AccountType)
+	err = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, req.AccountType, true, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }

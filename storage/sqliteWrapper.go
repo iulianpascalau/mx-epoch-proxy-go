@@ -76,16 +76,19 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		is_admin BOOLEAN DEFAULT FALSE,
 		max_requests INTEGER DEFAULT 0,
 		request_count INTEGER DEFAULT 0,
-		account_type TEXT DEFAULT 'free'
+		account_type TEXT DEFAULT 'free',
+		is_active BOOLEAN DEFAULT TRUE,
+		activation_token TEXT DEFAULT ''
 	);`
 	_, err := wrapper.db.Exec(usersTable)
 	if err != nil {
 		return fmt.Errorf("failed to create users table: %w", err)
 	}
 
-	// Migration: Attempt to add account_type column for existing databases
-	// We ignore the error because it will fail if the column already exists
+	// Migration: Attempt to add columns for existing databases
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN account_type TEXT DEFAULT 'free';")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN activation_token TEXT DEFAULT '';")
 
 	keysTable := `
 	CREATE TABLE IF NOT EXISTS access_keys (
@@ -105,6 +108,12 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		return fmt.Errorf("failed to create index on access_keys: %w", err)
 	}
 
+	indexTokenQuery := `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_activation_token ON users(activation_token) WHERE activation_token != '';`
+	_, err = wrapper.db.Exec(indexTokenQuery)
+	if err != nil {
+		return fmt.Errorf("failed to create index on users activation_token: %w", err)
+	}
+
 	return nil
 }
 
@@ -119,7 +128,7 @@ func processKey(key string) (string, error) {
 }
 
 // AddUser creates the associated user
-func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountTypeStr string) error {
+func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountTypeStr string, isActive bool, activationToken string) error {
 	if len(password) > maxPassLen {
 		return fmt.Errorf("password is too long (maximum %d characters allowed)", maxPassLen)
 	}
@@ -141,11 +150,11 @@ func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin 
 
 	// Upsert User
 	query := `
-	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type) 
-	VALUES (?, ?, ?, ?, 0, ?)
+	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type, is_active, activation_token) 
+	VALUES (?, ?, ?, ?, 0, ?, ?, ?)
 	`
 
-	_, err = tx.Exec(query, username, hex.EncodeToString(hash), isAdmin, maxRequests, accountType)
+	_, err = tx.Exec(query, username, hex.EncodeToString(hash), isAdmin, maxRequests, accountType, isActive, activationToken)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -329,14 +338,9 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 
 // CheckUserCredentials checks if the user with the given username and password exists and returns details
 func (wrapper *sqliteWrapper) CheckUserCredentials(username string, password string) (*common.UsersDetails, error) {
-	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type FROM users WHERE username = ?`
-	var details common.UsersDetails
-	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType)
+	details, err := wrapper.getUserDetails(username)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("error querying user: %w", err)
+		return nil, err
 	}
 
 	err = checkPassword(password, details.HashedPassword)
@@ -344,7 +348,7 @@ func (wrapper *sqliteWrapper) CheckUserCredentials(username string, password str
 		return nil, err
 	}
 
-	return &details, nil
+	return details, nil
 }
 
 func checkPassword(passwordPlain string, hexHashedPass string) error {
@@ -361,8 +365,28 @@ func checkPassword(passwordPlain string, hexHashedPass string) error {
 	return nil
 }
 
+// GetUser returns the user details for the given username
+func (wrapper *sqliteWrapper) GetUser(username string) (*common.UsersDetails, error) {
+	return wrapper.getUserDetails(username)
+}
+
+func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDetails, error) {
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type FROM users WHERE username = ?`
+	var details common.UsersDetails
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("error querying user: %w", err)
+	}
+
+	return &details, nil
+}
+
 // GetAllKeys returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.AccessKeyDetails, error) {
+
 	var rows *sql.Rows
 	var err error
 	if username == "" {
@@ -445,4 +469,32 @@ func (wrapper *sqliteWrapper) Close() error {
 // IsInterfaceNil returns true if the value under the interface is nil
 func (wrapper *sqliteWrapper) IsInterfaceNil() bool {
 	return wrapper == nil
+}
+
+// ActivateUser activates the user with the given token
+func (wrapper *sqliteWrapper) ActivateUser(token string) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := "UPDATE users SET is_active = TRUE, activation_token = '' WHERE activation_token = ? AND activation_token != ''"
+	result, err := tx.Exec(query, token)
+	if err != nil {
+		return fmt.Errorf("failed to activate user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("invalid or expired activation token")
+	}
+
+	return tx.Commit()
 }

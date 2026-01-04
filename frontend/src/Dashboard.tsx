@@ -93,6 +93,7 @@ export const Dashboard = () => {
     const fetchData = async (isAdmin: boolean) => {
         setLoading(true);
         const token = getAccessKey();
+        const userInfo = getUserInfo();
         try {
             const headers = { Authorization: `Bearer ${token}` };
 
@@ -101,9 +102,12 @@ export const Dashboard = () => {
             const keysRes = await axios.get('/api/admin-access-keys', { headers });
             setKeys(keysRes.data || {});
 
-            // Fetch Users (Admin Only)
+            // Fetch Users
             if (isAdmin) {
                 const usersRes = await axios.get('/api/admin-users', { headers });
+                setUsers(usersRes.data || {});
+            } else if (userInfo.username) {
+                const usersRes = await axios.get(`/api/admin-users?username=${userInfo.username}`, { headers });
                 setUsers(usersRes.data || {});
             }
         } catch (e: any) {
@@ -295,6 +299,43 @@ export const Dashboard = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+                    {/* Account Status Panel (Standard Users) */}
+                    {!user.is_admin && users[user.username.toLowerCase()] && (
+                        <div className="glass-panel p-6 col-span-1 lg:col-span-2">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <Shield className="text-emerald-400" /> Account Status
+                                </h2>
+                                <button
+                                    onClick={() => fetchData(user.is_admin)}
+                                    className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                >
+                                    <RotateCcw size={16} /> Refresh Data
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                    <div className="text-slate-400 text-sm mb-2">Account Type</div>
+                                    <span className={`px-3 py-1 rounded text-lg font-bold ${users[user.username.toLowerCase()].AccountType === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-500/20 text-slate-300'}`}>
+                                        {(users[user.username.toLowerCase()].AccountType || 'free').toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                    <div className="text-slate-400 text-sm mb-1">Max Requests</div>
+                                    <div className="text-2xl font-bold text-slate-200">
+                                        {users[user.username.toLowerCase()].MaxRequests === 0 ? 'Unlimited' : users[user.username.toLowerCase()].MaxRequests}
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                    <div className="text-slate-400 text-sm mb-1">Total Usage (Global)</div>
+                                    <div className="text-2xl font-bold text-indigo-400">
+                                        {users[user.username.toLowerCase()].GlobalCounter}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Keys Panel */}
                     <div className="glass-panel p-6 flex flex-col h-full col-span-1 lg:col-span-2">
