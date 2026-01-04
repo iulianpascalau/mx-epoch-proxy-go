@@ -1,6 +1,7 @@
 package process
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -44,15 +45,17 @@ func (checker *accessChecker) ShouldProcessRequest(header http.Header, requestUR
 	accessKeyFromURI, processedRequestURI := processRequestURI(requestURI)
 	accessKeyFromHeader := parseHeaderForAccessKey(header)
 
-	accessKeys := make(map[string]struct{})
-	accessKeys[accessKeyFromURI] = struct{}{}
-	accessKeys[accessKeyFromHeader] = struct{}{}
+	accessKeys := common.NewKeysQueue(
+		accessKeyFromURI,
+		accessKeyFromHeader,
+	)
 
-	if checker.atLeastOneKeyIsAllowed(accessKeys) {
-		return processedRequestURI, nil
+	err := checker.atLeastOneKeyIsAllowed(accessKeys.Get())
+	if err != nil {
+		return "", err
 	}
 
-	return "", errUnauthorized
+	return processedRequestURI, nil
 }
 
 func processRequestURI(inputRequestURI string) (string, string) {
@@ -88,35 +91,48 @@ func parseHeaderForAccessKey(header http.Header) string {
 	return strings.ToLower(val)
 }
 
-func (checker *accessChecker) atLeastOneKeyIsAllowed(keys map[string]struct{}) bool {
-	for key := range keys {
-		if checker.isKeyAllowed(key) {
-			return true
-		}
+func (checker *accessChecker) atLeastOneKeyIsAllowed(keys []string) error {
+	if len(keys) == 0 {
+		return fmt.Errorf("%w: no key provided", errUnauthorized)
 	}
 
-	return false
+	var lastErr error
+	for _, key := range keys {
+		err := checker.isKeyAllowed(key)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+	}
+
+	return lastErr
 }
 
-func (checker *accessChecker) isKeyAllowed(key string) bool {
+func (checker *accessChecker) isKeyAllowed(key string) error {
 	username, accountType, err := checker.keyAccessProvider.IsKeyAllowed(key)
 	if err != nil {
 		// error determining if the key is allowed, we should return false
-		return false
+		return fmt.Errorf("%w: %s", errUnauthorized, err.Error())
 	}
 
 	if accountType == common.PremiumAccountType {
 		// the account is premium, no further throttling
-		return true
+		return nil
 	}
 
 	return checker.isNotThrottled(username)
 }
 
-func (checker *accessChecker) isNotThrottled(username string) bool {
+func (checker *accessChecker) isNotThrottled(username string) error {
 	currentCounter := checker.counter.IncrementReturningCurrent(username)
 
-	return currentCounter <= checker.maxNumCallsForFreeAccount
+	if currentCounter <= checker.maxNumCallsForFreeAccount {
+		return nil
+	}
+
+	return fmt.Errorf("%w: %s: current counter: %d, maximum per quota: %d",
+		errUnauthorized, errTooManyRequestsForFreeAccount.Error(), currentCounter, checker.maxNumCallsForFreeAccount)
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil
