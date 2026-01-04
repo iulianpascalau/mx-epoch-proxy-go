@@ -92,6 +92,24 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 		assert.Contains(t, resp.Body.String(), "Invalid email address")
 	})
 
+	t.Run("username already taken", func(t *testing.T) {
+		storer := &testscommon.StorerStub{
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+				return errors.New("UNIQUE constraint failed: users.username")
+			},
+		}
+		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+
+		reqBody := registerRequest{Username: "me@me.com", Password: "password123"}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewBuffer(body))
+		resp := httptest.NewRecorder()
+
+		h.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusConflict, resp.Code)
+		assert.Contains(t, resp.Body.String(), "This email address is already registered.")
+	})
+
 	t.Run("short password", func(t *testing.T) {
 		reqBody := registerRequest{Username: "test@example.com", Password: "short"}
 		body, _ := json.Marshal(reqBody)

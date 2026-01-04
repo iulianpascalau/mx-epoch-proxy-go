@@ -52,12 +52,35 @@ func TestLoginHandler(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
+	t.Run("ServeHTTP inactive user should error", func(t *testing.T) {
+		storer := &testscommon.StorerStub{
+			CheckUserCredentialsHandler: func(username, password string) (*common.UsersDetails, error) {
+				return &common.UsersDetails{
+					Username: "user",
+					IsAdmin:  true,
+					IsActive: false,
+				}, nil
+			},
+		}
+		handler := NewLoginHandler(storer)
+
+		creds := map[string]string{"username": "user", "password": "pass"}
+		body, _ := json.Marshal(creds)
+		req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(body))
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusForbidden, resp.Code)
+		assert.Contains(t, resp.Body.String(), "Account not activated. Please check your email.")
+	})
+
 	t.Run("ServeHTTP success", func(t *testing.T) {
 		storer := &testscommon.StorerStub{
 			CheckUserCredentialsHandler: func(username, password string) (*common.UsersDetails, error) {
 				return &common.UsersDetails{
 					Username: "user",
 					IsAdmin:  true,
+					IsActive: true,
 				}, nil
 			},
 		}

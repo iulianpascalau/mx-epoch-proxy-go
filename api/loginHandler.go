@@ -37,6 +37,11 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !details.IsActive {
+		http.Error(w, "Account not activated. Please check your email.", http.StatusForbidden)
+		return
+	}
+
 	token, err := GenerateToken(details.Username, details.IsAdmin)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)

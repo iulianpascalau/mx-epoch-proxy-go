@@ -30,7 +30,10 @@ export const Login = () => {
                 body: JSON.stringify({ username, password })
             });
 
-            if (!res.ok) throw new Error('Invalid credentials');
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text.replace(/\n/g, '') || 'Invalid credentials');
+            }
 
             const data = await res.json();
             setAuth(data.token, { username: data.username, is_admin: data.is_admin });
