@@ -14,7 +14,7 @@ ClosedEndpoints = [
 
 # FreeAccount defines the throttling parameters for the free account type
 [FreeAccount]
-    MaxCalls = 100
+    MaxCalls = 10
     ClearPeriodInSeconds = 60
 
 # AppDomains configures the app domains (mainly used for redirects)

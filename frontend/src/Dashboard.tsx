@@ -22,6 +22,28 @@ interface UserDetails {
     AccountType: string;
 }
 
+const copyToClipboard = async (text: string) => {
+    try {
+        if (navigator.clipboard) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+    } catch (err) {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy to clipboard');
+    }
+};
+
 export const Dashboard = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState<AuthUser | null>(null);
@@ -386,7 +408,7 @@ export const Dashboard = () => {
                                                     <Copy
                                                         size={14}
                                                         className="cursor-pointer text-slate-500 hover:text-white"
-                                                        onClick={() => navigator.clipboard.writeText(details.ActualKey)}
+                                                        onClick={() => copyToClipboard(details.ActualKey)}
                                                     />
                                                 </div>
                                             </td>
@@ -705,7 +727,7 @@ export const Dashboard = () => {
                                                         <Copy
                                                             size={12}
                                                             className="cursor-pointer text-slate-500 hover:text-white"
-                                                            onClick={() => navigator.clipboard.writeText(k)}
+                                                            onClick={() => copyToClipboard(k)}
                                                         />
                                                     </div>
                                                 </td>

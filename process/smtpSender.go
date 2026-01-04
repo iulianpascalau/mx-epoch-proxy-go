@@ -8,7 +8,9 @@ import (
 )
 
 const mimeHeaders = "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
-const htmlTemplate = `<!-- template.html -->
+
+// BasicHTMLTemplate is a template for a basic email message. Can be used in testing
+const BasicHTMLTemplate = `<!-- template.html -->
 <!DOCTYPE html>
 <html lang="en">
 <body>
@@ -47,11 +49,11 @@ func NewSmtpSender(args ArgsSmtpSender) *smtpSender {
 }
 
 // SendEmail will try to send the email containing the subject and body
-func (sender *smtpSender) SendEmail(to string, subject string, body string) error {
+func (sender *smtpSender) SendEmail(to string, subject string, body any, htmlTemplate string) error {
 	log.Debug("smtpSender.SendEmail sending messages", "to", to, "subject", subject, "body", body)
 
 	auth := smtp.PlainAuth("", sender.from, sender.password, sender.smtpHost)
-	msgBytes, err := createEmailBytes(body, subject)
+	msgBytes, err := createEmailBytes(body, subject, htmlTemplate)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func sendMail(host string, auth smtp.Auth, from string, to []string, msgBytes []
 	return smtp.SendMail(host, auth, from, to, msgBytes)
 }
 
-func createEmailBytes(msg string, title string) ([]byte, error) {
+func createEmailBytes(msg any, title string, htmlTemplate string) ([]byte, error) {
 	var body bytes.Buffer
 
 	mailTemplate := template.New("")
@@ -86,11 +88,7 @@ func createEmailBytes(msg string, title string) ([]byte, error) {
 	}
 	body.Write([]byte(fmt.Sprintf("Subject: %s \n%s\n\n", title, mimeHeaders)))
 
-	err = mailTemplate.Execute(&body, struct {
-		Body template.HTML
-	}{
-		Body: template.HTML(msg),
-	})
+	err = mailTemplate.Execute(&body, msg)
 	if err != nil {
 		return nil, err
 	}

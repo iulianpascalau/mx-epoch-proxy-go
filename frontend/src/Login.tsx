@@ -44,7 +44,7 @@ export const Login = () => {
         <div className="flex items-center justify-center min-h-screen">
             <div className="glass-panel p-8 w-full max-w-md">
                 <h1 className="text-3xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
-                    Epoch Proxy
+                    Deep History on MultiversX
                 </h1>
 
                 {message && (

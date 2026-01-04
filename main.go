@@ -33,6 +33,7 @@ const (
 	logFileLifeSpanInSec       = 86400 // 24h
 	logFileLifeSpanInMB        = 1024  // 1GB
 	configFile                 = "./config.toml"
+	emailTemplateFile          = "./activation_email.html"
 	swaggerPath                = "./swagger/"
 	envFileVarJwtKey           = "JWT_KEY"
 	envFileVarInitialAdminUser = "INITIAL_ADMIN_USER"
@@ -135,6 +136,11 @@ func run(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	if fileLogging != nil {
+		defer func() {
+			_ = fileLogging.Close()
+		}()
+	}
 
 	if !check.IfNil(fileLogging) {
 		timeLogLifeSpan := time.Second * time.Duration(logFileLifeSpanInSec)
@@ -183,6 +189,10 @@ func run(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		_ = sqliteWrapper.Close()
+	}()
 
 	err = ensureAdmin(sqliteWrapper)
 	if err != nil {
@@ -246,7 +256,12 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("the AppDomains section is not correctly configured in config.toml file")
 	}
 
-	registrationHandler, err := api.NewRegistrationHandler(sqliteWrapper, emailSender, cfg.AppDomains)
+	emailTemplateBytes, err := os.ReadFile(emailTemplateFile)
+	if err != nil {
+		return fmt.Errorf("failed to read email template file: %w", err)
+	}
+
+	registrationHandler, err := api.NewRegistrationHandler(sqliteWrapper, emailSender, cfg.AppDomains, string(emailTemplateBytes))
 	if err != nil {
 		return err
 	}
