@@ -483,6 +483,30 @@ func TestSQLiteWrapper_GetAllUsers(t *testing.T) {
 	})
 }
 
+func TestSqliteWrapper_GetUser(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	_ = wrapper.AddUser("admin", "passAdmin", true, 0, "premium", true, "")
+	_ = wrapper.AddUser("user1", "passUser1", false, 100, "free", true, "")
+	_ = wrapper.AddUser("user2", "passUser2", false, 0, "free", true, "")
+
+	_ = wrapper.AddKey("user1", "key1-user1")
+	_ = wrapper.AddKey("user1", "key2-user1")
+
+	_ = wrapper.AddKey("user2", "key1-user2")
+
+	details, err := wrapper.GetUser("user1")
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(100), details.MaxRequests)
+	assert.Equal(t, "user1", details.Username)
+	assert.NotEmpty(t, details.HashedPassword)
+	assert.False(t, details.IsAdmin)
+}
+
 func TestSQLiteWrapper_RemoveUser(t *testing.T) {
 	t.Parallel()
 

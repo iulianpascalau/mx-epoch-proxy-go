@@ -242,7 +242,7 @@ func run(ctx *cli.Context) error {
 		Password: envFileContents[envFileVarSmtpPassword],
 	})
 
-	if len(cfg.AppDomains.Backend) == 0 || len(cfg.AppDomains.Backend) == 0 {
+	if len(cfg.AppDomains.Backend) == 0 || len(cfg.AppDomains.Frontend) == 0 {
 		return fmt.Errorf("the AppDomains section is not correctly configured in config.toml file")
 	}
 

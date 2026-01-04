@@ -14,6 +14,7 @@ type StorerStub struct {
 	IsKeyAllowedHandler         func(key string) (string, common.AccountType, error)
 	CloseHandler                func() error
 	CheckUserCredentialsHandler func(username string, password string) (*common.UsersDetails, error)
+	GetUserHandler              func(username string) (*common.UsersDetails, error)
 	ActivateUserHandler         func(token string) error
 }
 
@@ -103,6 +104,15 @@ func (stub *StorerStub) CheckUserCredentials(username string, password string) (
 	if stub.CheckUserCredentialsHandler != nil {
 		return stub.CheckUserCredentialsHandler(username, password)
 	}
+	return nil, nil
+}
+
+// GetUser -
+func (stub *StorerStub) GetUser(username string) (*common.UsersDetails, error) {
+	if stub.GetUserHandler != nil {
+		return stub.GetUserHandler(username)
+	}
+
 	return nil, nil
 }
 

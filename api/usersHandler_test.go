@@ -79,6 +79,36 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, resp.Code)
 	})
 
+	t.Run("forbidden - not admin for a post method", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("user", false)
+
+		provider := &testscommon.StorerStub{}
+		handler, _ := NewUsersHandler(provider)
+		req := httptest.NewRequest(http.MethodPost, "/api/admin-users", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusForbidden, resp.Code)
+	})
+
+	t.Run("forbidden - not admin for querying another user", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("user", false)
+
+		provider := &testscommon.StorerStub{}
+		handler, _ := NewUsersHandler(provider)
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-users?username=user2", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusForbidden, resp.Code)
+	})
+
 	t.Run("authorized - get users", func(t *testing.T) {
 		t.Parallel()
 
@@ -93,6 +123,31 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 		}
 		handler, _ := NewUsersHandler(provider)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+
+		var users map[string]common.UsersDetails
+		err := json.NewDecoder(resp.Body).Decode(&users)
+		assert.Nil(t, err)
+		assert.Len(t, users, 1)
+		assert.Equal(t, "user1", users["user1"].Username)
+	})
+
+	t.Run("authorized - get user details", func(t *testing.T) {
+		t.Parallel()
+
+		token, _ := GenerateToken("user1", false)
+
+		provider := &testscommon.StorerStub{
+			GetUserHandler: func(username string) (*common.UsersDetails, error) {
+				return &common.UsersDetails{Username: username, IsAdmin: false}, nil
+			},
+		}
+		handler, _ := NewUsersHandler(provider)
+		req := httptest.NewRequest(http.MethodGet, "/api/admin-users?username=user1", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 

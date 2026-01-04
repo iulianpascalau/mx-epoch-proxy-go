@@ -338,14 +338,9 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 
 // CheckUserCredentials checks if the user with the given username and password exists and returns details
 func (wrapper *sqliteWrapper) CheckUserCredentials(username string, password string) (*common.UsersDetails, error) {
-	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type FROM users WHERE username = ?`
-	var details common.UsersDetails
-	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType)
+	details, err := wrapper.getUserDetails(username)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("error querying user: %w", err)
+		return nil, err
 	}
 
 	err = checkPassword(password, details.HashedPassword)
@@ -353,7 +348,7 @@ func (wrapper *sqliteWrapper) CheckUserCredentials(username string, password str
 		return nil, err
 	}
 
-	return &details, nil
+	return details, nil
 }
 
 func checkPassword(passwordPlain string, hexHashedPass string) error {
@@ -370,8 +365,28 @@ func checkPassword(passwordPlain string, hexHashedPass string) error {
 	return nil
 }
 
+// GetUser returns the user details for the given username
+func (wrapper *sqliteWrapper) GetUser(username string) (*common.UsersDetails, error) {
+	return wrapper.getUserDetails(username)
+}
+
+func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDetails, error) {
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type FROM users WHERE username = ?`
+	var details common.UsersDetails
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("error querying user: %w", err)
+	}
+
+	return &details, nil
+}
+
 // GetAllKeys returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.AccessKeyDetails, error) {
+
 	var rows *sql.Rows
 	var err error
 	if username == "" {
