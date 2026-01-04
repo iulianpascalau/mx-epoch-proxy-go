@@ -316,10 +316,10 @@ export const Dashboard = () => {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
-                                    <div className="text-slate-400 text-sm mb-1">Account Type</div>
-                                    <div className="text-2xl font-bold capitalize text-emerald-400">
+                                    <div className="text-slate-400 text-sm mb-2">Account Type</div>
+                                    <span className={`px-3 py-1 rounded text-lg font-bold ${users[user.username.toLowerCase()].AccountType === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-500/20 text-slate-300'}`}>
                                         {(users[user.username.toLowerCase()].AccountType || 'free').toUpperCase()}
-                                    </div>
+                                    </span>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                                     <div className="text-slate-400 text-sm mb-1">Max Requests</div>
