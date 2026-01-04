@@ -371,9 +371,9 @@ func (wrapper *sqliteWrapper) GetUser(username string) (*common.UsersDetails, er
 }
 
 func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDetails, error) {
-	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type FROM users WHERE username = ?`
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active FROM users WHERE username = ?`
 	var details common.UsersDetails
-	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType)
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
@@ -429,7 +429,7 @@ func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.Acc
 // GetAllUsers returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, error) {
 	query := `
-		SELECT max_requests, request_count, username, hashed_password, is_admin, account_type
+		SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active
 		FROM users
 	`
 	rows, err := wrapper.db.Query(query)
@@ -443,7 +443,7 @@ func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, err
 	result := make(map[string]common.UsersDetails)
 	for rows.Next() {
 		var details common.UsersDetails
-		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType)
+		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive)
 		if err != nil {
 			return nil, err
 		}

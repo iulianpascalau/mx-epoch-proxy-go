@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -20,6 +20,7 @@ interface UserDetails {
     GlobalCounter: number;
     IsAdmin: boolean;
     AccountType: string;
+    IsActive: boolean;
 }
 
 const copyToClipboard = async (text: string) => {
@@ -492,6 +493,7 @@ export const Dashboard = () => {
                                                     Username {getSortIcon('users', 'Username')}
                                                 </div>
                                             </th>
+                                            <th className="py-3 px-4">Verified</th>
                                             <th className="py-3 px-4">Role</th>
                                             <th className="py-3 px-4">Account Type</th>
                                             <th className="py-3 px-4">Limits (Req)</th>
@@ -503,6 +505,13 @@ export const Dashboard = () => {
                                         {paginatedUsers.map((u) => (
                                             <tr key={u.Username} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                                 <td className="py-3 px-4 text-slate-200 font-medium">{u.Username}</td>
+                                                <td className="py-3 px-4">
+                                                    {u.IsActive ? (
+                                                        <Check className="text-emerald-400" size={18} />
+                                                    ) : (
+                                                        <XIcon className="text-red-400" size={18} />
+                                                    )}
+                                                </td>
                                                 <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${u.IsAdmin ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
                                                         {u.IsAdmin ? 'ADMIN' : 'USER'}

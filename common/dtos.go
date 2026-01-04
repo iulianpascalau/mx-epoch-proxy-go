@@ -26,5 +26,6 @@ type UsersDetails struct {
 	Username       string
 	HashedPassword string
 	AccountType    AccountType
+	IsActive       bool
 	IsAdmin        bool
 }

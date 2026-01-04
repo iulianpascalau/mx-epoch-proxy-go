@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
@@ -107,6 +108,10 @@ func (handler *registrationHandler) handleRegister(w http.ResponseWriter, r *htt
 		activationToken,                // activationToken
 	)
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed: users.username") {
+			http.Error(w, "This email address is already registered.", http.StatusConflict)
+			return
+		}
 		http.Error(w, fmt.Sprintf("Failed to register user: %v", err), http.StatusInternalServerError)
 		return
 	}
