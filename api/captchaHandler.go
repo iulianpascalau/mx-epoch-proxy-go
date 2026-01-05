@@ -15,30 +15,35 @@ type CaptchaResponse struct {
 	CaptchaId string `json:"captchaId"`
 }
 
-// GenerateCaptchaHandler creates a new captcha and returns its ID
-func GenerateCaptchaHandler(captchaHandler CaptchaHandler, w http.ResponseWriter, r *http.Request) {
-	if check.IfNil(captchaHandler) {
-		http.Error(w, errNilCaptchaHandler.Error(), http.StatusInternalServerError)
-		return
+type captchaHandler struct {
+	innerHandler CaptchaHandler
+}
+
+// NewCaptchaHandler creates a new captcha handler
+func NewCaptchaHandler(handler CaptchaHandler) (*captchaHandler, error) {
+	if check.IfNil(handler) {
+		return nil, errNilCaptchaHandler
 	}
 
+	return &captchaHandler{
+		innerHandler: handler,
+	}, nil
+}
+
+// GenerateCaptchaHandler creates a new captcha and returns its ID
+func (handler *captchaHandler) GenerateCaptchaHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	id := captchaHandler.NewCaptcha()
+	id := handler.innerHandler.NewCaptcha()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(CaptchaResponse{CaptchaId: id})
 }
 
 // ServeCaptchaImageHandler serves the captcha image
-func ServeCaptchaImageHandler(captchaHandler CaptchaHandler, w http.ResponseWriter, r *http.Request) {
-	if check.IfNil(captchaHandler) {
-		http.Error(w, "nil captchaHandler", http.StatusInternalServerError)
-		return
-	}
-
+func (handler *captchaHandler) ServeCaptchaImageHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -46,7 +51,7 @@ func ServeCaptchaImageHandler(captchaHandler CaptchaHandler, w http.ResponseWrit
 
 	// r.URL.Path = /api/captcha/{captchaId}.png
 	// We want {captchaId}
-	id := r.URL.Path[len(EndpointCaptcha):]
+	id := r.URL.Path[len(EndpointCaptchaMultiple):]
 	if len(id) < 5 { // Basic sanity check
 		http.NotFound(w, r)
 		return
@@ -62,9 +67,9 @@ func ServeCaptchaImageHandler(captchaHandler CaptchaHandler, w http.ResponseWrit
 	}
 
 	if r.FormValue(reloadOperation) != "" {
-		captchaHandler.Reload(id)
+		handler.innerHandler.Reload(id)
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	captchaHandler.WriteNoError(w, id)
+	handler.innerHandler.WriteNoError(w, id)
 }
