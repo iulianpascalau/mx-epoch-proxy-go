@@ -358,20 +358,20 @@ export const Dashboard = () => {
 
                     {/* Keys Panel */}
                     <div className="glass-panel p-6 flex flex-col h-full col-span-1 lg:col-span-2">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 md:gap-0">
                             <h2 className="text-xl font-semibold flex items-center gap-2">
                                 <Key className="text-indigo-400" /> Access Keys
                             </h2>
-                            <div className="flex gap-3">
+                            <div className="flex gap-3 w-full md:w-auto">
                                 <button
                                     onClick={() => window.location.reload()}
-                                    className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                    className="flex-1 md:flex-none justify-center bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
                                 >
                                     <RotateCcw size={16} /> Refresh Data
                                 </button>
                                 <button
                                     onClick={() => setShowKeyModal(true)}
-                                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                    className="flex-1 md:flex-none justify-center bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
                                 >
                                     <Plus size={16} /> Generate Key
                                 </button>
@@ -473,20 +473,20 @@ export const Dashboard = () => {
                     {/* Users Panel (Admin Only) */}
                     {user.is_admin && (
                         <div className="glass-panel p-6 col-span-1 lg:col-span-2">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 md:gap-0">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <Users className="text-emerald-400" /> User Management
                                 </h2>
-                                <div className="flex gap-3">
+                                <div className="flex gap-3 w-full md:w-auto">
                                     <button
                                         onClick={() => window.location.reload()}
-                                        className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                        className="flex-1 md:flex-none justify-center bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
                                     >
                                         <RotateCcw size={16} /> Refresh Data
                                     </button>
                                     <button
                                         onClick={openCreateUserModal}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                        className="flex-1 md:flex-none justify-center bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
                                     >
                                         <Plus size={16} /> Add User
                                     </button>
