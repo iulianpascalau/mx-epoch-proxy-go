@@ -5,17 +5,19 @@ import (
 	"net/http"
 )
 
-type LoginHandler struct {
+type loginHandler struct {
 	keyAccessProvider KeyAccessProvider
 }
 
-func NewLoginHandler(provider KeyAccessProvider) *LoginHandler {
-	return &LoginHandler{
+// NewLoginHandler creates a new login handler
+func NewLoginHandler(provider KeyAccessProvider) *loginHandler {
+	return &loginHandler{
 		keyAccessProvider: provider,
 	}
 }
 
-func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP will serve the login request
+func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

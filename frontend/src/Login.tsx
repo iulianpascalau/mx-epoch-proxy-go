@@ -8,6 +8,7 @@ export const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -22,6 +23,7 @@ export const Login = () => {
         e.preventDefault();
         setError('');
         setMessage('');
+        setLoading(true);
 
         try {
             const res = await fetch('/api/login', {
@@ -40,6 +42,7 @@ export const Login = () => {
             navigate('/');
         } catch (err: any) {
             setError(err.message);
+            setLoading(false);
         }
     };
 
@@ -91,9 +94,10 @@ export const Login = () => {
 
                     <button
                         type="submit"
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg transition-all transform active:scale-[0.98]"
+                        disabled={loading}
+                        className={`w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg transition-all transform active:scale-[0.98] ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                        Sign In
+                        {loading ? 'Signing In...' : 'Sign In'}
                     </button>
 
                     <div className="text-center mt-4">

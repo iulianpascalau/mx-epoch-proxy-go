@@ -261,20 +261,35 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("failed to read email template file: %w", err)
 	}
 
-	registrationHandler, err := api.NewRegistrationHandler(sqliteWrapper, emailSender, cfg.AppDomains, string(emailTemplateBytes))
+	captchaWrapper := process.NewCaptchaWrapper()
+
+	registrationHandler, err := api.NewRegistrationHandler(
+		sqliteWrapper,
+		emailSender,
+		cfg.AppDomains,
+		captchaWrapper,
+		string(emailTemplateBytes),
+	)
+	if err != nil {
+		return err
+	}
+
+	captchaHandler, err := api.NewCaptchaHandler(captchaWrapper)
 	if err != nil {
 		return err
 	}
 
 	handlers := map[string]http.Handler{
-		api.EndpointApiAccessKeys: accessKeysHandler,
-		api.EndpointApiAdminUsers: usersHandler,
-		api.EndpointApiLogin:      loginHandler,
-		api.EndpointApiRegister:   registrationHandler,
-		api.EndpointApiActivate:   registrationHandler,
-		api.EndpointSwagger:       http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
-		api.EndpointRoot:          http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
-		"*":                       requestsProcessor,
+		api.EndpointApiAccessKeys:   accessKeysHandler,
+		api.EndpointApiAdminUsers:   usersHandler,
+		api.EndpointApiLogin:        loginHandler,
+		api.EndpointApiRegister:     registrationHandler,
+		api.EndpointApiActivate:     registrationHandler,
+		api.EndpointCaptchaSingle:   http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
+		api.EndpointCaptchaMultiple: http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
+		api.EndpointSwagger:         http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
+		api.EndpointRoot:            http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
+		"*":                         requestsProcessor,
 	}
 
 	demuxer := process.NewDemuxer(handlers, nil)
