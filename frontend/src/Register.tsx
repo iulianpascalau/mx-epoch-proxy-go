@@ -101,6 +101,7 @@ export const Register = () => {
                                 onChange={e => setUsername(e.target.value)}
                                 className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 placeholder="name@example.com"
+                                autoCapitalize="none"
                                 required
                             />
                         </div>

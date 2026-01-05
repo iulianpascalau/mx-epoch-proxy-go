@@ -3,7 +3,7 @@
 # Configuration
 USER_NAME="ubuntu"
 APP_NAME="epoch-proxy-backend"
-APP_DIR="/home/${USER_NAME}/epoch-proxy"
+APP_DIR="/home/${USER_NAME}/epoch-proxy/services/proxy"
 EXEC_PATH="${APP_DIR}/epoch-proxy-server"
 ENV_FILE="${APP_DIR}/.env"
 

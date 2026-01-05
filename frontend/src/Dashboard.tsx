@@ -218,10 +218,6 @@ export const Dashboard = () => {
         }
     };
 
-    const handleRefreshUserCounters = async () => {
-        await fetchData(user?.is_admin || false);
-    };
-
     const handleDeleteUser = async (username: string) => {
         if (!confirm(`Are you sure you want to delete user "${username}"? This will also revoke all their keys.`)) return;
         try {
@@ -366,12 +362,20 @@ export const Dashboard = () => {
                             <h2 className="text-xl font-semibold flex items-center gap-2">
                                 <Key className="text-indigo-400" /> Access Keys
                             </h2>
-                            <button
-                                onClick={() => setShowKeyModal(true)}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
-                            >
-                                <Plus size={16} /> Generate Key
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                >
+                                    <RotateCcw size={16} /> Refresh Data
+                                </button>
+                                <button
+                                    onClick={() => setShowKeyModal(true)}
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                >
+                                    <Plus size={16} /> Generate Key
+                                </button>
+                            </div>
                         </div>
 
                         <div className="overflow-x-auto min-h-[300px]">
@@ -473,12 +477,20 @@ export const Dashboard = () => {
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <Users className="text-emerald-400" /> User Management
                                 </h2>
-                                <button
-                                    onClick={openCreateUserModal}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
-                                >
-                                    <Plus size={16} /> Add User
-                                </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => window.location.reload()}
+                                        className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                    >
+                                        <RotateCcw size={16} /> Refresh Data
+                                    </button>
+                                    <button
+                                        onClick={openCreateUserModal}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                    >
+                                        <Plus size={16} /> Add User
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="overflow-x-auto min-h-[300px]">
@@ -497,6 +509,7 @@ export const Dashboard = () => {
                                             <th className="py-3 px-4">Role</th>
                                             <th className="py-3 px-4">Account Type</th>
                                             <th className="py-3 px-4">Limits (Req)</th>
+                                            <th className="py-3 px-4"></th>
                                             <th className="py-3 px-4">Current Usage</th>
                                             <th className="py-3 px-4 text-right">Actions</th>
                                         </tr>
@@ -537,13 +550,6 @@ export const Dashboard = () => {
                                                 <td className="py-3 px-4 text-slate-300">
                                                     <div className="flex items-center gap-2">
                                                         {u.GlobalCounter}
-                                                        <button
-                                                            title="Refresh Usage Data"
-                                                            onClick={handleRefreshUserCounters}
-                                                            className="text-slate-500 hover:text-indigo-400 p-0.5 rounded transition-colors"
-                                                        >
-                                                            <RotateCcw size={14} />
-                                                        </button>
                                                     </div>
                                                 </td>
                                                 <td className="py-3 px-4 text-right flex justify-end gap-2">

@@ -47,6 +47,7 @@ else
     exit 1
 fi
 
+cd ./services/proxy
 $GO_CMD build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
 if [ $? -ne 0 ]; then
     echo "Backend build failed!"
@@ -56,7 +57,7 @@ echo "Backend build successful."
 
 # 4. Update Frontend
 echo "Step 4: Updating Frontend..."
-cd frontend
+cd ../../frontend
 # Install dependencies
 npm install
 # Note: The service currently runs 'npm run dev', so we don't 'build' for production serving yet.

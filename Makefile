@@ -23,9 +23,9 @@ tests: clean-tests
 	go test ./...
 
 build:
-		go build -v \
-		-o ${binary} \
-		-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
+	cd ./services/proxy && go build -v \
+	-o ${binary} \
+	-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
 
 run: build
 	cd ${cmd_dir} && \
