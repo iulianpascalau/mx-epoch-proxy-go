@@ -9,6 +9,7 @@ export const Login = () => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [version, setVersion] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -18,6 +19,13 @@ export const Login = () => {
             setMessage('Account activated successfully! You can now log in.');
         }
     }, [location]);
+
+    useEffect(() => {
+        fetch('/api/app-info')
+            .then(res => res.json())
+            .then(data => setVersion(data.version))
+            .catch(err => console.error('Failed to fetch version:', err));
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,6 +78,7 @@ export const Login = () => {
                                 onChange={e => setUsername(e.target.value)}
                                 className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 placeholder="Enter username"
+                                autoCapitalize="none"
                                 required
                             />
                         </div>
@@ -107,6 +116,12 @@ export const Login = () => {
                         </Link>
                     </div>
                 </form>
+
+                <div className="mt-6 text-center">
+                    <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
+                        Build {version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
+                    </p>
+                </div>
             </div>
         </div>
     );

@@ -44,7 +44,8 @@ git checkout main
 git pull origin main
 
 # --- Build Backend ---
-# Create a binary named 'server'
+# Create a binary named 'epoch-proxy-server'
+cd ./services/proxy
 go build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
 
 # --- Build Frontend ---

@@ -9,6 +9,7 @@ const (
 	EndpointApiActivate     = "/api/activate"
 	EndpointCaptchaMultiple = "/api/captcha/"
 	EndpointCaptchaSingle   = "/api/captcha"
+	EndpointAppInfo         = "/api/app-info"
 
 	EndpointSwagger = "/swagger/"
 	EndpointRoot    = "/"

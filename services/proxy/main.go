@@ -33,6 +33,7 @@ const (
 	logFileLifeSpanInSec       = 86400 // 24h
 	logFileLifeSpanInMB        = 1024  // 1GB
 	configFile                 = "./config.toml"
+	envFile                    = "./.env"
 	emailTemplateFile          = "./activation_email.html"
 	swaggerPath                = "./swagger/"
 	envFileVarJwtKey           = "JWT_KEY"
@@ -47,7 +48,7 @@ const (
 
 // appVersion should be populated at build time using ldflags
 // Usage examples:
-// linux/mac:
+// Linux/macOS:
 //
 //	go build -v -ldflags="-X main.appVersion=$(git describe --all | cut -c7-32)
 var appVersion = "undefined"
@@ -287,9 +288,14 @@ func run(ctx *cli.Context) error {
 		api.EndpointApiActivate:     registrationHandler,
 		api.EndpointCaptchaSingle:   http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
 		api.EndpointCaptchaMultiple: http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
-		api.EndpointSwagger:         http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
-		api.EndpointRoot:            http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
-		"*":                         requestsProcessor,
+		api.EndpointAppInfo: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"version": "%s"}`, appVersion)))
+		}),
+		api.EndpointSwagger: http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
+		api.EndpointRoot:    http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
+		"*":                 requestsProcessor,
 	}
 
 	demuxer := process.NewDemuxer(handlers, nil)
@@ -346,7 +352,7 @@ func loadConfig(filepath string) (config.Config, error) {
 }
 
 func readEnvFile(m map[string]string) error {
-	err := godotenv.Load()
+	err := godotenv.Load(envFile)
 	if err != nil {
 		return err
 	}
