@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    allowedHosts: ['admin-mvx-deep-history.jls-software.net'],
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
