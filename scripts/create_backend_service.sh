@@ -5,7 +5,6 @@ USER_NAME="ubuntu"
 APP_NAME="epoch-proxy-backend"
 APP_DIR="/home/${USER_NAME}/epoch-proxy/services/proxy"
 EXEC_PATH="${APP_DIR}/epoch-proxy-server"
-ENV_FILE="${APP_DIR}/.env"
 
 # Create the service file content
 SERVICE_CONTENT="[Unit]
@@ -17,7 +16,6 @@ User=${USER_NAME}
 WorkingDirectory=${APP_DIR}
 ExecStart=${EXEC_PATH} -log-level *:DEBUG
 Restart=always
-EnvironmentFile=${ENV_FILE}
 
 [Install]
 WantedBy=multi-user.target
