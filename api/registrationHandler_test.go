@@ -30,7 +30,13 @@ func TestNewRegistrationHandler(t *testing.T) {
 	t.Run("nil key access provider", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(nil, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+		handler, err := NewRegistrationHandler(
+			nil,
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 		assert.Equal(t, errNilKeyAccessChecker, err)
 		assert.Nil(t, handler)
 	})
@@ -38,15 +44,41 @@ func TestNewRegistrationHandler(t *testing.T) {
 	t.Run("nil email sender", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, nil, testAppDomainsConfig, testHTMLTemplate)
+		handler, err := NewRegistrationHandler(
+			&testscommon.StorerStub{},
+			nil,
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 		assert.Equal(t, errNilEmailSender, err)
+		assert.Nil(t, handler)
+	})
+
+	t.Run("nil captcha handler", func(t *testing.T) {
+		t.Parallel()
+
+		handler, err := NewRegistrationHandler(
+			&testscommon.StorerStub{},
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			nil,
+			testHTMLTemplate,
+		)
+		assert.Equal(t, errNilCaptchaHandler, err)
 		assert.Nil(t, handler)
 	})
 
 	t.Run("empty HTML template", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, "")
+		handler, err := NewRegistrationHandler(
+			&testscommon.StorerStub{},
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			"",
+		)
 		assert.Equal(t, errEmptyHTMLTemplate, err)
 		assert.Nil(t, handler)
 	})
@@ -54,7 +86,13 @@ func TestNewRegistrationHandler(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+		handler, err := NewRegistrationHandler(
+			&testscommon.StorerStub{},
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 		assert.Nil(t, err)
 		assert.NotNil(t, handler)
 	})
@@ -63,7 +101,13 @@ func TestNewRegistrationHandler(t *testing.T) {
 func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+	handler, _ := NewRegistrationHandler(
+		&testscommon.StorerStub{},
+		&testscommon.EmailSenderStub{},
+		testAppDomainsConfig,
+		&testscommon.CaptchaHandlerStub{},
+		testHTMLTemplate,
+	)
 
 	t.Run("method not allowed", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/register", nil)
@@ -92,13 +136,48 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 		assert.Contains(t, resp.Body.String(), "Invalid email address")
 	})
 
+	t.Run("wrong captcha", func(t *testing.T) {
+		storer := &testscommon.StorerStub{
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+				assert.Fail(t, "should not have called this")
+				return errors.New("fail")
+			},
+		}
+		h, _ := NewRegistrationHandler(
+			storer,
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{
+				VerifyStringHandler: func(id string, digits string) bool {
+					return false
+				},
+			},
+			testHTMLTemplate,
+		)
+
+		reqBody := registerRequest{Username: "invalid", Password: "password123"}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewBuffer(body))
+		resp := httptest.NewRecorder()
+
+		h.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.Contains(t, resp.Body.String(), "Invalid captcha solution")
+	})
+
 	t.Run("username already taken", func(t *testing.T) {
 		storer := &testscommon.StorerStub{
 			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
 				return errors.New("UNIQUE constraint failed: users.username")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+		h, _ := NewRegistrationHandler(
+			storer,
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 
 		reqBody := registerRequest{Username: "me@me.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -127,7 +206,13 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 				return errors.New("db fail")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+		h, _ := NewRegistrationHandler(
+			storer,
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 
 		reqBody := registerRequest{Username: "test@example.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -160,7 +245,13 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 				return nil
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, emailSender, testAppDomainsConfig, testHTMLTemplate)
+		h, _ := NewRegistrationHandler(
+			storer,
+			emailSender,
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 
 		reqBody := registerRequest{Username: "test@example.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -188,7 +279,13 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 				return errors.New("email fail")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, emailSender, testAppDomainsConfig, testHTMLTemplate)
+		h, _ := NewRegistrationHandler(
+			storer,
+			emailSender,
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 
 		reqBody := registerRequest{Username: "test@example.com", Password: "password123"}
 		body, _ := json.Marshal(reqBody)
@@ -203,7 +300,13 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 func TestRegistrationHandler_ServeHTTP_Activate(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := NewRegistrationHandler(&testscommon.StorerStub{}, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+	handler, _ := NewRegistrationHandler(
+		&testscommon.StorerStub{},
+		&testscommon.EmailSenderStub{},
+		testAppDomainsConfig,
+		&testscommon.CaptchaHandlerStub{},
+		testHTMLTemplate,
+	)
 
 	t.Run("method not allowed", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/activate", nil)
@@ -228,7 +331,13 @@ func TestRegistrationHandler_ServeHTTP_Activate(t *testing.T) {
 				return errors.New("db fail")
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+		h, _ := NewRegistrationHandler(
+			storer,
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/activate?token=val", nil)
 		resp := httptest.NewRecorder()
@@ -245,7 +354,13 @@ func TestRegistrationHandler_ServeHTTP_Activate(t *testing.T) {
 				return nil
 			},
 		}
-		h, _ := NewRegistrationHandler(storer, &testscommon.EmailSenderStub{}, testAppDomainsConfig, testHTMLTemplate)
+		h, _ := NewRegistrationHandler(
+			storer,
+			&testscommon.EmailSenderStub{},
+			testAppDomainsConfig,
+			&testscommon.CaptchaHandlerStub{},
+			testHTMLTemplate,
+		)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/activate?token=validToken", nil)
 		resp := httptest.NewRecorder()

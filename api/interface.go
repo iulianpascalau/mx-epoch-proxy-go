@@ -1,6 +1,10 @@
 package api
 
-import "github.com/iulianpascalau/mx-epoch-proxy-go/common"
+import (
+	"io"
+
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
+)
 
 // KeyAccessProvider can decide if a provided key has or not query access
 type KeyAccessProvider interface {
@@ -21,5 +25,14 @@ type KeyAccessProvider interface {
 // EmailSender defines the operations supported by a component able to send emails
 type EmailSender interface {
 	SendEmail(to string, subject string, body any, htmlTemplate string) error
+	IsInterfaceNil() bool
+}
+
+// CaptchaHandler defines the operations supported by a component able to generate & test captchas
+type CaptchaHandler interface {
+	VerifyString(id string, digits string) bool
+	NewCaptcha() string
+	Reload(id string)
+	WriteNoError(w io.Writer, id string)
 	IsInterfaceNil() bool
 }

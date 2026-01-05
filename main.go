@@ -272,6 +272,8 @@ func run(ctx *cli.Context) error {
 		api.EndpointApiLogin:      loginHandler,
 		api.EndpointApiRegister:   registrationHandler,
 		api.EndpointApiActivate:   registrationHandler,
+		"/api/captcha":            http.HandlerFunc(api.GenerateCaptchaHandler),
+		"/api/captcha/":           http.HandlerFunc(api.ServeCaptchaImageHandler),
 		api.EndpointSwagger:       http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
 		api.EndpointRoot:          http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
 		"*":                       requestsProcessor,

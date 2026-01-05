@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Mail, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, ArrowLeft, RefreshCw, Key } from 'lucide-react';
 
 export const Register = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [captchaId, setCaptchaId] = useState('');
+    const [captchaSolution, setCaptchaSolution] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const fetchCaptcha = async () => {
+        try {
+            const res = await fetch('/api/captcha');
+            if (res.ok) {
+                const data = await res.json();
+                setCaptchaId(data.captchaId);
+            }
+        } catch (e) {
+            console.error("Failed to load captcha", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchCaptcha();
+    }, []);
+
+    const refreshCaptcha = () => {
+        setCaptchaSolution('');
+        fetchCaptcha();
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
         try {
             const res = await fetch('/api/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, captchaId, captchaSolution })
             });
 
             if (!res.ok) {
@@ -27,6 +52,8 @@ export const Register = () => {
             setSuccess(true);
         } catch (err: any) {
             setError(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -95,13 +122,47 @@ export const Register = () => {
                         </div>
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Security Code</label>
+                        <div className="flex gap-4">
+                            <div className="relative flex-1">
+                                <Key className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
+                                <input
+                                    type="text"
+                                    value={captchaSolution}
+                                    onChange={e => setCaptchaSolution(e.target.value)}
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all uppercase"
+                                    placeholder="Enter code"
+                                    required
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {captchaId && (
+                                    <img
+                                        src={`/api/captcha/${captchaId}.png`}
+                                        alt="Captcha"
+                                        className="h-11 rounded border border-slate-700 bg-white"
+                                    />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={refreshCaptcha}
+                                    className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <RefreshCw size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     {error && <div className="text-red-400 text-sm">{error}</div>}
 
                     <button
                         type="submit"
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg transition-all transform active:scale-[0.98]"
+                        disabled={loading}
+                        className={`w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg transition-all transform active:scale-[0.98] ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                        Sign Up
+                        {loading ? 'Signing Up...' : 'Sign Up'}
                     </button>
 
                     <div className="text-center mt-4">

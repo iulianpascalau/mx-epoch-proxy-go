@@ -24,6 +24,7 @@ type registrationHandler struct {
 	keyAccessProvider KeyAccessProvider
 	emailSender       EmailSender
 	appDomainsConfig  config.AppDomainsConfig
+	captchaHandler    CaptchaHandler
 	htmlTemplate      string
 }
 
@@ -32,6 +33,7 @@ func NewRegistrationHandler(
 	keyAccessProvider KeyAccessProvider,
 	emailSender EmailSender,
 	appDomainsConfig config.AppDomainsConfig,
+	captchaHandler CaptchaHandler,
 	htmlTemplate string,
 ) (*registrationHandler, error) {
 	if check.IfNil(keyAccessProvider) {
@@ -39,6 +41,9 @@ func NewRegistrationHandler(
 	}
 	if check.IfNil(emailSender) {
 		return nil, errNilEmailSender
+	}
+	if check.IfNil(captchaHandler) {
+		return nil, errNilCaptchaHandler
 	}
 	if len(htmlTemplate) == 0 {
 		return nil, errEmptyHTMLTemplate
@@ -48,6 +53,7 @@ func NewRegistrationHandler(
 		keyAccessProvider: keyAccessProvider,
 		emailSender:       emailSender,
 		appDomainsConfig:  appDomainsConfig,
+		captchaHandler:    captchaHandler,
 		htmlTemplate:      htmlTemplate,
 	}, nil
 }
@@ -73,8 +79,10 @@ func (handler *registrationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 type registerRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username        string `json:"username"`
+	Password        string `json:"password"`
+	CaptchaId       string `json:"captchaId"`
+	CaptchaSolution string `json:"captchaSolution"`
 }
 
 func (handler *registrationHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +90,11 @@ func (handler *registrationHandler) handleRegister(w http.ResponseWriter, r *htt
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !handler.captchaHandler.VerifyString(req.CaptchaId, req.CaptchaSolution) {
+		http.Error(w, "Invalid captcha solution", http.StatusBadRequest)
 		return
 	}
 

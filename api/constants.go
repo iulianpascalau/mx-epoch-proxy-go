@@ -7,6 +7,7 @@ const (
 	EndpointApiLogin      = "/api/login"
 	EndpointApiRegister   = "/api/register"
 	EndpointApiActivate   = "/api/activate"
+	EndpointCaptcha       = "/api/captcha/"
 
 	EndpointSwagger = "/swagger/"
 	EndpointRoot    = "/"
