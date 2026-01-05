@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 const headerApiKey = "X-Api-Key"
@@ -15,93 +15,61 @@ const uriSeparator = "/"
 var allowedVersions = []string{"v1"}
 
 type accessChecker struct {
-	keys []config.AccessKeyConfig
+	keyAccessProvider         KeyAccessProvider
+	counter                   KeyCounter
+	maxNumCallsForFreeAccount uint64
 }
 
 // NewAccessChecker creates a new instance of type access checker
-func NewAccessChecker(accessKeys []config.AccessKeyConfig) (*accessChecker, error) {
-	processedAccessKeys, err := checkKeys(accessKeys)
-	if err != nil {
-		return nil, err
+func NewAccessChecker(
+	keyAccessProvider KeyAccessProvider,
+	counter KeyCounter,
+	maxNumCallsForFreeAccount uint64,
+) (*accessChecker, error) {
+	if check.IfNil(keyAccessProvider) {
+		return nil, errNilKeyAccessChecker
+	}
+	if check.IfNil(counter) {
+		return nil, errNilKeyCounter
 	}
 
 	return &accessChecker{
-		keys: processedAccessKeys,
+		keyAccessProvider:         keyAccessProvider,
+		counter:                   counter,
+		maxNumCallsForFreeAccount: maxNumCallsForFreeAccount,
 	}, nil
 }
 
-func checkKeys(accessKeys []config.AccessKeyConfig) ([]config.AccessKeyConfig, error) {
-	uniqueAliases := make(map[string]struct{})
-
-	processedAccessKeys := make([]config.AccessKeyConfig, 0, len(accessKeys))
-	for i, key := range accessKeys {
-		key.Key = strings.TrimSpace(key.Key)
-		key.Alias = strings.TrimSpace(key.Alias)
-
-		if strings.ToLower(key.Alias) == strings.ToLower(common.AllAliases) {
-			continue
-		}
-
-		if len(key.Key) == 0 {
-			return nil, fmt.Errorf("%w for key at position %d", errEmptyKey, i)
-		}
-		if len(key.Alias) == 0 {
-			return nil, fmt.Errorf("%w for alias at position %d", errEmptyAlias, i)
-		}
-
-		lowerCaseAlias := strings.ToLower(key.Alias)
-		_, found := uniqueAliases[lowerCaseAlias]
-		if found {
-			return nil, fmt.Errorf("%w for alias %s", errDuplicatedAccessKeyAlias, lowerCaseAlias)
-		}
-
-		uniqueAliases[lowerCaseAlias] = struct{}{}
-		processedAccessKeys = append(processedAccessKeys, config.AccessKeyConfig{
-			Key:   strings.ToLower(key.Key),
-			Alias: key.Alias,
-		})
-	}
-
-	if len(processedAccessKeys) == 0 {
-		log.Warn("no access keys provided, will process all requests")
-	}
-
-	return processedAccessKeys, nil
-}
-
 // ShouldProcessRequest returns true if the request is allowed to be processed
-func (checker *accessChecker) ShouldProcessRequest(header http.Header, requestURI string) (string, string, error) {
-	accessKey, processedRequestURI := processRequestURI(requestURI)
-	alias := checker.getAllowedAlias(accessKey)
-	if len(alias) > 0 {
-		// authorized, useless to check the header
-		return processedRequestURI, alias, nil
+func (checker *accessChecker) ShouldProcessRequest(header http.Header, requestURI string) (string, error) {
+	accessKeyFromURI, processedRequestURI := processRequestURI(requestURI)
+	accessKeyFromHeader := parseHeaderForAccessKey(header)
+
+	accessKeys := common.NewKeysQueue(
+		accessKeyFromURI,
+		accessKeyFromHeader,
+	)
+
+	err := checker.atLeastOneKeyIsAllowed(accessKeys.Get())
+	if err != nil {
+		return "", err
 	}
 
-	accessKey = parseHeaderForAccessKey(header)
-	alias = checker.getAllowedAlias(accessKey)
-	if len(alias) > 0 {
-		return processedRequestURI, alias, nil
-	}
-
-	return "", "", errUnauthorized
+	return processedRequestURI, nil
 }
 
-func processRequestURI(inputRequestURI string) (*config.AccessKeyConfig, string) {
+func processRequestURI(inputRequestURI string) (string, string) {
 	splt := strings.Split(inputRequestURI, uriSeparator)
 	if len(splt) < 4 {
 		// token was not provided in the URL
-		return nil, inputRequestURI
+		return "", inputRequestURI
 	}
 	if !checkVersion(splt[1]) {
 		// token was not provided in the URL
-		return nil, inputRequestURI
+		return "", inputRequestURI
 	}
 
-	return &config.AccessKeyConfig{
-			Key: strings.ToLower(splt[2]),
-		},
-		uriSeparator + strings.Join(splt[3:], uriSeparator)
+	return strings.ToLower(splt[2]), uriSeparator + strings.Join(splt[3:], uriSeparator)
 }
 
 func checkVersion(version string) bool {
@@ -114,42 +82,57 @@ func checkVersion(version string) bool {
 	return false
 }
 
-func (checker *accessChecker) getAllowedAlias(accessKey *config.AccessKeyConfig) string {
-	if len(checker.keys) == 0 {
-		return common.AllAliases
-	}
-
-	if accessKey == nil {
-		return ""
-	}
-	for _, key := range checker.keys {
-		if key.Key == accessKey.Key {
-			return key.Alias
-		}
-	}
-
-	return ""
-}
-
-func parseHeaderForAccessKey(header http.Header) *config.AccessKeyConfig {
+func parseHeaderForAccessKey(header http.Header) string {
 	val := header.Get(headerApiKey)
 	if len(val) == 0 {
+		return ""
+	}
+
+	return strings.ToLower(val)
+}
+
+func (checker *accessChecker) atLeastOneKeyIsAllowed(keys []string) error {
+	if len(keys) == 0 {
+		return fmt.Errorf("%w: no key provided", errUnauthorized)
+	}
+
+	var lastErr error
+	for _, key := range keys {
+		err := checker.isKeyAllowed(key)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+	}
+
+	return lastErr
+}
+
+func (checker *accessChecker) isKeyAllowed(key string) error {
+	username, accountType, err := checker.keyAccessProvider.IsKeyAllowed(key)
+	if err != nil {
+		// error determining if the key is allowed, we should return false
+		return fmt.Errorf("%w: %s", errUnauthorized, err.Error())
+	}
+
+	if accountType == common.PremiumAccountType {
+		// the account is premium, no further throttling
 		return nil
 	}
 
-	return &config.AccessKeyConfig{
-		Key: strings.ToLower(val),
-	}
+	return checker.isNotThrottled(username)
 }
 
-// GetAllAliases return all aliases stored
-func (checker *accessChecker) GetAllAliases() []string {
-	aliases := make([]string, 0, len(checker.keys))
-	for _, accessKey := range checker.keys {
-		aliases = append(aliases, accessKey.Alias)
+func (checker *accessChecker) isNotThrottled(username string) error {
+	currentCounter := checker.counter.IncrementReturningCurrent(username)
+
+	if currentCounter <= checker.maxNumCallsForFreeAccount {
+		return nil
 	}
 
-	return aliases
+	return fmt.Errorf("%w: %s: current counter: %d, maximum per quota: %d",
+		errUnauthorized, errTooManyRequestsForFreeAccount.Error(), currentCounter, checker.maxNumCallsForFreeAccount)
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

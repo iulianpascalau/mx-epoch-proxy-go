@@ -1,8 +1,6 @@
 package process
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +16,6 @@ const origin = "Origin"
 type requestsProcessor struct {
 	hostFinder      HostFinder
 	accessChecker   AccessChecker
-	metrics         RequestMetrics
 	closedEndpoints []string
 }
 
@@ -26,7 +23,6 @@ type requestsProcessor struct {
 func NewRequestsProcessor(
 	hostFinder HostFinder,
 	accessChecker AccessChecker,
-	metrics RequestMetrics,
 	closedEndpoints []string,
 ) (*requestsProcessor, error) {
 	if check.IfNil(hostFinder) {
@@ -35,14 +31,10 @@ func NewRequestsProcessor(
 	if check.IfNil(accessChecker) {
 		return nil, errNilAccessChecker
 	}
-	if check.IfNil(metrics) {
-		return nil, errNilRequestMetrics
-	}
 
 	return &requestsProcessor{
 		hostFinder:      hostFinder,
 		accessChecker:   accessChecker,
-		metrics:         metrics,
 		closedEndpoints: closedEndpoints,
 	}, nil
 }
@@ -55,35 +47,25 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		return
 	}
 
-	requestID := createUniqueIdentifier()
 	log.Trace("received request",
-		"request ID", requestID,
 		"URI", request.RequestURI,
 		"query", parseStringMapsForLogger(values),
 		"remote address", request.RemoteAddr,
 		"header", parseStringMapsForLogger(request.Header),
 	)
 
-	newRequestURI, alias, err := processor.accessChecker.ShouldProcessRequest(request.Header, request.RequestURI)
+	newRequestURI, err := processor.accessChecker.ShouldProcessRequest(request.Header, request.RequestURI)
 	if err != nil {
 		log.Trace("can not process request",
-			"request ID", requestID,
 			"error", err,
 		)
 		RespondWithError(writer, err, http.StatusUnauthorized)
 		return
 	}
 
-	log.Trace("processing request",
-		"request ID", requestID,
-		"alias", alias,
-	)
-	processor.metrics.ProcessedResponse(alias)
-
 	newHost, err := processor.hostFinder.FindHost(values)
 	if err != nil {
 		log.Trace("host not found",
-			"request ID", requestID,
 			"error", err,
 		)
 		RespondWithError(writer, err, http.StatusInternalServerError)
@@ -93,9 +75,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	urlPath := newHost.URL + newRequestURI
 
 	if processor.isEndpointClosed(urlPath) {
-		log.Trace("endpoint is closed",
-			"request ID", requestID,
-		)
+		log.Trace("endpoint is closed")
 		http.NotFound(writer, request)
 		return
 	}
@@ -103,7 +83,6 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	req, err := http.NewRequest(request.Method, urlPath, request.Body)
 	if err != nil {
 		log.Error("can not create request",
-			"request ID", requestID,
 			"target host", newHost,
 			"URI", newRequestURI,
 			"remote address", request.RemoteAddr,
@@ -121,7 +100,6 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error("can not do request",
-			"request ID", requestID,
 			"target host", newHost,
 			"URI", newRequestURI,
 			"remote address", request.RemoteAddr,
@@ -146,9 +124,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		return
 	}
 
-	log.Trace("response generated",
-		"request ID", requestID,
-	)
+	log.Trace("response generated")
 	writer.WriteHeader(response.StatusCode)
 
 	_, _ = writer.Write(bodyBytes)
@@ -162,14 +138,6 @@ func (processor *requestsProcessor) isEndpointClosed(url string) bool {
 	}
 
 	return false
-}
-
-func createUniqueIdentifier() string {
-	idLen := 10
-	b := make([]byte, idLen)
-	_, _ = rand.Read(b)
-
-	return hex.EncodeToString(b)
 }
 
 func parseStringMapsForLogger(data map[string][]string) string {

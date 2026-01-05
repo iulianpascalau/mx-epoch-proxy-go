@@ -6,7 +6,6 @@ import (
 )
 
 const defaultHandler = "*"
-const httpDelimiter = "/"
 
 type demuxer struct {
 	handlers    map[string]http.Handler
@@ -32,17 +31,25 @@ func NewDemuxer(handlers map[string]http.Handler, rootHandler http.Handler) *dem
 
 // ServeHTTP will try to serve the http request based on the registered handlers
 func (d *demuxer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	if strings.Count(request.RequestURI, httpDelimiter) == 1 {
-		if d.rootHandler != nil {
-			d.rootHandler.ServeHTTP(writer, request)
-			return
-		}
+	urlPath := ""
+	if request.URL != nil {
+		urlPath = request.URL.Path
 	}
-
-	handler := d.handlers[request.RequestURI]
+	handler := d.handlers[urlPath]
 	if handler != nil {
 		handler.ServeHTTP(writer, request)
 		return
+	}
+
+	// Check for prefix matches (e.g. /swagger/)
+	for route, h := range d.handlers {
+		if route == "/" {
+			continue
+		}
+		if strings.HasSuffix(route, "/") && strings.HasPrefix(urlPath, route) {
+			h.ServeHTTP(writer, request)
+			return
+		}
 	}
 
 	handler = d.handlers[defaultHandler]

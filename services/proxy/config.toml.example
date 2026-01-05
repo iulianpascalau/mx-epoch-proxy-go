@@ -1,0 +1,23 @@
+Port = 8080
+
+# Gateways defines the list of gateways that will be used by this proxy
+Gateways = [
+    {URL="http://127.0.0.1:8079", EpochStart="0", EpochEnd="latest", NonceStart="0", NonceEnd="latest", Name="R640"},
+]
+
+# ClosedEndpoints defines the list of closed endpoints that the proxy will specifically not serve
+ClosedEndpoints = [
+    "/transaction/send",
+    "/transaction/send-multiple",
+    "/transaction/send-user-funds"
+]
+
+# FreeAccount defines the throttling parameters for the free account type
+[FreeAccount]
+    MaxCalls = 10
+    ClearPeriodInSeconds = 60
+
+# AppDomains configures the app domains (mainly used for redirects)
+[AppDomains]
+    Backend = "http://localhost:8080"
+    Frontend = "http://localhost:5173"

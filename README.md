@@ -1,6 +1,60 @@
 # mx-epoch-proxy
 Epoch based proxy forwarder
 
+## Installation notes
+
+On the target VM the following steps should be completed:
+
+### 1. Prerequisites on the VM
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install prerequisites packages so the go build will succeed
+sudo apt install -y git curl zip rsync jq gcc wget
+sudo apt install -y build-essential
+
+# Install Go (Adjust version if needed, your go.mod says 1.24 so you need a very recent version)
+GO_LATEST_TESTED="1.24.11"
+ARCH=$(dpkg --print-architecture)
+wget https://dl.google.com/go/go${GO_LATEST_TESTED}.linux-${ARCH}.tar.gz
+sudo tar -C /usr/local -xzf go${GO_LATEST_TESTED}.linux-${ARCH}.tar.gz
+rm go${GO_LATEST_TESTED}.linux-${ARCH}.tar.gz
+
+echo "export GOPATH=$HOME/go" >> ~/.profile
+echo "export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin" >> ~/.profile
+echo "export GOPATH=$HOME/go" >> ~/.profile
+source ~/.profile
+go version
+
+# Install Node.js (for building frontend)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+### 2. Clone & Build the Application
+```bash
+# Clone the repository (replace with your actual repo URL)
+cd ~
+git clone https://github.com/iulianpascalau/mx-epoch-proxy-go.git epoch-proxy
+cd epoch-proxy
+
+# Ensure you are on the main branch (after you merge your PR)
+git checkout main
+git pull origin main
+
+# --- Build Backend ---
+# Create a binary named 'epoch-proxy-server'
+cd ./services/proxy
+go build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
+
+# --- Build Frontend ---
+cd frontend
+npm install
+npm run build
+# This creates a 'dist' folder with your static site
+```
+
 ## Configuration steps:
 
 ### 1. Cloudflare setup for deep-history subdomain

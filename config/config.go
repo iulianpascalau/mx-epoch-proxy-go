@@ -3,10 +3,10 @@ package config
 // Config specify all config options this proxy will use
 type Config struct {
 	Port            uint64
-	Redis           RedisConfig
+	FreeAccount     FreeAccountConfig
 	Gateways        []GatewayConfig
 	ClosedEndpoints []string
-	AccessKeys      []AccessKeyConfig
+	AppDomains      AppDomainsConfig
 }
 
 // GatewayConfig defines a gateway and its set epochs
@@ -19,14 +19,14 @@ type GatewayConfig struct {
 	Name       string
 }
 
-// AccessKeyConfig defines an access key value
-type AccessKeyConfig struct {
-	Key   string
-	Alias string
+// FreeAccountConfig the configuration struct for free accounts
+type FreeAccountConfig struct {
+	MaxCalls             uint64
+	ClearPeriodInSeconds uint64
 }
 
-// RedisConfig defines the Redis configuration
-type RedisConfig struct {
-	Enabled bool
-	URL     string
+// AppDomainsConfig holds the configuration structs for the application domains
+type AppDomainsConfig struct {
+	Backend  string
+	Frontend string
 }

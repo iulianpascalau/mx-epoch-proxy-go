@@ -1,27 +1,23 @@
 package process
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/config"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
 
-func generateTestAccessKeys() []config.AccessKeyConfig {
-	return []config.AccessKeyConfig{
-		{
-			Key:   "keY1",
-			Alias: "Alias1",
-		},
-		{
-			Key:   "KEY2",
-			Alias: "Alias2",
-		},
-		{
-			Key:   "key3",
-			Alias: "Alias3",
+func generateTestKeyAccessProviderWith3Keys() KeyAccessProvider {
+	return &testscommon.StorerStub{
+		IsKeyAllowedHandler: func(key string) (string, common.AccountType, error) {
+			if key == "key1" || key == "key2" || key == "key3" {
+				return "user", "free", nil
+			}
+
+			return "", "", errors.New("not authorized")
 		},
 	}
 }
@@ -29,151 +25,43 @@ func generateTestAccessKeys() []config.AccessKeyConfig {
 func TestNewAccessChecker(t *testing.T) {
 	t.Parallel()
 
-	t.Run("empty key should error", func(t *testing.T) {
-		t.Parallel()
+	t.Run("nil keyAccessProvider should error", func(t *testing.T) {
+		checker, err := NewAccessChecker(nil, &testscommon.KeyCounterStub{}, 10)
 
-		accessKeys := generateTestAccessKeys()
-		accessKeys = append(accessKeys, config.AccessKeyConfig{
-			Key:   "     	",
-			Alias: "Alias4",
-		})
-
-		checker, err := NewAccessChecker(accessKeys)
 		assert.Nil(t, checker)
-		assert.ErrorIs(t, err, errEmptyKey)
-		assert.Contains(t, err.Error(), "for key at position 3")
+		assert.True(t, checker.IsInterfaceNil())
+		assert.Equal(t, errNilKeyAccessChecker, err)
 	})
-	t.Run("empty alias should error", func(t *testing.T) {
-		t.Parallel()
 
-		accessKeys := generateTestAccessKeys()
-		accessKeys = append(accessKeys, config.AccessKeyConfig{
-			Key:   "key4",
-			Alias: "   		",
-		})
+	t.Run("nil keyCounter should error", func(t *testing.T) {
+		checker, err := NewAccessChecker(&testscommon.StorerStub{}, nil, 10)
 
-		checker, err := NewAccessChecker(accessKeys)
 		assert.Nil(t, checker)
-		assert.ErrorIs(t, err, errEmptyAlias)
-		assert.Contains(t, err.Error(), "for alias at position 3")
+		assert.True(t, checker.IsInterfaceNil())
+		assert.Equal(t, errNilKeyCounter, err)
 	})
-	t.Run("duplicated alias should error", func(t *testing.T) {
-		t.Parallel()
 
-		accessKeys := generateTestAccessKeys()
-		accessKeys = append(accessKeys, config.AccessKeyConfig{
-			Key:   "key4",
-			Alias: "ALiAs1",
-		})
+	t.Run("should work", func(t *testing.T) {
+		checker, err := NewAccessChecker(&testscommon.StorerStub{}, &testscommon.KeyCounterStub{}, 10)
 
-		checker, err := NewAccessChecker(accessKeys)
-		assert.Nil(t, checker)
-		assert.ErrorIs(t, err, errDuplicatedAccessKeyAlias)
-		assert.Contains(t, err.Error(), "for alias alias1")
-	})
-	t.Run("should work with empty list", func(t *testing.T) {
-		t.Parallel()
-
-		checker, err := NewAccessChecker(nil)
 		assert.NotNil(t, checker)
+		assert.False(t, checker.IsInterfaceNil())
 		assert.Nil(t, err)
 	})
-	t.Run("should work with non-empty list", func(t *testing.T) {
-		t.Parallel()
-
-		accessKeys := generateTestAccessKeys()
-		checker, err := NewAccessChecker(accessKeys)
-		assert.NotNil(t, checker)
-		assert.Nil(t, err)
-	})
-	t.Run("should work ALL alias", func(t *testing.T) {
-		t.Parallel()
-
-		accessKeys := []config.AccessKeyConfig{
-			{
-				Key:   "",
-				Alias: common.AllAliases,
-			},
-		}
-		checker, err := NewAccessChecker(accessKeys)
-		assert.NotNil(t, checker)
-		assert.Nil(t, err)
-		assert.Empty(t, checker.keys)
-	})
-}
-
-func TestAccessChecker_IsInterfaceNil(t *testing.T) {
-	t.Parallel()
-
-	var instance *accessChecker
-	assert.True(t, instance.IsInterfaceNil())
-
-	instance = &accessChecker{}
-	assert.False(t, instance.IsInterfaceNil())
 }
 
 func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 	t.Parallel()
 
-	instanceWithNoAccessKeys, _ := NewAccessChecker(nil)
-	instanceWithAccessKeys, _ := NewAccessChecker(generateTestAccessKeys())
-	t.Run("should return true is no access keys provided", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("no token provided - short endpoint", func(t *testing.T) {
-			t.Parallel()
-
-			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/a?withParam=true&nonce=0")
-			assert.Nil(t, err)
-			assert.Equal(t, common.AllAliases, alias)
-			assert.Equal(t, "/a?withParam=true&nonce=0", uri)
-		})
-		t.Run("no token provided - long endpoint", func(t *testing.T) {
-			t.Parallel()
-
-			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
-			assert.Nil(t, err)
-			assert.Equal(t, common.AllAliases, alias)
-			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
-		})
-		t.Run("token provided in URL", func(t *testing.T) {
-			t.Parallel()
-
-			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/token/a/b/c?withParam=true&nonce=0")
-			assert.Nil(t, err)
-			assert.Equal(t, common.AllAliases, alias)
-			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
-		})
-		t.Run("token provided in header", func(t *testing.T) {
-			t.Parallel()
-
-			header := make(http.Header)
-			header[headerApiKey] = []string{"token"}
-			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
-			assert.Nil(t, err)
-			assert.Equal(t, common.AllAliases, alias)
-			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
-		})
-		t.Run("token provided in both places", func(t *testing.T) {
-			t.Parallel()
-
-			header := make(http.Header)
-			header[headerApiKey] = []string{"token"}
-			uri, alias, err := instanceWithNoAccessKeys.ShouldProcessRequest(header, "/v1/token/a/b/c?withParam=true&nonce=0")
-			assert.Nil(t, err)
-			assert.Equal(t, common.AllAliases, alias)
-			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
-		})
-	})
+	instanceWithAccessKeys, _ := NewAccessChecker(generateTestKeyAccessProviderWith3Keys(), &testscommon.KeyCounterStub{}, 10)
 	t.Run("should return true if the correct key is provided", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("token provided in URL", func(t *testing.T) {
 			t.Parallel()
 
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEy1/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEy1/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
-			assert.Equal(t, "Alias1", alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("token provided in header", func(t *testing.T) {
@@ -181,8 +69,7 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"KeY2"}
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
-			assert.Equal(t, "Alias2", alias)
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
@@ -191,19 +78,42 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEy3"}
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
-			assert.Equal(t, "Alias1", alias)
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
+		})
+		t.Run("same token provided in both places should check only once", func(t *testing.T) {
+			t.Parallel()
+
+			numCalls := 0
+			instance, _ := NewAccessChecker(
+				&testscommon.StorerStub{
+					IsKeyAllowedHandler: func(key string) (string, common.AccountType, error) {
+						numCalls++
+						return "username", common.PremiumAccountType, nil
+					},
+				},
+				&testscommon.KeyCounterStub{
+					IncrementReturningCurrentHandler: func(key string) uint64 {
+						assert.Fail(t, "should not check for throttling a premium account")
+						return 11
+					},
+				}, 10)
+
+			header := make(http.Header)
+			header[headerApiKey] = []string{"kEy3"}
+			uri, err := instance.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
+			assert.Nil(t, err)
+			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
+			assert.Equal(t, 1, numCalls)
 		})
 		t.Run("wrong token in header values and correct token in URL should return true", func(t *testing.T) {
 			t.Parallel()
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEyX"}
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
-			assert.Equal(t, "Alias1", alias)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 		t.Run("correct token in header values and wrong token in URL should return true", func(t *testing.T) {
@@ -211,9 +121,30 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEy1"}
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
 			assert.Nil(t, err)
-			assert.Equal(t, "Alias1", alias)
+			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
+		})
+		t.Run("should return true for a premium account", func(t *testing.T) {
+			t.Parallel()
+
+			instance, _ := NewAccessChecker(
+				&testscommon.StorerStub{
+					IsKeyAllowedHandler: func(key string) (string, common.AccountType, error) {
+						return "username", common.PremiumAccountType, nil
+					},
+				},
+				&testscommon.KeyCounterStub{
+					IncrementReturningCurrentHandler: func(key string) uint64 {
+						assert.Fail(t, "should not check for throttling a premium account")
+						return 11
+					},
+				}, 10)
+
+			header := make(http.Header)
+			header[headerApiKey] = []string{"kEy1"}
+			uri, err := instance.ShouldProcessRequest(header, "/v1/kEy1/a/b/c?withParam=true&nonce=0")
+			assert.Nil(t, err)
 			assert.Equal(t, "/a/b/c?withParam=true&nonce=0", uri)
 		})
 	})
@@ -223,17 +154,16 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 		t.Run("no key provided", func(t *testing.T) {
 			t.Parallel()
 
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
-			assert.Empty(t, alias)
+			assert.Contains(t, err.Error(), "no key provided")
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong token provided in URL", func(t *testing.T) {
 			t.Parallel()
 
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEyX/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(make(http.Header), "/v1/kEyX/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
-			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong token provided in url values", func(t *testing.T) {
@@ -241,9 +171,8 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"KeYY"}
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
-			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
 		t.Run("wrong tokens provided in both places", func(t *testing.T) {
@@ -251,17 +180,30 @@ func TestAccessChecker_ShouldProcessRequest(t *testing.T) {
 
 			header := make(http.Header)
 			header[headerApiKey] = []string{"kEyX"}
-			uri, alias, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
+			uri, err := instanceWithAccessKeys.ShouldProcessRequest(header, "/v1/KeyY/a/b/c?withParam=true&nonce=0")
 			assert.ErrorIs(t, err, errUnauthorized)
-			assert.Empty(t, alias)
 			assert.Empty(t, uri)
 		})
+		t.Run("token provided is throttled", func(t *testing.T) {
+			t.Parallel()
+
+			numCalls := 0
+			instance, _ := NewAccessChecker(
+				generateTestKeyAccessProviderWith3Keys(),
+				&testscommon.KeyCounterStub{
+					IncrementReturningCurrentHandler: func(key string) uint64 {
+						numCalls++
+						return 11
+					},
+				}, 10)
+
+			header := make(http.Header)
+			header[headerApiKey] = []string{"Key1"}
+			uri, err := instance.ShouldProcessRequest(header, "/v1/Key1/a/b/c?withParam=true&nonce=0")
+			assert.ErrorIs(t, err, errUnauthorized)
+			assert.Contains(t, err.Error(), "too many requests for free account")
+			assert.Empty(t, uri)
+			assert.Equal(t, 1, numCalls)
+		})
 	})
-}
-
-func TestAccessChecker_GetAllAliases(t *testing.T) {
-	t.Parallel()
-
-	wrapper, _ := NewAccessChecker(generateTestAccessKeys())
-	assert.Equal(t, []string{"Alias1", "Alias2", "Alias3"}, wrapper.GetAllAliases())
 }
