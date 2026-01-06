@@ -31,3 +31,9 @@ type KeyCounter interface {
 	Clear()
 	IsInterfaceNil() bool
 }
+
+// PerformanceMonitor is able to store performance metrics
+type PerformanceMonitor interface {
+	AddPerformanceMetric(label string) error
+	IsInterfaceNil() bool
+}

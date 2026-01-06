@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -14,15 +16,17 @@ import (
 const origin = "Origin"
 
 type requestsProcessor struct {
-	hostFinder      HostFinder
-	accessChecker   AccessChecker
-	closedEndpoints []string
+	hostFinder         HostFinder
+	accessChecker      AccessChecker
+	performanceMonitor PerformanceMonitor
+	closedEndpoints    []string
 }
 
 // NewRequestsProcessor creates a new requests processor
 func NewRequestsProcessor(
 	hostFinder HostFinder,
 	accessChecker AccessChecker,
+	performanceMonitor PerformanceMonitor,
 	closedEndpoints []string,
 ) (*requestsProcessor, error) {
 	if check.IfNil(hostFinder) {
@@ -31,11 +35,15 @@ func NewRequestsProcessor(
 	if check.IfNil(accessChecker) {
 		return nil, errNilAccessChecker
 	}
+	if check.IfNil(performanceMonitor) {
+		return nil, fmt.Errorf("nil performance monitor")
+	}
 
 	return &requestsProcessor{
-		hostFinder:      hostFinder,
-		accessChecker:   accessChecker,
-		closedEndpoints: closedEndpoints,
+		hostFinder:         hostFinder,
+		accessChecker:      accessChecker,
+		performanceMonitor: performanceMonitor,
+		closedEndpoints:    closedEndpoints,
 	}, nil
 }
 
@@ -54,6 +62,7 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		"header", parseStringMapsForLogger(request.Header),
 	)
 
+	start := time.Now()
 	newRequestURI, err := processor.accessChecker.ShouldProcessRequest(request.Header, request.RequestURI)
 	if err != nil {
 		log.Trace("can not process request",
@@ -98,6 +107,8 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	}
 
 	response, err := http.DefaultClient.Do(req)
+	duration := time.Since(start)
+
 	if err != nil {
 		log.Error("can not do request",
 			"target host", newHost,
@@ -111,6 +122,8 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 	defer func() {
 		_ = response.Body.Close()
 	}()
+
+	processor.updatePerformanceMetrics(duration)
 
 	// pass through the response header attributes
 	for key, value := range response.Header {
@@ -152,6 +165,14 @@ func parseStringMapsForLogger(data map[string][]string) string {
 	}
 
 	return result + "}"
+}
+
+func (processor *requestsProcessor) updatePerformanceMetrics(duration time.Duration) {
+	label := common.ConvertTimeToInterval(duration)
+	err := processor.performanceMonitor.AddPerformanceMetric(label)
+	if err != nil {
+		log.Error("failed to add performance metric", "error", err)
+	}
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

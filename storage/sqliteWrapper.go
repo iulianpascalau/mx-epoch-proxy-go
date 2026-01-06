@@ -114,6 +114,16 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		return fmt.Errorf("failed to create index on users activation_token: %w", err)
 	}
 
+	performanceTable := `
+	CREATE TABLE IF NOT EXISTS performance (
+		label TEXT PRIMARY KEY,
+		counter INTEGER DEFAULT 0
+	);`
+	_, err = wrapper.db.Exec(performanceTable)
+	if err != nil {
+		return fmt.Errorf("failed to create performance table: %w", err)
+	}
+
 	return nil
 }
 
@@ -461,16 +471,6 @@ func formatAccountType(accountTypeStr string) common.AccountType {
 	return common.FreeAccountType
 }
 
-// Close closes the database connection
-func (wrapper *sqliteWrapper) Close() error {
-	return wrapper.db.Close()
-}
-
-// IsInterfaceNil returns true if the value under the interface is nil
-func (wrapper *sqliteWrapper) IsInterfaceNil() bool {
-	return wrapper == nil
-}
-
 // ActivateUser activates the user with the given token
 func (wrapper *sqliteWrapper) ActivateUser(token string) error {
 	tx, err := wrapper.db.Begin()
@@ -497,4 +497,72 @@ func (wrapper *sqliteWrapper) ActivateUser(token string) error {
 	}
 
 	return tx.Commit()
+}
+
+// AddPerformanceMetric increments the counter for the given label
+func (wrapper *sqliteWrapper) AddPerformanceMetric(label string) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// Try update
+	query := "UPDATE performance SET counter = counter + 1 WHERE label = ?"
+	res, err := tx.Exec(query, label)
+	if err != nil {
+		return fmt.Errorf("failed to update performance metric: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		// Insert
+		query = "INSERT INTO performance (label, counter) VALUES (?, 1)"
+		_, err = tx.Exec(query, label)
+		if err != nil {
+			return fmt.Errorf("failed to insert performance metric: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetPerformanceMetrics returns the performance metrics
+func (wrapper *sqliteWrapper) GetPerformanceMetrics() (map[string]uint64, error) {
+	query := "SELECT label, counter FROM performance"
+	rows, err := wrapper.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query performance metrics: %w", err)
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	metrics := make(map[string]uint64)
+	for rows.Next() {
+		var label string
+		var counter uint64
+		err = rows.Scan(&label, &counter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan performance metric: %w", err)
+		}
+		metrics[label] = counter
+	}
+
+	return metrics, nil
+}
+
+// Close closes the database connection
+func (wrapper *sqliteWrapper) Close() error {
+	return wrapper.db.Close()
+}
+
+// IsInterfaceNil returns true if the value under the interface is nil
+func (wrapper *sqliteWrapper) IsInterfaceNil() bool {
+	return wrapper == nil
 }
