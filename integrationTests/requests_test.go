@@ -85,6 +85,7 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	processor, err := process.NewRequestsProcessor(
 		hostsFinder,
 		accessChecker,
+		storer,
 		[]string{
 			"/transaction/send",
 		})

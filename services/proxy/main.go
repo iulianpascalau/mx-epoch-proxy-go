@@ -223,6 +223,7 @@ func run(ctx *cli.Context) error {
 	requestsProcessor, err := process.NewRequestsProcessor(
 		hostFinder,
 		accessChecker,
+		sqliteWrapper,
 		cfg.ClosedEndpoints,
 	)
 	if err != nil {
@@ -241,6 +242,11 @@ func run(ctx *cli.Context) error {
 
 	api.SetJwtKey(envFileContents[envFileVarJwtKey])
 	loginHandler := api.NewLoginHandler(sqliteWrapper)
+
+	performanceHandler, err := api.NewPerformanceHandler(sqliteWrapper)
+	if err != nil {
+		return err
+	}
 
 	smtpPort, err := strconv.Atoi(envFileContents[envFileVarSmtpPort])
 	if err != nil {
@@ -284,6 +290,7 @@ func run(ctx *cli.Context) error {
 		api.EndpointApiAccessKeys:   accessKeysHandler,
 		api.EndpointApiAdminUsers:   usersHandler,
 		api.EndpointApiLogin:        loginHandler,
+		api.EndpointApiPerformance:  performanceHandler,
 		api.EndpointApiRegister:     registrationHandler,
 		api.EndpointApiActivate:     registrationHandler,
 		api.EndpointCaptchaSingle:   http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),

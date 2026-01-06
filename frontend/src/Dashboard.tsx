@@ -50,6 +50,8 @@ export const Dashboard = () => {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [keys, setKeys] = useState<Record<string, AccessKeyDetails>>({});
     const [users, setUsers] = useState<Record<string, UserDetails>>({});
+    const [performanceMetrics, setPerformanceMetrics] = useState<Record<string, number>>({});
+    const [performanceLabels, setPerformanceLabels] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Key Modal State
@@ -133,6 +135,19 @@ export const Dashboard = () => {
                 const usersRes = await axios.get(`/api/admin-users?username=${userInfo.username}`, { headers });
                 setUsers(usersRes.data || {});
             }
+
+            // Fetch Performance Metrics (Admin Only)
+            if (isAdmin) {
+                try {
+                    const perfRes = await axios.get('/api/performance', { headers });
+                    if (perfRes.data) {
+                        setPerformanceMetrics(perfRes.data.metrics || {});
+                        setPerformanceLabels(perfRes.data.labels || []);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch performance metrics", e);
+                }
+            }
         } catch (e: any) {
             if (e.response?.status === 401) {
                 handleLogout();
@@ -140,6 +155,24 @@ export const Dashboard = () => {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const refreshPerformance = async () => {
+        const token = getAccessKey();
+        const userInfo = getUserInfo();
+        const isAdmin = userInfo?.is_admin;
+        if (!isAdmin) return;
+
+        try {
+            const headers = { Authorization: `Bearer ${token}` };
+            const perfRes = await axios.get('/api/performance', { headers });
+            if (perfRes.data) {
+                setPerformanceMetrics(perfRes.data.metrics || {});
+                setPerformanceLabels(perfRes.data.labels || []);
+            }
+        } catch (e) {
+            console.error("Failed to refresh performance metrics", e);
         }
     };
 
@@ -594,6 +627,48 @@ export const Dashboard = () => {
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Performance Graph (Admin Only) */}
+                    {user.is_admin && (
+                        <div className="glass-panel p-6 col-span-1 lg:col-span-2">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <ArrowUp className="text-indigo-400" /> Response Time Distribution
+                                </h2>
+                                <button
+                                    onClick={refreshPerformance}
+                                    className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-normal transition-all"
+                                >
+                                    <RotateCcw size={16} /> Refresh Graph
+                                </button>
+                            </div>
+                            <div className="h-80 flex items-end gap-2 pt-6 pb-24 px-4 bg-black/20 rounded-lg">
+                                {(() => {
+                                    const labelsToUse = performanceLabels.length > 0 ? performanceLabels : Object.keys(performanceMetrics).sort();
+                                    const maxPerf = Math.max(...Object.values(performanceMetrics).concat([1]));
+                                    return labelsToUse.map(label => {
+                                        const val = performanceMetrics[label] || 0;
+                                        const height = (val / maxPerf) * 100;
+                                        return (
+                                            <div key={label} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end relative">
+                                                <div className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity mb-1 font-mono absolute -top-5">{val}</div>
+                                                <div
+                                                    className="w-full bg-indigo-500/50 hover:bg-indigo-400 rounded-t transition-all relative min-h-[1px]"
+                                                    style={{ height: `${height}%` }}
+                                                >
+                                                </div>
+                                                <div className="absolute -bottom-2 w-0 h-0 flex justify-center items-center">
+                                                    <div className="text-[10px] text-slate-500 -rotate-90 origin-right translate-y-[50%] translate-x-[-50%] whitespace-nowrap w-24 text-right pr-2">
+                                                        {label}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    });
+                                })()}
+                            </div>
                         </div>
                     )}
                 </div>

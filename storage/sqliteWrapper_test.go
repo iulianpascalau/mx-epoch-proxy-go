@@ -684,3 +684,81 @@ func TestSQLiteWrapper_ActivateUser(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestSqliteWrapper_AddPerformanceMetric(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should add metric", func(t *testing.T) {
+		err := wrapper.AddPerformanceMetric("label1")
+		assert.NoError(t, err)
+
+		var counter int
+		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, counter)
+
+		err = wrapper.AddPerformanceMetric("label1")
+		assert.NoError(t, err)
+
+		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, counter)
+
+		err = wrapper.AddPerformanceMetric("label2")
+		assert.NoError(t, err)
+
+		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label2").Scan(&counter)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, counter)
+
+		err = wrapper.AddPerformanceMetric("label1")
+		assert.NoError(t, err)
+
+		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
+		assert.NoError(t, err)
+		assert.Equal(t, 3, counter)
+
+	})
+}
+
+func TestSqliteWrapper_GetPerformanceMetrics(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	metrics, err := wrapper.GetPerformanceMetrics()
+	assert.NoError(t, err)
+	assert.Len(t, metrics, 0)
+
+	_ = wrapper.AddPerformanceMetric("label1")
+	metrics, err = wrapper.GetPerformanceMetrics()
+	assert.NoError(t, err)
+	assert.Equal(t, metrics["label1"], uint64(1))
+
+	_ = wrapper.AddPerformanceMetric("label1")
+	metrics, err = wrapper.GetPerformanceMetrics()
+	assert.NoError(t, err)
+	assert.Equal(t, metrics["label1"], uint64(2))
+
+	_ = wrapper.AddPerformanceMetric("label2")
+	metrics, err = wrapper.GetPerformanceMetrics()
+	assert.NoError(t, err)
+	assert.Equal(t, metrics["label1"], uint64(2))
+	assert.Equal(t, metrics["label2"], uint64(1))
+
+	_ = wrapper.AddPerformanceMetric("label2")
+	metrics, err = wrapper.GetPerformanceMetrics()
+	assert.NoError(t, err)
+	assert.Equal(t, metrics["label1"], uint64(2))
+	assert.Equal(t, metrics["label2"], uint64(2))
+
+	_ = wrapper.AddPerformanceMetric("label1")
+	metrics, err = wrapper.GetPerformanceMetrics()
+	assert.NoError(t, err)
+	assert.Equal(t, metrics["label1"], uint64(3))
+	assert.Equal(t, metrics["label2"], uint64(2))
+}

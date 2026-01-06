@@ -23,6 +23,7 @@ func TestNewRequestsProcessor(t *testing.T) {
 		processor, err := NewRequestsProcessor(
 			nil,
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 		assert.Nil(t, processor)
@@ -35,6 +36,7 @@ func TestNewRequestsProcessor(t *testing.T) {
 		processor, err := NewRequestsProcessor(
 			&testscommon.HostsFinderStub{},
 			nil,
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 		assert.Nil(t, processor)
@@ -47,6 +49,7 @@ func TestNewRequestsProcessor(t *testing.T) {
 		processor, err := NewRequestsProcessor(
 			&testscommon.HostsFinderStub{},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 		assert.NotNil(t, processor)
@@ -71,6 +74,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 		processor, _ := NewRequestsProcessor(
 			&testscommon.HostsFinderStub{},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 
@@ -99,6 +103,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 					return "", expectedErr
 				},
 			},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
@@ -120,6 +125,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 				},
 			},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0))
 
 		request := httptest.NewRequest(http.MethodGet, "/test/aa", nil)
@@ -142,6 +148,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 				},
 			},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 
@@ -166,6 +173,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 				},
 			},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 
@@ -196,6 +204,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 				},
 			},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			[]string{"/test/"},
 		)
 
@@ -233,6 +242,7 @@ func TestRequestsProcessor_ServeHTTP(t *testing.T) {
 				},
 			},
 			&testscommon.AccessCheckerStub{},
+			&testscommon.PerformanceMonitorStub{},
 			make([]string, 0),
 		)
 

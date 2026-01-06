@@ -19,6 +19,7 @@ type KeyAccessProvider interface {
 	RemoveUser(username string) error
 	UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
 	GetUser(username string) (*common.UsersDetails, error)
+	GetPerformanceMetrics() (map[string]uint64, error)
 	IsInterfaceNil() bool
 }
 
