@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -298,7 +299,10 @@ func run(ctx *cli.Context) error {
 		api.EndpointAppInfo: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(fmt.Sprintf(`{"version": "%s"}`, appVersion)))
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"version": appVersion,
+				"backend": cfg.AppDomains.Backend,
+			})
 		}),
 		api.EndpointSwagger: http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
 		api.EndpointRoot:    http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
