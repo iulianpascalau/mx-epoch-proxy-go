@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, BookOpen } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -52,6 +52,7 @@ export const Dashboard = () => {
     const [users, setUsers] = useState<Record<string, UserDetails>>({});
     const [performanceMetrics, setPerformanceMetrics] = useState<Record<string, number>>({});
     const [performanceLabels, setPerformanceLabels] = useState<string[]>([]);
+    const [appInfo, setAppInfo] = useState<{ version: string, backend: string } | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Key Modal State
@@ -109,6 +110,12 @@ export const Dashboard = () => {
 
         setUser(info);
         fetchData(info.is_admin);
+
+        // Fetch App Info
+        fetch('/api/app-info')
+            .then(res => res.json())
+            .then(data => setAppInfo(data))
+            .catch(err => console.error('Failed to fetch app info:', err));
 
         return () => {
             if (timer) clearTimeout(timer);
@@ -668,6 +675,33 @@ export const Dashboard = () => {
                                         )
                                     });
                                 })()}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* API Info Panel */}
+                    {appInfo && (
+                        <div className="glass-panel p-6 col-span-1 lg:col-span-2">
+                            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+                                <BookOpen className="text-indigo-400" /> API Documentation
+                            </h2>
+                            <div className="flex flex-col items-center justify-center gap-6 py-4">
+                                <div className="text-center">
+                                    <p className="text-slate-400 mb-2">Swagger Interface</p>
+                                    <a
+                                        href={`${appInfo.backend}/swagger/`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xl text-indigo-400 hover:text-indigo-300 underline decoration-indigo-500/50 underline-offset-4 font-medium transition-colors"
+                                    >
+                                        {appInfo.backend}/swagger/
+                                    </a>
+                                </div>
+                                <div className="text-center w-full border-t border-white/5 pt-6">
+                                    <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
+                                        Build {appInfo.version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )}
