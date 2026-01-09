@@ -28,5 +28,5 @@ build:
 	-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
 
 run: build
-	cd ${cmd_dir} && \
+	cd ./services/proxy && \
 		./${binary} --log-level="*:DEBUG"

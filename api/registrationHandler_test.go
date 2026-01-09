@@ -37,7 +37,7 @@ func TestNewRegistrationHandler(t *testing.T) {
 			&testscommon.CaptchaHandlerStub{},
 			testHTMLTemplate,
 		)
-		assert.Equal(t, errNilKeyAccessChecker, err)
+		assert.Equal(t, errNilKeyAccessProvider, err)
 		assert.Nil(t, handler)
 	})
 

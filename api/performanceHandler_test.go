@@ -16,13 +16,19 @@ func TestNewPerformanceHandler(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil provider", func(t *testing.T) {
-		handler, err := NewPerformanceHandler(nil)
-		assert.Equal(t, errNilKeyAccessChecker, err)
+		handler, err := NewPerformanceHandler(nil, &testscommon.AuthenticatorStub{})
+		assert.Equal(t, errNilKeyAccessProvider, err)
+		assert.Nil(t, handler)
+	})
+
+	t.Run("nil authenticator", func(t *testing.T) {
+		handler, err := NewPerformanceHandler(&testscommon.StorerStub{}, nil)
+		assert.Equal(t, errNilAuthenticator, err)
 		assert.Nil(t, handler)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		handler, err := NewPerformanceHandler(&testscommon.StorerStub{})
+		handler, err := NewPerformanceHandler(&testscommon.StorerStub{}, &testscommon.AuthenticatorStub{})
 		assert.Nil(t, err)
 		assert.NotNil(t, handler)
 	})
@@ -31,8 +37,10 @@ func TestNewPerformanceHandler(t *testing.T) {
 func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
+	auth := NewJWTAuthenticator("test_key")
+
 	t.Run("unauthorized - no token", func(t *testing.T) {
-		handler, _ := NewPerformanceHandler(&testscommon.StorerStub{})
+		handler, _ := NewPerformanceHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/performance", nil)
 		resp := httptest.NewRecorder()
 
@@ -41,10 +49,10 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("forbidden - not admin", func(t *testing.T) {
-		token, err := GenerateToken("user", false)
+		token, err := auth.GenerateToken("user", false)
 		require.Nil(t, err)
 
-		handler, _ := NewPerformanceHandler(&testscommon.StorerStub{})
+		handler, _ := NewPerformanceHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/performance", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -54,7 +62,7 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("success - admin", func(t *testing.T) {
-		token, err := GenerateToken("admin", true)
+		token, err := auth.GenerateToken("admin", true)
 		require.Nil(t, err)
 
 		dummyMetrics := map[string]uint64{
@@ -66,7 +74,7 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewPerformanceHandler(storer)
+		handler, _ := NewPerformanceHandler(storer, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/performance", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -85,10 +93,10 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("method not allowed", func(t *testing.T) {
-		token, err := GenerateToken("admin", true)
+		token, err := auth.GenerateToken("admin", true)
 		require.Nil(t, err)
 
-		handler, _ := NewPerformanceHandler(&testscommon.StorerStub{})
+		handler, _ := NewPerformanceHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodPost, "/api/performance", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -98,7 +106,7 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("storage error", func(t *testing.T) {
-		token, err := GenerateToken("admin", true)
+		token, err := auth.GenerateToken("admin", true)
 		require.Nil(t, err)
 
 		storer := &testscommon.StorerStub{
@@ -107,7 +115,7 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewPerformanceHandler(storer)
+		handler, _ := NewPerformanceHandler(storer, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/performance", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()

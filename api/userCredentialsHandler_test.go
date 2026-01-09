@@ -38,28 +38,35 @@ func TestNewUserCredentialsHandler(t *testing.T) {
 
 	t.Run("nil key access provider", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(nil, emailSender, cfg, "template")
+		h, err := NewUserCredentialsHandler(nil, emailSender, cfg, "template", &testscommon.AuthenticatorStub{})
 		assert.Nil(t, h)
-		assert.Equal(t, errNilKeyAccessChecker, err)
+		assert.Equal(t, errNilKeyAccessProvider, err)
 	})
 
 	t.Run("nil email sender", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(storer, nil, cfg, "template")
+		h, err := NewUserCredentialsHandler(storer, nil, cfg, "template", &testscommon.AuthenticatorStub{})
 		assert.Nil(t, h)
 		assert.Equal(t, errNilEmailSender, err)
 	})
 
 	t.Run("empty html template", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "")
+		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "", &testscommon.AuthenticatorStub{})
 		assert.Nil(t, h)
 		assert.Equal(t, errEmptyHTMLTemplate, err)
 	})
 
+	t.Run("nil authenticator", func(t *testing.T) {
+		t.Parallel()
+		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "template", nil)
+		assert.Nil(t, h)
+		assert.Equal(t, errNilAuthenticator, err)
+	})
+
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "template", &testscommon.AuthenticatorStub{})
 		assert.NotNil(t, h)
 		assert.Nil(t, err)
 	})
@@ -69,12 +76,13 @@ func TestUserCredentialsHandler_ServeHTTP_ChangePassword(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.AppDomainsConfig{}
+	auth := NewJWTAuthenticator("test_key")
 
 	t.Run("method not allowed", func(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/api/change-password", nil)
 		h.ServeHTTP(w, r)
@@ -85,7 +93,7 @@ func TestUserCredentialsHandler_ServeHTTP_ChangePassword(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodPost, "/api/change-password", nil)
 		h.ServeHTTP(w, r)
@@ -96,7 +104,7 @@ func TestUserCredentialsHandler_ServeHTTP_ChangePassword(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 
 		storer.CheckUserCredentialsHandler = func(username, password string) (*common.UsersDetails, error) {
 			return &common.UsersDetails{}, nil
@@ -122,7 +130,7 @@ func TestUserCredentialsHandler_ServeHTTP_ChangePassword(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 
 		storer.CheckUserCredentialsHandler = func(username, password string) (*common.UsersDetails, error) {
 			return nil, errors.New("invalid")
@@ -145,12 +153,13 @@ func TestUserCredentialsHandler_ServeHTTP_RequestEmailChange(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.AppDomainsConfig{}
+	auth := NewJWTAuthenticator("test_key")
 
 	t.Run("method not allowed", func(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/api/request-email-change", nil)
 		h.ServeHTTP(w, r)
@@ -161,7 +170,7 @@ func TestUserCredentialsHandler_ServeHTTP_RequestEmailChange(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 
 		reqBody := changeEmailRequest{OldPassword: "pass", NewEmail: "invalid"}
 		reqBytes, _ := json.Marshal(reqBody)
@@ -179,7 +188,7 @@ func TestUserCredentialsHandler_ServeHTTP_RequestEmailChange(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 
 		storer.CheckUserCredentialsHandler = func(username, password string) (*common.UsersDetails, error) {
 			return &common.UsersDetails{}, nil
@@ -208,12 +217,13 @@ func TestUserCredentialsHandler_ServeHTTP_ConfirmEmailChange(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.AppDomainsConfig{Frontend: "http://front", Backend: "http://back"}
+	auth := NewJWTAuthenticator("test_key")
 
 	t.Run("method not allowed", func(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodPost, "/api/confirm-email-change", nil)
 		h.ServeHTTP(w, r)
@@ -224,7 +234,7 @@ func TestUserCredentialsHandler_ServeHTTP_ConfirmEmailChange(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/api/confirm-email-change", nil)
 		h.ServeHTTP(w, r)
@@ -235,7 +245,7 @@ func TestUserCredentialsHandler_ServeHTTP_ConfirmEmailChange(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		storer.ConfirmEmailChangeHandler = func(token string) (string, error) {
 			return "", errors.New("db error")
 		}
@@ -250,7 +260,7 @@ func TestUserCredentialsHandler_ServeHTTP_ConfirmEmailChange(t *testing.T) {
 		t.Parallel()
 		storer := &testscommon.StorerStub{}
 		emailSender := &emailSenderStub{}
-		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template")
+		h, _ := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
 		storer.ConfirmEmailChangeHandler = func(token string) (string, error) {
 			return "new@example.com", nil
 		}
@@ -266,7 +276,6 @@ func TestUserCredentialsHandler_ServeHTTP_ConfirmEmailChange(t *testing.T) {
 
 // Helper to create mock token, assuming SetJwtKey was called in init or setup
 func createMockToken(username string) (string, error) {
-	// Assuming SetJwtKey was called previously or we call it here
-	SetJwtKey("test_key")
-	return GenerateToken(username, false)
+	auth := NewJWTAuthenticator("test_key")
+	return auth.GenerateToken(username, false)
 }

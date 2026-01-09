@@ -1,5 +1,7 @@
 package common
 
+import "github.com/golang-jwt/jwt/v5"
+
 // AccountType describes the account type
 type AccountType string
 
@@ -28,4 +30,11 @@ type UsersDetails struct {
 	AccountType    AccountType
 	IsActive       bool
 	IsAdmin        bool
+}
+
+// Claims struct holds the JWT claims
+type Claims struct {
+	Username string `json:"username"`
+	IsAdmin  bool   `json:"is_admin"`
+	jwt.RegisteredClaims
 }

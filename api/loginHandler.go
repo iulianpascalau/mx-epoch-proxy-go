@@ -3,17 +3,28 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 type loginHandler struct {
 	keyAccessProvider KeyAccessProvider
+	auth              Authenticator
 }
 
 // NewLoginHandler creates a new login handler
-func NewLoginHandler(provider KeyAccessProvider) *loginHandler {
+func NewLoginHandler(provider KeyAccessProvider, auth Authenticator) (*loginHandler, error) {
+	if check.IfNil(provider) {
+		return nil, errNilKeyAccessProvider
+	}
+	if check.IfNil(auth) {
+		return nil, errNilAuthenticator
+	}
+
 	return &loginHandler{
 		keyAccessProvider: provider,
-	}
+		auth:              auth,
+	}, nil
 }
 
 // ServeHTTP will serve the login request
@@ -44,7 +55,7 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := GenerateToken(details.Username, details.IsAdmin)
+	token, err := h.auth.GenerateToken(details.Username, details.IsAdmin)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return

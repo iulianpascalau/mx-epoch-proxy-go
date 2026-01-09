@@ -12,22 +12,27 @@ import (
 // accessKeysHandler handles requests for managing access keys
 type accessKeysHandler struct {
 	keyAccessProvider KeyAccessProvider
+	auth              Authenticator
 }
 
 // NewAccessKeysHandler creates a new AccessKeysHandler
-func NewAccessKeysHandler(keyAccessProvider KeyAccessProvider) (*accessKeysHandler, error) {
+func NewAccessKeysHandler(keyAccessProvider KeyAccessProvider, auth Authenticator) (*accessKeysHandler, error) {
 	if check.IfNil(keyAccessProvider) {
-		return nil, errNilKeyAccessChecker
+		return nil, errNilKeyAccessProvider
+	}
+	if check.IfNil(auth) {
+		return nil, errNilAuthenticator
 	}
 
 	return &accessKeysHandler{
 		keyAccessProvider: keyAccessProvider,
+		auth:              auth,
 	}, nil
 }
 
 // ServeHTTP implements http.Handler interface
 func (handler *accessKeysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r)
+	claims, err := handler.auth.CheckAuth(r)
 	if err != nil {
 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return
@@ -45,7 +50,7 @@ func (handler *accessKeysHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (handler *accessKeysHandler) handleGet(w http.ResponseWriter, _ *http.Request, claims *Claims) {
+func (handler *accessKeysHandler) handleGet(w http.ResponseWriter, _ *http.Request, claims *common.Claims) {
 	username := claims.Username
 	if claims.IsAdmin {
 		username = "" // Get all keys
@@ -65,7 +70,7 @@ type addKeyRequest struct {
 	Username string `json:"username,omitempty"`
 }
 
-func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Request, claims *Claims) {
+func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Request, claims *common.Claims) {
 	var req addKeyRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -97,7 +102,7 @@ func (handler *accessKeysHandler) handlePost(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
-func (handler *accessKeysHandler) handleDelete(w http.ResponseWriter, r *http.Request, claims *Claims) {
+func (handler *accessKeysHandler) handleDelete(w http.ResponseWriter, r *http.Request, claims *common.Claims) {
 	key := r.URL.Query().Get("key")
 	if key == "" {
 		http.Error(w, "key parameter is required", http.StatusBadRequest)

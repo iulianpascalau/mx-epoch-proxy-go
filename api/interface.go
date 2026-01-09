@@ -2,6 +2,7 @@ package api
 
 import (
 	"io"
+	"net/http"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 )
@@ -38,5 +39,12 @@ type CaptchaHandler interface {
 	NewCaptcha() string
 	Reload(id string)
 	WriteNoError(w io.Writer, id string)
+	IsInterfaceNil() bool
+}
+
+// Authenticator defines the behavior for authentication
+type Authenticator interface {
+	GenerateToken(username string, isAdmin bool) (string, error)
+	CheckAuth(r *http.Request) (*common.Claims, error)
 	IsInterfaceNil() bool
 }
