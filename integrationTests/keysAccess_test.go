@@ -34,7 +34,8 @@ func TestKeysAccess(t *testing.T) {
 	usersHandler, err := api.NewUsersHandler(storer, auth)
 	require.Nil(t, err)
 
-	loginHandler := api.NewLoginHandler(storer, auth)
+	loginHandler, err := api.NewLoginHandler(storer, auth)
+	require.Nil(t, err)
 
 	handlers := map[string]http.Handler{
 		endpointKeys:  accessKeysHandler,

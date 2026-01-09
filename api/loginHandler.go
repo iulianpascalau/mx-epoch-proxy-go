@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 type loginHandler struct {
@@ -11,11 +13,18 @@ type loginHandler struct {
 }
 
 // NewLoginHandler creates a new login handler
-func NewLoginHandler(provider KeyAccessProvider, auth Authenticator) *loginHandler {
+func NewLoginHandler(provider KeyAccessProvider, auth Authenticator) (*loginHandler, error) {
+	if check.IfNil(provider) {
+		return nil, errNilKeyAccessProvider
+	}
+	if check.IfNil(auth) {
+		return nil, errNilAuthenticator
+	}
+
 	return &loginHandler{
 		keyAccessProvider: provider,
 		auth:              auth,
-	}
+	}, nil
 }
 
 // ServeHTTP will serve the login request

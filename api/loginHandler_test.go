@@ -14,11 +14,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewLoginHandler(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil access provider should error", func(t *testing.T) {
+		t.Parallel()
+
+		handler, err := NewAccessKeysHandler(nil, &testscommon.AuthenticatorStub{})
+		assert.Nil(t, handler)
+		assert.Equal(t, errNilKeyAccessProvider, err)
+	})
+
+	t.Run("nil authenticator should error", func(t *testing.T) {
+		t.Parallel()
+
+		handler, err := NewAccessKeysHandler(&testscommon.StorerStub{}, nil)
+		assert.Nil(t, handler)
+		assert.Equal(t, errNilAuthenticator, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		handler, err := NewAccessKeysHandler(&testscommon.StorerStub{}, &testscommon.AuthenticatorStub{})
+		assert.NotNil(t, handler)
+		assert.Nil(t, err)
+	})
+}
+
 func TestLoginHandler(t *testing.T) {
 	auth := NewJWTAuthenticator("test_key")
 
 	t.Run("ServeHTTP non-POST method", func(t *testing.T) {
-		handler := NewLoginHandler(&testscommon.StorerStub{}, auth)
+		handler, _ := NewLoginHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodGet, "/login", nil)
 		resp := httptest.NewRecorder()
 
@@ -27,7 +55,7 @@ func TestLoginHandler(t *testing.T) {
 	})
 
 	t.Run("ServeHTTP bad request body", func(t *testing.T) {
-		handler := NewLoginHandler(&testscommon.StorerStub{}, auth)
+		handler, _ := NewLoginHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString("invalid json"))
 		resp := httptest.NewRecorder()
 
@@ -41,7 +69,7 @@ func TestLoginHandler(t *testing.T) {
 				return nil, errors.New("invalid credentials")
 			},
 		}
-		handler := NewLoginHandler(storer, auth)
+		handler, _ := NewLoginHandler(storer, auth)
 
 		creds := map[string]string{"username": "user", "password": "wrong"}
 		body, _ := json.Marshal(creds)
@@ -62,7 +90,7 @@ func TestLoginHandler(t *testing.T) {
 				}, nil
 			},
 		}
-		handler := NewLoginHandler(storer, auth)
+		handler, _ := NewLoginHandler(storer, auth)
 
 		creds := map[string]string{"username": "user", "password": "pass"}
 		body, _ := json.Marshal(creds)
@@ -84,7 +112,7 @@ func TestLoginHandler(t *testing.T) {
 				}, nil
 			},
 		}
-		handler := NewLoginHandler(storer, auth)
+		handler, _ := NewLoginHandler(storer, auth)
 
 		creds := map[string]string{"username": "user", "password": "pass"}
 		body, _ := json.Marshal(creds)

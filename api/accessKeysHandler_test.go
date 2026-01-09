@@ -17,16 +17,20 @@ import (
 func TestNewAccessKeysHandler(t *testing.T) {
 	t.Parallel()
 
-	auth := NewJWTAuthenticator("test_key")
-
 	t.Run("nil provider", func(t *testing.T) {
-		handler, err := NewAccessKeysHandler(nil, auth)
+		handler, err := NewAccessKeysHandler(nil, &testscommon.AuthenticatorStub{})
 		assert.Nil(t, handler)
-		assert.Equal(t, errNilKeyAccessChecker, err)
+		assert.Equal(t, errNilKeyAccessProvider, err)
+	})
+
+	t.Run("nil authenticator", func(t *testing.T) {
+		handler, err := NewAccessKeysHandler(&testscommon.StorerStub{}, nil)
+		assert.Nil(t, handler)
+		assert.Equal(t, errNilAuthenticator, err)
 	})
 
 	t.Run("ok", func(t *testing.T) {
-		handler, err := NewAccessKeysHandler(&testscommon.StorerStub{}, auth)
+		handler, err := NewAccessKeysHandler(&testscommon.StorerStub{}, &testscommon.AuthenticatorStub{})
 		assert.NotNil(t, handler)
 		assert.Nil(t, err)
 	})

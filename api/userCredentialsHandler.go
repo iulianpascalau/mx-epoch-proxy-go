@@ -28,13 +28,16 @@ func NewUserCredentialsHandler(
 	auth Authenticator,
 ) (*userCredentialsHandler, error) {
 	if check.IfNil(keyAccessProvider) {
-		return nil, errNilKeyAccessChecker
+		return nil, errNilKeyAccessProvider
 	}
 	if check.IfNil(emailSender) {
 		return nil, errNilEmailSender
 	}
 	if len(htmlTemplate) == 0 {
 		return nil, errEmptyHTMLTemplate
+	}
+	if check.IfNil(auth) {
+		return nil, errNilAuthenticator
 	}
 
 	return &userCredentialsHandler{

@@ -18,7 +18,10 @@ type performanceHandler struct {
 // NewPerformanceHandler creates a new performanceHandler instance
 func NewPerformanceHandler(keyAccessProvider KeyAccessProvider, auth Authenticator) (*performanceHandler, error) {
 	if check.IfNil(keyAccessProvider) {
-		return nil, errNilKeyAccessChecker
+		return nil, errNilKeyAccessProvider
+	}
+	if check.IfNil(auth) {
+		return nil, errNilAuthenticator
 	}
 
 	return &performanceHandler{

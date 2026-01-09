@@ -7,39 +7,27 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 )
 
 const tokenExpirationTime = time.Hour
 
-// Claims struct holds the JWT claims
-type Claims struct {
-	Username string `json:"username"`
-	IsAdmin  bool   `json:"is_admin"`
-	jwt.RegisteredClaims
-}
-
-// Authenticator defines the behavior for authentication
-type Authenticator interface {
-	GenerateToken(username string, isAdmin bool) (string, error)
-	CheckAuth(r *http.Request) (*Claims, error)
-}
-
-// JWTAuthenticator implements Authenticator using JWT
-type JWTAuthenticator struct {
+// jwtAuthenticator implements Authenticator using JWT
+type jwtAuthenticator struct {
 	jwtKey []byte
 }
 
-// NewJWTAuthenticator creates a new JWTAuthenticator
-func NewJWTAuthenticator(key string) *JWTAuthenticator {
-	return &JWTAuthenticator{
+// NewJWTAuthenticator creates a new jwtAuthenticator instance
+func NewJWTAuthenticator(key string) *jwtAuthenticator {
+	return &jwtAuthenticator{
 		jwtKey: []byte(key),
 	}
 }
 
 // GenerateToken generates a new JWT token
-func (ja *JWTAuthenticator) GenerateToken(username string, isAdmin bool) (string, error) {
+func (ja *jwtAuthenticator) GenerateToken(username string, isAdmin bool) (string, error) {
 	expirationTime := time.Now().Add(tokenExpirationTime)
-	claims := &Claims{
+	claims := &common.Claims{
 		Username: username,
 		IsAdmin:  isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -52,8 +40,8 @@ func (ja *JWTAuthenticator) GenerateToken(username string, isAdmin bool) (string
 }
 
 // ValidateToken validates the token string and returns claims
-func (ja *JWTAuthenticator) ValidateToken(tokenString string) (*Claims, error) {
-	claims := &Claims{}
+func (ja *jwtAuthenticator) ValidateToken(tokenString string) (*common.Claims, error) {
+	claims := &common.Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return ja.jwtKey, nil
 	})
@@ -69,7 +57,7 @@ func (ja *JWTAuthenticator) ValidateToken(tokenString string) (*Claims, error) {
 
 // CheckAuth validates the token from Authorization header.
 // It returns claims if valid, error otherwise.
-func (ja *JWTAuthenticator) CheckAuth(r *http.Request) (*Claims, error) {
+func (ja *jwtAuthenticator) CheckAuth(r *http.Request) (*common.Claims, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return nil, fmt.Errorf("missing authorization header")
@@ -81,4 +69,9 @@ func (ja *JWTAuthenticator) CheckAuth(r *http.Request) (*Claims, error) {
 	}
 
 	return ja.ValidateToken(bearerToken[1])
+}
+
+// IsInterfaceNil returns true if the value under the interface is nil
+func (ja *jwtAuthenticator) IsInterfaceNil() bool {
+	return ja == nil
 }

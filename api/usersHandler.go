@@ -18,7 +18,10 @@ type usersHandler struct {
 // NewUsersHandler creates a new usersHandler instance
 func NewUsersHandler(keyAccessProvider KeyAccessProvider, auth Authenticator) (*usersHandler, error) {
 	if check.IfNil(keyAccessProvider) {
-		return nil, errNilKeyAccessChecker
+		return nil, errNilKeyAccessProvider
+	}
+	if check.IfNil(auth) {
+		return nil, errNilAuthenticator
 	}
 
 	return &usersHandler{

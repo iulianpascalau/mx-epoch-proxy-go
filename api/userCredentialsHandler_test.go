@@ -36,32 +36,37 @@ func TestNewUserCredentialsHandler(t *testing.T) {
 	emailSender := &emailSenderStub{}
 	cfg := config.AppDomainsConfig{Frontend: "http://frontend", Backend: "http://backend"}
 
-	auth := NewJWTAuthenticator("test_key")
-
 	t.Run("nil key access provider", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(nil, emailSender, cfg, "template", auth)
+		h, err := NewUserCredentialsHandler(nil, emailSender, cfg, "template", &testscommon.AuthenticatorStub{})
 		assert.Nil(t, h)
-		assert.Equal(t, errNilKeyAccessChecker, err)
+		assert.Equal(t, errNilKeyAccessProvider, err)
 	})
 
 	t.Run("nil email sender", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(storer, nil, cfg, "template", auth)
+		h, err := NewUserCredentialsHandler(storer, nil, cfg, "template", &testscommon.AuthenticatorStub{})
 		assert.Nil(t, h)
 		assert.Equal(t, errNilEmailSender, err)
 	})
 
 	t.Run("empty html template", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "", auth)
+		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "", &testscommon.AuthenticatorStub{})
 		assert.Nil(t, h)
 		assert.Equal(t, errEmptyHTMLTemplate, err)
 	})
 
+	t.Run("nil authenticator", func(t *testing.T) {
+		t.Parallel()
+		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "template", nil)
+		assert.Nil(t, h)
+		assert.Equal(t, errNilAuthenticator, err)
+	})
+
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "template", auth)
+		h, err := NewUserCredentialsHandler(storer, emailSender, cfg, "template", &testscommon.AuthenticatorStub{})
 		assert.NotNil(t, h)
 		assert.Nil(t, err)
 	})

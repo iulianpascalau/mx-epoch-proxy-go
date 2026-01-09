@@ -41,7 +41,10 @@ func (tester *gatewayTester) testGateway(gateway config.GatewayConfig) error {
 		return err
 	}
 
-	_, err = http.Get(fullURL)
+	resp, err := http.Get(fullURL)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
 
 	return err
 }

@@ -244,7 +244,10 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	loginHandler := api.NewLoginHandler(sqliteWrapper, authenticator)
+	loginHandler, err := api.NewLoginHandler(sqliteWrapper, authenticator)
+	if err != nil {
+		return err
+	}
 
 	performanceHandler, err := api.NewPerformanceHandler(sqliteWrapper, authenticator)
 	if err != nil {

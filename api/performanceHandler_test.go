@@ -15,16 +15,20 @@ import (
 func TestNewPerformanceHandler(t *testing.T) {
 	t.Parallel()
 
-	auth := NewJWTAuthenticator("test_key")
-
 	t.Run("nil provider", func(t *testing.T) {
-		handler, err := NewPerformanceHandler(nil, auth)
-		assert.Equal(t, errNilKeyAccessChecker, err)
+		handler, err := NewPerformanceHandler(nil, &testscommon.AuthenticatorStub{})
+		assert.Equal(t, errNilKeyAccessProvider, err)
+		assert.Nil(t, handler)
+	})
+
+	t.Run("nil authenticator", func(t *testing.T) {
+		handler, err := NewPerformanceHandler(&testscommon.StorerStub{}, nil)
+		assert.Equal(t, errNilAuthenticator, err)
 		assert.Nil(t, handler)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		handler, err := NewPerformanceHandler(&testscommon.StorerStub{}, auth)
+		handler, err := NewPerformanceHandler(&testscommon.StorerStub{}, &testscommon.AuthenticatorStub{})
 		assert.Nil(t, err)
 		assert.NotNil(t, handler)
 	})

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +58,7 @@ func TestAuth(t *testing.T) {
 	t.Run("Expired token should fail", func(t *testing.T) {
 		// Manually create expired token
 		expirationTime := time.Now().Add(-1 * time.Hour)
-		claims := &Claims{
+		claims := &common.Claims{
 			Username: "expiredUser",
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(expirationTime),

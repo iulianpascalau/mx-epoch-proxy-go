@@ -37,7 +37,7 @@ func NewRegistrationHandler(
 	htmlTemplate string,
 ) (*registrationHandler, error) {
 	if check.IfNil(keyAccessProvider) {
-		return nil, errNilKeyAccessChecker
+		return nil, errNilKeyAccessProvider
 	}
 	if check.IfNil(emailSender) {
 		return nil, errNilEmailSender
