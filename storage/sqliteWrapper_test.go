@@ -762,3 +762,116 @@ func TestSqliteWrapper_GetPerformanceMetrics(t *testing.T) {
 	assert.Equal(t, metrics["label1"], uint64(3))
 	assert.Equal(t, metrics["label2"], uint64(2))
 }
+
+func TestSqliteWrapper_UpdatePassword(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should update password", func(t *testing.T) {
+		username := "user_pass_update"
+		oldPass := "oldPass"
+		err := wrapper.AddUser(username, oldPass, false, 100, "free", true, "")
+		require.NoError(t, err)
+
+		newPass := "newUniquePass"
+		err = wrapper.UpdatePassword(username, newPass)
+		assert.NoError(t, err)
+
+		// Verify old password fails
+		_, err = wrapper.CheckUserCredentials(username, oldPass)
+		assert.Error(t, err)
+
+		// Verify new password works
+		userDetails, err := wrapper.CheckUserCredentials(username, newPass)
+		assert.NoError(t, err)
+		assert.NotNil(t, userDetails)
+	})
+
+	t.Run("should fail if user not found", func(t *testing.T) {
+		err := wrapper.UpdatePassword("nonexistent", "newPass")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
+	})
+
+	t.Run("should fail if password too long", func(t *testing.T) {
+		username := "user_pass_long"
+		_ = wrapper.AddUser(username, "pass", false, 100, "free", true, "")
+
+		err := wrapper.UpdatePassword(username, strings.Repeat("a", 73))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "password is too long")
+	})
+}
+
+func TestSqliteWrapper_RequestAndConfirmEmailChange(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("full flow success", func(t *testing.T) {
+		username := "user_email_flow"
+		initialEmail := username
+		err := wrapper.AddUser(username, "pass", false, 100, "free", true, "")
+		require.NoError(t, err)
+
+		// Add a key to verify migration
+		err = wrapper.AddKey(username, "key_migration_test")
+		require.NoError(t, err)
+
+		newEmail := "new_email@example.com"
+		token := "changeToken123"
+
+		// 1. Request Change
+		err = wrapper.RequestEmailChange(username, newEmail, token)
+		assert.NoError(t, err)
+
+		// Verify pending state (can verify by querying directly)
+		var pendingEmail, dbToken string
+		err = wrapper.db.QueryRow("SELECT pending_email, change_email_token FROM users WHERE username = ?", username).Scan(&pendingEmail, &dbToken)
+		assert.NoError(t, err)
+		assert.Equal(t, newEmail, pendingEmail)
+		assert.Equal(t, token, dbToken)
+
+		// 2. Confirm Change
+		confirmedEmail, err := wrapper.ConfirmEmailChange(token)
+		assert.NoError(t, err)
+		assert.Equal(t, newEmail, confirmedEmail)
+
+		// Verify Old User Gone
+		_, err = wrapper.GetUser(initialEmail)
+		assert.Error(t, err)
+
+		// Verify New User Exists
+		newUser, err := wrapper.GetUser(newEmail)
+		assert.NoError(t, err)
+		assert.Equal(t, newEmail, newUser.Username)
+		assert.Equal(t, uint64(100), newUser.MaxRequests)
+
+		// Verify Access Key Migrated
+		keys, err := wrapper.GetAllKeys(newEmail)
+		assert.NoError(t, err)
+		assert.Len(t, keys, 1)
+		_, exists := keys["key_migration_test"]
+		assert.True(t, exists)
+	})
+
+	t.Run("request should fail if new email already taken", func(t *testing.T) {
+		user1 := "user1_taken"
+		user2 := "user2_taken"
+		_ = wrapper.AddUser(user1, "pass", false, 0, "free", true, "")
+		_ = wrapper.AddUser(user2, "pass", false, 0, "free", true, "")
+
+		err := wrapper.RequestEmailChange(user1, user2, "token")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "email already registered")
+	})
+
+	t.Run("confirm should fail with invalid token", func(t *testing.T) {
+		_, err := wrapper.ConfirmEmailChange("invalid_token")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid or expired token")
+	})
+}

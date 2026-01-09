@@ -78,7 +78,9 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		request_count INTEGER DEFAULT 0,
 		account_type TEXT DEFAULT 'free',
 		is_active BOOLEAN DEFAULT TRUE,
-		activation_token TEXT DEFAULT ''
+		activation_token TEXT DEFAULT '',
+		pending_email TEXT DEFAULT '',
+		change_email_token TEXT DEFAULT ''
 	);`
 	_, err := wrapper.db.Exec(usersTable)
 	if err != nil {
@@ -89,6 +91,8 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN account_type TEXT DEFAULT 'free';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN activation_token TEXT DEFAULT '';")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN pending_email TEXT DEFAULT '';")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN change_email_token TEXT DEFAULT '';")
 
 	keysTable := `
 	CREATE TABLE IF NOT EXISTS access_keys (
@@ -112,6 +116,12 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 	_, err = wrapper.db.Exec(indexTokenQuery)
 	if err != nil {
 		return fmt.Errorf("failed to create index on users activation_token: %w", err)
+	}
+
+	indexEmailChangeTokenQuery := `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_change_email_token ON users(change_email_token) WHERE change_email_token != '';`
+	_, err = wrapper.db.Exec(indexEmailChangeTokenQuery)
+	if err != nil {
+		return fmt.Errorf("failed to create index on users change_email_token: %w", err)
 	}
 
 	performanceTable := `
@@ -560,6 +570,155 @@ func (wrapper *sqliteWrapper) GetPerformanceMetrics() (map[string]uint64, error)
 // Close closes the database connection
 func (wrapper *sqliteWrapper) Close() error {
 	return wrapper.db.Close()
+}
+
+// UpdatePassword updates the user's password
+func (wrapper *sqliteWrapper) UpdatePassword(username string, password string) error {
+	if len(password) > maxPassLen {
+		return fmt.Errorf("password is too long (maximum %d characters allowed)", maxPassLen)
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET hashed_password = ? WHERE username = ?`
+	result, err := tx.Exec(query, hex.EncodeToString(hash), username)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
+}
+
+// RequestEmailChange initiates the email change process
+func (wrapper *sqliteWrapper) RequestEmailChange(username string, newEmail string, token string) error {
+
+	// Check if new email is already taken
+	var exists bool
+	queryCheck := "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)"
+	err := wrapper.db.QueryRow(queryCheck, newEmail).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check email uniqueness: %w", err)
+	}
+	if exists {
+		return fmt.Errorf("email already registered")
+	}
+
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET pending_email = ?, change_email_token = ? WHERE username = ?`
+	result, err := tx.Exec(query, newEmail, token, username)
+	if err != nil {
+		return fmt.Errorf("failed to request email change: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
+}
+
+// ConfirmEmailChange finalizes the email change process
+func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
+	if token == "" {
+		return "", fmt.Errorf("invalid token")
+	}
+
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// 1. Find user with this token
+	querySelect := `SELECT username, pending_email, hashed_password, is_admin, max_requests, request_count, account_type, is_active FROM users WHERE change_email_token = ?`
+	var oldUsername, newEmail, hashedPassword, accountType string
+	var isAdmin, isActive bool
+	var maxRequests, requestCount uint64
+
+	err = tx.QueryRow(querySelect, token).Scan(&oldUsername, &newEmail, &hashedPassword, &isAdmin, &maxRequests, &requestCount, &accountType, &isActive)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("invalid or expired token")
+		}
+		return "", fmt.Errorf("failed to find user by token: %w", err)
+	}
+
+	if newEmail == "" {
+		return "", fmt.Errorf("no pending email found")
+	}
+
+	// 2. Create new user with new email (username)
+	// Check if new email free again (double check)
+	var exists bool
+	queryCheck := "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)"
+	err = tx.QueryRow(queryCheck, newEmail).Scan(&exists)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		return "", fmt.Errorf("email %s is already in use", newEmail)
+	}
+
+	insertQueryFull := `
+	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type, is_active, activation_token, pending_email, change_email_token) 
+	VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '')
+	`
+	_, err = tx.Exec(insertQueryFull, newEmail, hashedPassword, isAdmin, maxRequests, requestCount, accountType, isActive)
+	if err != nil {
+		return "", fmt.Errorf("failed to create new user entry: %w", err)
+	}
+
+	// 3. Update Access Keys to point to new user
+	updateKeysQuery := `UPDATE access_keys SET username = ? WHERE username = ?`
+	_, err = tx.Exec(updateKeysQuery, newEmail, oldUsername)
+	if err != nil {
+		return "", fmt.Errorf("failed to migrat access keys: %w", err)
+	}
+
+	// 4. Delete old user
+	deleteUserQuery := `DELETE FROM users WHERE username = ?`
+	_, err = tx.Exec(deleteUserQuery, oldUsername)
+	if err != nil {
+		return "", fmt.Errorf("failed to delete old user: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return "", err
+	}
+
+	return newEmail, nil
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

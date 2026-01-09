@@ -41,7 +41,6 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("forbidden - not admin", func(t *testing.T) {
-		SetJwtKey("testkey")
 		token, err := GenerateToken("user", false)
 		require.Nil(t, err)
 
@@ -55,7 +54,6 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("success - admin", func(t *testing.T) {
-		SetJwtKey("testkey")
 		token, err := GenerateToken("admin", true)
 		require.Nil(t, err)
 
@@ -87,7 +85,6 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("method not allowed", func(t *testing.T) {
-		SetJwtKey("testkey")
 		token, err := GenerateToken("admin", true)
 		require.Nil(t, err)
 
@@ -101,7 +98,6 @@ func TestPerformanceHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("storage error", func(t *testing.T) {
-		SetJwtKey("testkey")
 		token, err := GenerateToken("admin", true)
 		require.Nil(t, err)
 

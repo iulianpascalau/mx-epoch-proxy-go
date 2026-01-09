@@ -36,6 +36,7 @@ const (
 	configFile                 = "./config.toml"
 	envFile                    = "./.env"
 	emailTemplateFile          = "./activation_email.html"
+	emailChangeTemplateFile    = "./change_email.html"
 	swaggerPath                = "./swagger/"
 	envFileVarJwtKey           = "JWT_KEY"
 	envFileVarInitialAdminUser = "INITIAL_ADMIN_USER"
@@ -287,15 +288,33 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	changeEmailTemplateBytes, err := os.ReadFile(emailChangeTemplateFile)
+	if err != nil {
+		return fmt.Errorf("failed to read email change template file: %w", err)
+	}
+
+	userCredentialsHandler, err := api.NewUserCredentialsHandler(
+		sqliteWrapper,
+		emailSender,
+		cfg.AppDomains,
+		string(changeEmailTemplateBytes),
+	)
+	if err != nil {
+		return err
+	}
+
 	handlers := map[string]http.Handler{
-		api.EndpointApiAccessKeys:   accessKeysHandler,
-		api.EndpointApiAdminUsers:   usersHandler,
-		api.EndpointApiLogin:        loginHandler,
-		api.EndpointApiPerformance:  performanceHandler,
-		api.EndpointApiRegister:     registrationHandler,
-		api.EndpointApiActivate:     registrationHandler,
-		api.EndpointCaptchaSingle:   http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
-		api.EndpointCaptchaMultiple: http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
+		api.EndpointApiAccessKeys:         accessKeysHandler,
+		api.EndpointApiAdminUsers:         usersHandler,
+		api.EndpointApiLogin:              loginHandler,
+		api.EndpointApiPerformance:        performanceHandler,
+		api.EndpointApiRegister:           registrationHandler,
+		api.EndpointApiActivate:           registrationHandler,
+		api.EndpointApiChangePassword:     userCredentialsHandler,
+		api.EndpointApiRequestEmailChange: userCredentialsHandler,
+		api.EndpointApiConfirmEmailChange: userCredentialsHandler,
+		api.EndpointCaptchaSingle:         http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
+		api.EndpointCaptchaMultiple:       http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
 		api.EndpointAppInfo: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)

@@ -33,8 +33,6 @@ func TestNewAccessKeysHandler(t *testing.T) {
 func TestAccessKeysHandler_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
-	SetJwtKey("test_key")
-
 	t.Run("method not allowed", func(t *testing.T) {
 		username := "user1"
 		token, _ := GenerateToken(username, false)
