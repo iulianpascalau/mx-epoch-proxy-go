@@ -31,10 +31,13 @@ func TestNewAPIEngine(t *testing.T) {
 	t.Run("should error if can not bind on port", func(t *testing.T) {
 		t.Parallel()
 
-		firstEngine, err := NewAPIEngine(":34343", &testscommon.HttpHandlerStub{})
+		firstEngine, err := NewAPIEngine(":0", &testscommon.HttpHandlerStub{})
 		require.Nil(t, err)
 
-		secondEngine, err := NewAPIEngine(":34343", &testscommon.HttpHandlerStub{})
+		// Get the actual address/port chosen by the OS
+		addr := firstEngine.Address()
+
+		secondEngine, err := NewAPIEngine(addr, &testscommon.HttpHandlerStub{})
 		assert.Nil(t, secondEngine)
 		assert.NotNil(t, err)
 

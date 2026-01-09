@@ -36,6 +36,7 @@ const (
 	configFile                 = "./config.toml"
 	envFile                    = "./.env"
 	emailTemplateFile          = "./activation_email.html"
+	emailChangeTemplateFile    = "./change_email.html"
 	swaggerPath                = "./swagger/"
 	envFileVarJwtKey           = "JWT_KEY"
 	envFileVarInitialAdminUser = "INITIAL_ADMIN_USER"
@@ -287,11 +288,16 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	changeEmailTemplateBytes, err := os.ReadFile(emailChangeTemplateFile)
+	if err != nil {
+		return fmt.Errorf("failed to read email change template file: %w", err)
+	}
+
 	userCredentialsHandler, err := api.NewUserCredentialsHandler(
 		sqliteWrapper,
 		emailSender,
 		cfg.AppDomains,
-		string(emailTemplateBytes),
+		string(changeEmailTemplateBytes),
 	)
 	if err != nil {
 		return err

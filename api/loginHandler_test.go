@@ -15,7 +15,6 @@ import (
 )
 
 func TestLoginHandler(t *testing.T) {
-	SetJwtKey("test_secret")
 
 	t.Run("ServeHTTP non-POST method", func(t *testing.T) {
 		handler := NewLoginHandler(&testscommon.StorerStub{})

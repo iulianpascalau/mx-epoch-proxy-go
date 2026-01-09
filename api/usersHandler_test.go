@@ -37,8 +37,6 @@ func TestNewUsersHandler(t *testing.T) {
 func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
-	SetJwtKey("test_key")
-
 	t.Run("method not allowed", func(t *testing.T) {
 		t.Parallel()
 

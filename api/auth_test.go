@@ -12,7 +12,6 @@ import (
 )
 
 func TestAuth(t *testing.T) {
-	SetJwtKey("test_secret")
 
 	t.Run("GenerateToken should return a token", func(t *testing.T) {
 		token, err := GenerateToken("user1", true)
@@ -64,7 +63,7 @@ func TestAuth(t *testing.T) {
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, _ := token.SignedString([]byte("test_secret"))
+		tokenString, _ := token.SignedString([]byte("test_key"))
 
 		_, err := ValidateToken(tokenString)
 		assert.Error(t, err)
