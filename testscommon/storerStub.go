@@ -17,6 +17,9 @@ type StorerStub struct {
 	GetUserHandler               func(username string) (*common.UsersDetails, error)
 	ActivateUserHandler          func(token string) error
 	GetPerformanceMetricsHandler func() (map[string]uint64, error)
+	UpdatePasswordHandler        func(username string, password string) error
+	RequestEmailChangeHandler    func(username string, newEmail string, token string) error
+	ConfirmEmailChangeHandler    func(token string) (string, error)
 }
 
 func (stub *StorerStub) ActivateUser(token string) error {
@@ -128,4 +131,25 @@ func (stub *StorerStub) GetPerformanceMetrics() (map[string]uint64, error) {
 // IsInterfaceNil -
 func (stub *StorerStub) IsInterfaceNil() bool {
 	return stub == nil
+}
+
+func (stub *StorerStub) UpdatePassword(username string, password string) error {
+	if stub.UpdatePasswordHandler != nil {
+		return stub.UpdatePasswordHandler(username, password)
+	}
+	return nil
+}
+
+func (stub *StorerStub) RequestEmailChange(username string, newEmail string, token string) error {
+	if stub.RequestEmailChangeHandler != nil {
+		return stub.RequestEmailChangeHandler(username, newEmail, token)
+	}
+	return nil
+}
+
+func (stub *StorerStub) ConfirmEmailChange(token string) (string, error) {
+	if stub.ConfirmEmailChangeHandler != nil {
+		return stub.ConfirmEmailChangeHandler(token)
+	}
+	return "", nil
 }

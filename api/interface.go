@@ -20,6 +20,9 @@ type KeyAccessProvider interface {
 	UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
 	GetUser(username string) (*common.UsersDetails, error)
 	GetPerformanceMetrics() (map[string]uint64, error)
+	UpdatePassword(username string, password string) error
+	RequestEmailChange(username string, newEmail string, token string) error
+	ConfirmEmailChange(token string) (string, error)
 	IsInterfaceNil() bool
 }
 

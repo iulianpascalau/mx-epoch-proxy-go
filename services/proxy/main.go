@@ -287,15 +287,28 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	userCredentialsHandler, err := api.NewUserCredentialsHandler(
+		sqliteWrapper,
+		emailSender,
+		cfg.AppDomains,
+		string(emailTemplateBytes),
+	)
+	if err != nil {
+		return err
+	}
+
 	handlers := map[string]http.Handler{
-		api.EndpointApiAccessKeys:   accessKeysHandler,
-		api.EndpointApiAdminUsers:   usersHandler,
-		api.EndpointApiLogin:        loginHandler,
-		api.EndpointApiPerformance:  performanceHandler,
-		api.EndpointApiRegister:     registrationHandler,
-		api.EndpointApiActivate:     registrationHandler,
-		api.EndpointCaptchaSingle:   http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
-		api.EndpointCaptchaMultiple: http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
+		api.EndpointApiAccessKeys:         accessKeysHandler,
+		api.EndpointApiAdminUsers:         usersHandler,
+		api.EndpointApiLogin:              loginHandler,
+		api.EndpointApiPerformance:        performanceHandler,
+		api.EndpointApiRegister:           registrationHandler,
+		api.EndpointApiActivate:           registrationHandler,
+		api.EndpointApiChangePassword:     userCredentialsHandler,
+		api.EndpointApiRequestEmailChange: userCredentialsHandler,
+		api.EndpointApiConfirmEmailChange: userCredentialsHandler,
+		api.EndpointCaptchaSingle:         http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
+		api.EndpointCaptchaMultiple:       http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
 		api.EndpointAppInfo: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
