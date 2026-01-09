@@ -34,11 +34,11 @@ export const Settings = () => {
             const token = getAccessKey();
             if (!token) return;
             try {
-                const configRes = await axios.get('/api/config', { headers: { Authorization: `Bearer ${token}` } });
+                const configRes = await axios.get('/api/app-info', { headers: { Authorization: `Bearer ${token}` } });
                 if (configRes.data) {
                     setAppInfo({
                         version: configRes.data.version || 'v1.0.0',
-                        backend: configRes.data.backend_url || window.location.origin
+                        backend: configRes.data.backend || window.location.origin
                     });
                 }
             } catch (e) {
