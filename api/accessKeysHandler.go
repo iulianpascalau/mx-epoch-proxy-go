@@ -12,22 +12,24 @@ import (
 // accessKeysHandler handles requests for managing access keys
 type accessKeysHandler struct {
 	keyAccessProvider KeyAccessProvider
+	auth              Authenticator
 }
 
 // NewAccessKeysHandler creates a new AccessKeysHandler
-func NewAccessKeysHandler(keyAccessProvider KeyAccessProvider) (*accessKeysHandler, error) {
+func NewAccessKeysHandler(keyAccessProvider KeyAccessProvider, auth Authenticator) (*accessKeysHandler, error) {
 	if check.IfNil(keyAccessProvider) {
 		return nil, errNilKeyAccessChecker
 	}
 
 	return &accessKeysHandler{
 		keyAccessProvider: keyAccessProvider,
+		auth:              auth,
 	}, nil
 }
 
 // ServeHTTP implements http.Handler interface
 func (handler *accessKeysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r)
+	claims, err := handler.auth.CheckAuth(r)
 	if err != nil {
 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return

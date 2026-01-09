@@ -24,17 +24,17 @@ const endpointUsers = "/api/admin-users"
 const endpointLogin = "/api/login"
 
 func TestKeysAccess(t *testing.T) {
-	api.SetJwtKey("test_jwt_key")
 	storer := setupStorer(t)
 	ensureAdmin(t, storer)
+	auth := api.NewJWTAuthenticator("test_jwt_key")
 
-	accessKeysHandler, err := api.NewAccessKeysHandler(storer)
+	accessKeysHandler, err := api.NewAccessKeysHandler(storer, auth)
 	require.Nil(t, err)
 
-	usersHandler, err := api.NewUsersHandler(storer)
+	usersHandler, err := api.NewUsersHandler(storer, auth)
 	require.Nil(t, err)
 
-	loginHandler := api.NewLoginHandler(storer)
+	loginHandler := api.NewLoginHandler(storer, auth)
 
 	handlers := map[string]http.Handler{
 		endpointKeys:  accessKeysHandler,

@@ -15,9 +15,10 @@ import (
 )
 
 func TestLoginHandler(t *testing.T) {
+	auth := NewJWTAuthenticator("test_key")
 
 	t.Run("ServeHTTP non-POST method", func(t *testing.T) {
-		handler := NewLoginHandler(&testscommon.StorerStub{})
+		handler := NewLoginHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodGet, "/login", nil)
 		resp := httptest.NewRecorder()
 
@@ -26,7 +27,7 @@ func TestLoginHandler(t *testing.T) {
 	})
 
 	t.Run("ServeHTTP bad request body", func(t *testing.T) {
-		handler := NewLoginHandler(&testscommon.StorerStub{})
+		handler := NewLoginHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString("invalid json"))
 		resp := httptest.NewRecorder()
 
@@ -40,7 +41,7 @@ func TestLoginHandler(t *testing.T) {
 				return nil, errors.New("invalid credentials")
 			},
 		}
-		handler := NewLoginHandler(storer)
+		handler := NewLoginHandler(storer, auth)
 
 		creds := map[string]string{"username": "user", "password": "wrong"}
 		body, _ := json.Marshal(creds)
@@ -61,7 +62,7 @@ func TestLoginHandler(t *testing.T) {
 				}, nil
 			},
 		}
-		handler := NewLoginHandler(storer)
+		handler := NewLoginHandler(storer, auth)
 
 		creds := map[string]string{"username": "user", "password": "pass"}
 		body, _ := json.Marshal(creds)
@@ -83,7 +84,7 @@ func TestLoginHandler(t *testing.T) {
 				}, nil
 			},
 		}
-		handler := NewLoginHandler(storer)
+		handler := NewLoginHandler(storer, auth)
 
 		creds := map[string]string{"username": "user", "password": "pass"}
 		body, _ := json.Marshal(creds)

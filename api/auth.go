@@ -11,22 +11,33 @@ import (
 
 const tokenExpirationTime = time.Hour
 
-var jwtKey []byte
-
-// SetJwtKey sets the key used for signing tokens
-func SetJwtKey(key string) {
-	jwtKey = []byte(key)
-}
-
-// Claims defines the JWT claims
+// Claims struct holds the JWT claims
 type Claims struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
+// Authenticator defines the behavior for authentication
+type Authenticator interface {
+	GenerateToken(username string, isAdmin bool) (string, error)
+	CheckAuth(r *http.Request) (*Claims, error)
+}
+
+// JWTAuthenticator implements Authenticator using JWT
+type JWTAuthenticator struct {
+	jwtKey []byte
+}
+
+// NewJWTAuthenticator creates a new JWTAuthenticator
+func NewJWTAuthenticator(key string) *JWTAuthenticator {
+	return &JWTAuthenticator{
+		jwtKey: []byte(key),
+	}
+}
+
 // GenerateToken generates a new JWT token
-func GenerateToken(username string, isAdmin bool) (string, error) {
+func (ja *JWTAuthenticator) GenerateToken(username string, isAdmin bool) (string, error) {
 	expirationTime := time.Now().Add(tokenExpirationTime)
 	claims := &Claims{
 		Username: username,
@@ -37,14 +48,14 @@ func GenerateToken(username string, isAdmin bool) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtKey)
+	return token.SignedString(ja.jwtKey)
 }
 
 // ValidateToken validates the token string and returns claims
-func ValidateToken(tokenString string) (*Claims, error) {
+func (ja *JWTAuthenticator) ValidateToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
+		return ja.jwtKey, nil
 	})
 	if err != nil {
 		return nil, err
@@ -58,7 +69,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 // CheckAuth validates the token from Authorization header.
 // It returns claims if valid, error otherwise.
-func CheckAuth(r *http.Request) (*Claims, error) {
+func (ja *JWTAuthenticator) CheckAuth(r *http.Request) (*Claims, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return nil, fmt.Errorf("missing authorization header")
@@ -69,5 +80,5 @@ func CheckAuth(r *http.Request) (*Claims, error) {
 		return nil, fmt.Errorf("invalid authorization header format")
 	}
 
-	return ValidateToken(bearerToken[1])
+	return ja.ValidateToken(bearerToken[1])
 }

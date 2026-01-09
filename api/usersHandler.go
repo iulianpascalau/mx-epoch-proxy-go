@@ -12,22 +12,24 @@ import (
 // usersHandler handles requests for managing users
 type usersHandler struct {
 	keyAccessProvider KeyAccessProvider
+	auth              Authenticator
 }
 
 // NewUsersHandler creates a new usersHandler instance
-func NewUsersHandler(keyAccessProvider KeyAccessProvider) (*usersHandler, error) {
+func NewUsersHandler(keyAccessProvider KeyAccessProvider, auth Authenticator) (*usersHandler, error) {
 	if check.IfNil(keyAccessProvider) {
 		return nil, errNilKeyAccessChecker
 	}
 
 	return &usersHandler{
 		keyAccessProvider: keyAccessProvider,
+		auth:              auth,
 	}, nil
 }
 
 // ServeHTTP implements http.Handler interface
 func (handler *usersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r)
+	claims, err := handler.auth.CheckAuth(r)
 	if err != nil {
 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return

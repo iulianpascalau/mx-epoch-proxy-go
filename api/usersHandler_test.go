@@ -16,10 +16,12 @@ import (
 func TestNewUsersHandler(t *testing.T) {
 	t.Parallel()
 
+	auth := NewJWTAuthenticator("test_key")
+
 	t.Run("nil key access provider", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewUsersHandler(nil)
+		handler, err := NewUsersHandler(nil, auth)
 		assert.Equal(t, errNilKeyAccessChecker, err)
 		assert.Nil(t, handler)
 	})
@@ -28,7 +30,7 @@ func TestNewUsersHandler(t *testing.T) {
 		t.Parallel()
 
 		provider := &testscommon.StorerStub{}
-		handler, err := NewUsersHandler(provider)
+		handler, err := NewUsersHandler(provider, auth)
 		assert.Nil(t, err)
 		assert.NotNil(t, handler)
 	})
@@ -37,12 +39,14 @@ func TestNewUsersHandler(t *testing.T) {
 func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
+	auth := NewJWTAuthenticator("test_key")
+
 	t.Run("method not allowed", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
-		handler, _ := NewUsersHandler(&testscommon.StorerStub{})
+		handler, _ := NewUsersHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodTrace, "/api/admin-users", nil)
 		resp := httptest.NewRecorder()
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -54,7 +58,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("unauthorized - missing token", func(t *testing.T) {
 		t.Parallel()
 
-		handler, _ := NewUsersHandler(&testscommon.StorerStub{})
+		handler, _ := NewUsersHandler(&testscommon.StorerStub{}, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
 		resp := httptest.NewRecorder()
 
@@ -65,10 +69,10 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("forbidden - not admin", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("user", false)
+		token, _ := auth.GenerateToken("user", false)
 
 		provider := &testscommon.StorerStub{}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -80,10 +84,10 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("forbidden - not admin for a post method", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("user", false)
+		token, _ := auth.GenerateToken("user", false)
 
 		provider := &testscommon.StorerStub{}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 		req := httptest.NewRequest(http.MethodPost, "/api/admin-users", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -95,10 +99,10 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("forbidden - not admin for querying another user", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("user", false)
+		token, _ := auth.GenerateToken("user", false)
 
 		provider := &testscommon.StorerStub{}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users?username=user2", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -110,7 +114,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("authorized - get users", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		provider := &testscommon.StorerStub{
 			GetAllUsersHandler: func() (map[string]common.UsersDetails, error) {
@@ -119,7 +123,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 				}, nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -137,14 +141,14 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("authorized - get user details", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("user1", false)
+		token, _ := auth.GenerateToken("user1", false)
 
 		provider := &testscommon.StorerStub{
 			GetUserHandler: func(username string) (*common.UsersDetails, error) {
 				return &common.UsersDetails{Username: username, IsAdmin: false}, nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users?username=user1", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -162,14 +166,14 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("error getting users", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		provider := &testscommon.StorerStub{
 			GetAllUsersHandler: func() (map[string]common.UsersDetails, error) {
 				return nil, errors.New("db error")
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 		req := httptest.NewRequest(http.MethodGet, "/api/admin-users", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -181,7 +185,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - success", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		expectedUsername := "user2"
 		expectedPassword := "password"
@@ -196,7 +200,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 				return nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		reqBody := addUserRequest{
 			Username:    expectedUsername,
@@ -216,10 +220,10 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - invalid request body", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		provider := &testscommon.StorerStub{}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/admin-users", bytes.NewBufferString("invalid json"))
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -232,10 +236,10 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("post - missing username", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		provider := &testscommon.StorerStub{}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		reqBody := addUserRequest{
 			Password: "pass",
@@ -252,7 +256,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("put fails if no username is provided", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		expectedPassword := "newpassword"
 		expectedMaxRequests := uint64(1000)
@@ -263,7 +267,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 				return nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		reqBody := addUserRequest{
 			Username:    "",
@@ -283,7 +287,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("put - success", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		expectedUsername := "user2"
 		expectedPassword := "newpassword"
@@ -298,7 +302,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 				return nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		reqBody := addUserRequest{
 			Username:    expectedUsername,
@@ -318,7 +322,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("delete fails if no username is provided", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		provider := &testscommon.StorerStub{
 			RemoveUserHandler: func(username string) error {
@@ -326,7 +330,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 				return nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		req := httptest.NewRequest(http.MethodDelete, "/api/admin-users?username=", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -339,7 +343,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 	t.Run("delete - success", func(t *testing.T) {
 		t.Parallel()
 
-		token, _ := GenerateToken("admin", true)
+		token, _ := auth.GenerateToken("admin", true)
 
 		expectedUsername := "user2"
 
@@ -349,7 +353,7 @@ func TestUsersHandler_ServeHTTP(t *testing.T) {
 				return nil
 			},
 		}
-		handler, _ := NewUsersHandler(provider)
+		handler, _ := NewUsersHandler(provider, auth)
 
 		req := httptest.NewRequest(http.MethodDelete, "/api/admin-users?username="+expectedUsername, nil)
 		req.Header.Set("Authorization", "Bearer "+token)

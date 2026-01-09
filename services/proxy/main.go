@@ -232,20 +232,21 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	accessKeysHandler, err := api.NewAccessKeysHandler(sqliteWrapper)
+	authenticator := api.NewJWTAuthenticator(envFileContents[envFileVarJwtKey])
+
+	accessKeysHandler, err := api.NewAccessKeysHandler(sqliteWrapper, authenticator)
 	if err != nil {
 		return err
 	}
 
-	usersHandler, err := api.NewUsersHandler(sqliteWrapper)
+	usersHandler, err := api.NewUsersHandler(sqliteWrapper, authenticator)
 	if err != nil {
 		return err
 	}
 
-	api.SetJwtKey(envFileContents[envFileVarJwtKey])
-	loginHandler := api.NewLoginHandler(sqliteWrapper)
+	loginHandler := api.NewLoginHandler(sqliteWrapper, authenticator)
 
-	performanceHandler, err := api.NewPerformanceHandler(sqliteWrapper)
+	performanceHandler, err := api.NewPerformanceHandler(sqliteWrapper, authenticator)
 	if err != nil {
 		return err
 	}
@@ -298,6 +299,7 @@ func run(ctx *cli.Context) error {
 		emailSender,
 		cfg.AppDomains,
 		string(changeEmailTemplateBytes),
+		authenticator,
 	)
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ type userCredentialsHandler struct {
 	emailSender       EmailSender
 	appDomainsConfig  config.AppDomainsConfig
 	htmlTemplate      string
+	auth              Authenticator
 }
 
 // NewUserCredentialsHandler creates a new userCredentialsHandler instance
@@ -24,6 +25,7 @@ func NewUserCredentialsHandler(
 	emailSender EmailSender,
 	appDomainsConfig config.AppDomainsConfig,
 	htmlTemplate string,
+	auth Authenticator,
 ) (*userCredentialsHandler, error) {
 	if check.IfNil(keyAccessProvider) {
 		return nil, errNilKeyAccessChecker
@@ -40,6 +42,7 @@ func NewUserCredentialsHandler(
 		emailSender:       emailSender,
 		appDomainsConfig:  appDomainsConfig,
 		htmlTemplate:      htmlTemplate,
+		auth:              auth,
 	}, nil
 }
 
@@ -75,7 +78,7 @@ type changePasswordRequest struct {
 }
 
 func (handler *userCredentialsHandler) handleChangePassword(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r)
+	claims, err := handler.auth.CheckAuth(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -117,7 +120,7 @@ type changeEmailRequest struct {
 }
 
 func (handler *userCredentialsHandler) handleRequestEmailChange(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r)
+	claims, err := handler.auth.CheckAuth(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

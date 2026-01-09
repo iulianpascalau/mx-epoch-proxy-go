@@ -12,22 +12,24 @@ import (
 // performanceHandler handles requests for performance metrics
 type performanceHandler struct {
 	keyAccessProvider KeyAccessProvider
+	auth              Authenticator
 }
 
 // NewPerformanceHandler creates a new performanceHandler instance
-func NewPerformanceHandler(keyAccessProvider KeyAccessProvider) (*performanceHandler, error) {
+func NewPerformanceHandler(keyAccessProvider KeyAccessProvider, auth Authenticator) (*performanceHandler, error) {
 	if check.IfNil(keyAccessProvider) {
 		return nil, errNilKeyAccessChecker
 	}
 
 	return &performanceHandler{
 		keyAccessProvider: keyAccessProvider,
+		auth:              auth,
 	}, nil
 }
 
 // ServeHTTP implements http.Handler interface
 func (handler *performanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	claims, err := CheckAuth(r)
+	claims, err := handler.auth.CheckAuth(r)
 	if err != nil {
 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return
