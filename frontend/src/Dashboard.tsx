@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -420,16 +420,16 @@ export const Dashboard = () => {
                             <h2 className="text-xl font-semibold flex items-center gap-2">
                                 <Key className="text-indigo-400" /> Access Keys
                             </h2>
-                            <div className="flex gap-3 w-full md:w-auto">
+                            <div className="flex gap-3 w-full md:w-auto flex-wrap md:flex-nowrap">
                                 <button
                                     onClick={() => window.location.reload()}
-                                    className="flex-1 md:flex-none justify-center bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                    className="flex-1 md:flex-none justify-center bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all whitespace-nowrap"
                                 >
                                     <RotateCcw size={16} /> Refresh Data
                                 </button>
                                 <button
                                     onClick={() => setShowKeyModal(true)}
-                                    className="flex-1 md:flex-none justify-center bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
+                                    className="flex-1 md:flex-none justify-center bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm transition-all whitespace-nowrap"
                                 >
                                     <Plus size={16} /> Generate Key
                                 </button>
@@ -706,18 +706,25 @@ export const Dashboard = () => {
                     <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
                         <BookOpen className="text-indigo-400" /> API Documentation
                     </h2>
-                    <div className="flex flex-col items-center justify-center gap-6 py-4">
-                        <div className="text-center">
-                            <p className="text-slate-400 mb-2">Swagger Interface</p>
-                            <a
-                                href={`${appInfo.backend}/swagger/`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xl text-indigo-400 hover:text-indigo-300 underline decoration-indigo-500/50 underline-offset-4 font-medium transition-colors"
-                            >
-                                {appInfo.backend}/swagger/
-                            </a>
-                        </div>
+                    <div className="flex flex-col items-center justify-center gap-4 py-4 w-full max-w-md mx-auto">
+                        <a
+                            href={`${appInfo.backend}/swagger/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between w-full md:w-80 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+                        >
+                            <span>Go to Swagger Interface</span>
+                            <ExternalLink size={18} />
+                        </a>
+                        <a
+                            href="https://docs.multiversx.com/integrators/deep-history-squad/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between w-full md:w-80 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-slate-500/10 hover:shadow-slate-500/20"
+                        >
+                            <span>Official Deep History Docs</span>
+                            <ExternalLink size={18} />
+                        </a>
                         <div className="text-center w-full border-t border-white/5 pt-6">
                             <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
                                 Build {appInfo.version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
@@ -768,6 +775,7 @@ export const Dashboard = () => {
                                         <input
                                             type="text" required
                                             readOnly={isEditingUser}
+                                            autoCapitalize="none"
                                             className={`w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none ${isEditingUser ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             value={newUserState.username}
                                             onChange={e => setNewUserState({ ...newUserState, username: e.target.value })}
@@ -842,7 +850,7 @@ export const Dashboard = () => {
                             </div>
 
                             {/* Add Key Form */}
-                            <form onSubmit={handleCreateKey} className="mb-6 flex gap-2">
+                            <form onSubmit={handleCreateKey} className="mb-6 flex flex-col md:flex-row gap-2">
                                 <input
                                     type="text"
                                     className="flex-1 bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
