@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Lock, BookOpen, UserCog } from 'lucide-react';
+import { LogOut, Lock, UserCog } from 'lucide-react';
 import axios from 'axios';
 
 export const Settings = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState<AuthUser | null>(null);
-    const [appInfo, setAppInfo] = useState<{ version: string, backend: string } | null>(null);
 
     // Security Settings State
     const [passState, setPassState] = useState({ oldPass: '', newPass: '', confirmPass: '' });
@@ -28,24 +27,6 @@ export const Settings = () => {
             }
         }
         setUser(userInfo);
-
-        // Fetch App Info (for Swagger/Version)
-        const fetchAppInfo = async () => {
-            const token = getAccessKey();
-            if (!token) return;
-            try {
-                const configRes = await axios.get('/api/app-info', { headers: { Authorization: `Bearer ${token}` } });
-                if (configRes.data) {
-                    setAppInfo({
-                        version: configRes.data.version || 'v1.0.0',
-                        backend: configRes.data.backend || window.location.origin
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to fetch app config", e);
-            }
-        };
-        fetchAppInfo();
 
     }, [navigate]);
 
@@ -206,34 +187,6 @@ export const Settings = () => {
                         </div>
                     </div>
                 </div>
-
-                {/* API Info Panel */}
-                {appInfo && (
-                    <div className="glass-panel p-6">
-                        <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
-                            <BookOpen className="text-indigo-400" /> API Documentation
-                        </h2>
-                        <div className="flex flex-col items-center justify-center gap-6 py-4">
-                            <div className="text-center">
-                                <p className="text-slate-400 mb-2">Swagger Interface</p>
-                                <a
-                                    href={`${appInfo.backend}/swagger/`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xl text-indigo-400 hover:text-indigo-300 underline decoration-indigo-500/50 underline-offset-4 font-medium transition-colors"
-                                >
-                                    {appInfo.backend}/swagger/
-                                </a>
-                            </div>
-                            <div className="text-center w-full border-t border-white/5 pt-6">
-                                <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
-                                    Build {appInfo.version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
-                                </p>
-                            </div>
-
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     )
