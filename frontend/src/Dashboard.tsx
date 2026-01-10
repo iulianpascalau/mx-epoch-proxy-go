@@ -775,6 +775,7 @@ export const Dashboard = () => {
                                         <input
                                             type="text" required
                                             readOnly={isEditingUser}
+                                            autoCapitalize="none"
                                             className={`w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none ${isEditingUser ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             value={newUserState.username}
                                             onChange={e => setNewUserState({ ...newUserState, username: e.target.value })}
