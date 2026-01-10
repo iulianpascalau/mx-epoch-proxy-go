@@ -850,7 +850,7 @@ export const Dashboard = () => {
                             </div>
 
                             {/* Add Key Form */}
-                            <form onSubmit={handleCreateKey} className="mb-6 flex gap-2">
+                            <form onSubmit={handleCreateKey} className="mb-6 flex flex-col md:flex-row gap-2">
                                 <input
                                     type="text"
                                     className="flex-1 bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
