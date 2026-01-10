@@ -2,7 +2,7 @@ SHELL := $(shell which bash)
 
 .DEFAULT_GOAL := help
 
-.PHONY: clean-test test build run
+.PHONY: clean-test test build run-backend run-frontend run-solution
 
 help:
 	@echo -e ""
@@ -27,6 +27,15 @@ build:
 	-o ${binary} \
 	-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
 
-run: build
+run-backend: build
 	cd ./services/proxy && \
 		./${binary} --log-level="*:DEBUG"
+
+run-frontend:
+	cd frontend && \
+	export NVM_DIR="$$HOME/.nvm" && \
+	[ -s "$$NVM_DIR/nvm.sh" ] && \. "$$NVM_DIR/nvm.sh" && \
+	nvm exec 22.12.0 npm run dev
+
+run-solution:
+	$(MAKE) -j2 run-backend run-frontend
