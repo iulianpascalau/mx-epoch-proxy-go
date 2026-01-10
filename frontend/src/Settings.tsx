@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Lock, UserCog } from 'lucide-react';
+import { LogOut, Lock, UserCog, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 
 export const Settings = () => {
@@ -80,8 +80,8 @@ export const Settings = () => {
     return (
         <div className="min-h-screen p-6 md:p-12 max-w-4xl mx-auto">
             {/* Header */}
-            <div className="glass-panel p-6 mb-8 flex justify-between items-center">
-                <div className="flex items-center gap-4">
+            <div className="glass-panel p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
+                <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
                         <UserCog size={20} />
                     </div>
@@ -90,9 +90,10 @@ export const Settings = () => {
                         <span className="text-sm text-slate-400">Manage your security and account details</span>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={() => navigate('/')} className="px-4 py-2 hover:bg-white/5 rounded-lg transition-colors text-slate-300">
-                        Back to Dashboard
+                <div className="flex gap-3 w-full md:w-auto md:justify-end">
+                    <button onClick={() => navigate('/')} className="flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-lg transition-colors text-slate-300">
+                        <ArrowLeft size={18} />
+                        <span>Back</span>
                     </button>
                     <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-slate-300">
                         <LogOut size={18} />
