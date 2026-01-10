@@ -2,7 +2,7 @@ SHELL := $(shell which bash)
 
 .DEFAULT_GOAL := help
 
-.PHONY: clean-test test build run-backend run-frontend
+.PHONY: clean-test test build run-backend run-frontend run-solution
 
 help:
 	@echo -e ""
