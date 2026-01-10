@@ -348,22 +348,22 @@ export const Dashboard = () => {
     return (
         <div className="min-h-screen p-6 md:p-12 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="glass-panel p-6 mb-8 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
                         {user.is_admin ? <Shield size={20} /> : <User size={20} />}
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold">{user.username}</h1>
+                        <h1 className="text-xl font-bold truncate max-w-[200px] md:max-w-none">{user.username}</h1>
                         <span className="text-sm text-slate-400">{user.is_admin ? 'Administrator' : 'Standard User'}</span>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={() => navigate('/settings')} className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-slate-300">
+                <div className="flex gap-3 w-full md:w-auto md:justify-end items-center">
+                    <button onClick={() => navigate('/settings')} className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-slate-300 whitespace-nowrap">
                         <UserCog size={18} />
                         <span>Settings</span>
                     </button>
-                    <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-slate-300">
+                    <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-slate-300 whitespace-nowrap">
                         <LogOut size={18} />
                         <span>Sign Out</span>
                     </button>
@@ -380,7 +380,7 @@ export const Dashboard = () => {
                     {/* Account Status Panel (Standard Users) */}
                     {!user.is_admin && users[user.username.toLowerCase()] && (
                         <div className="glass-panel p-6 col-span-1 lg:col-span-2">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <Shield className="text-emerald-400" /> Account Status
                                 </h2>
@@ -660,7 +660,7 @@ export const Dashboard = () => {
 
             {user.is_admin && (
                 <div className="glass-panel p-6 col-span-1 lg:col-span-2">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
                             <ArrowUp className="text-indigo-400" /> Response Time Distribution
                         </h2>
