@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/testsCommon"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,28 +14,46 @@ func TestNewSQLiteWrapper(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath)
-	require.NoError(t, err)
-	defer wrapper.Close()
+	t.Run("nil address handler", func(t *testing.T) {
+		wrapper, err := NewSQLiteWrapper(dbPath, nil)
+		require.Nil(t, wrapper)
+		require.Equal(t, errNilAddressHandler, err)
+		assert.True(t, wrapper.IsInterfaceNil())
+	})
 
-	require.FileExists(t, dbPath)
+	t.Run("success", func(t *testing.T) {
+		wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+		require.NoError(t, err)
+		defer func() {
+			_ = wrapper.Close()
+		}()
+
+		require.FileExists(t, dbPath)
+		assert.False(t, wrapper.IsInterfaceNil())
+	})
 }
 
 func TestSQLiteWrapper_AddAndGet(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath)
+	mockAddr := &testsCommon.AddressHandlerStub{
+		GetAddressAtIndexHandler: func(index uint32) (string, error) {
+			return fmt.Sprintf("mock-addr-%d", index), nil
+		},
+	}
+
+	wrapper, err := NewSQLiteWrapper(dbPath, mockAddr)
 	require.NoError(t, err)
-	defer wrapper.Close()
+	defer func() {
+		_ = wrapper.Close()
+	}()
 
 	// Test Add
 	id, address, err := wrapper.Add()
 	require.NoError(t, err)
 	require.NotZero(t, id)
-	require.NotEmpty(t, address)
-	require.True(t, len(address) > 2)
-	require.Equal(t, "0x", address[:2])
+	require.Equal(t, fmt.Sprintf("mock-addr-%d", id), address)
 
 	// Test Get
 	entry, err := wrapper.Get(id)
@@ -49,9 +70,11 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath)
+	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
 	require.NoError(t, err)
-	defer wrapper.Close()
+	defer func() {
+		_ = wrapper.Close()
+	}()
 
 	// Add multiple entries
 	count := 5
@@ -82,11 +105,43 @@ func TestSQLiteWrapper_GetNonExistent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath)
+	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
 	require.NoError(t, err)
-	defer wrapper.Close()
+	defer func() {
+		_ = wrapper.Close()
+	}()
 
 	_, err = wrapper.Get(999)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "entry with id 999 not found")
+}
+
+func TestSQLiteWrapper_Add_ErrorGeneratingAddress(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	expectedErr := fmt.Errorf("gen error")
+	mockAddr := &testsCommon.AddressHandlerStub{
+		GetAddressAtIndexHandler: func(index uint32) (string, error) {
+			return "", expectedErr
+		},
+	}
+
+	wrapper, err := NewSQLiteWrapper(dbPath, mockAddr)
+	require.NoError(t, err)
+	defer func() {
+		_ = wrapper.Close()
+	}()
+
+	id, addr, err := wrapper.Add()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to generate address")
+	require.Contains(t, err.Error(), expectedErr.Error())
+	require.Zero(t, id)
+	require.Empty(t, addr)
+
+	// Verify nothing was inserted (transaction rolled back)
+	entries, err := wrapper.GetAll()
+	require.NoError(t, err)
+	require.Empty(t, entries)
 }
