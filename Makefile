@@ -39,3 +39,14 @@ run-frontend:
 
 run-solution:
 	$(MAKE) -j2 run-backend run-frontend
+
+binary-crypto-payment = crypto-payment-server
+
+build-crypto-payment:
+	cd ./services/crypto-payment && go build -v \
+	-o ${binary-crypto-payment} \
+	-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
+
+run-crypto-payment: build-crypto-payment
+	cd ./services/crypto-payment && \
+		./${binary-crypto-payment} --log-level="*:DEBUG"

@@ -112,8 +112,8 @@ func main() {
 	}
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Multiversx Team",
-			Email: "contact@multiversx.com",
+			Name:  "Iulian Pascalau",
+			Email: "iulian.pascalau@gmail.com",
 		},
 	}
 
