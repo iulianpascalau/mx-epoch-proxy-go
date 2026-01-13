@@ -19,21 +19,26 @@ pub trait RequestsContract {
     }
 
     /// Add requests for a given ID - payable only in EGLD
-    /// The number of requests added = (EGLD amount transferred) * num_requests_per_egld
+    /// The number of requests added = (EGLD amount transferred in regular units) * num_requests_per_egld
+    /// Example: 2.5 EGLD * 100 rate = 250 requests
     #[payable("EGLD")]
     #[endpoint(addRequests)]
     fn add_requests(&self, id: u64) {
         let payment = self.call_value().egld_value();
-        let amount = payment.clone_value();
+        let amount_wei = payment.clone_value();
 
-        require!(amount > 0, "Payment amount must be greater than 0");
+        require!(amount_wei > 0, "Payment amount must be greater than 0");
+
+        // Convert from wei to EGLD (1 EGLD = 10^18 wei)
+        let one_egld = BigUint::from(1_000_000_000_000_000_000u64);
+        let amount_egld = amount_wei / one_egld;
 
         let num_requests_per_egld = self.num_requests_per_egld().get();
-        let requests_to_add = amount * num_requests_per_egld;
+        let requests_to_add = amount_egld * num_requests_per_egld;
 
         self.requests(&id).update(|requests| *requests += requests_to_add);
 
-        self.add_requests_event(&id, &amount, &requests_to_add);
+        self.add_requests_event(&id, &amount_wei, &requests_to_add);
     }
 
     /// Get the number of requests for a given ID

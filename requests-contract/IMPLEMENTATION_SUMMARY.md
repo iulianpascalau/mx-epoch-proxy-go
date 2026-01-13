@@ -88,16 +88,16 @@ requests-contract/
 
 ## 📊 Contract Specifications
 
-| Aspect | Details |
-|--------|---------|
-| Language | Rust |
-| Framework | MultiversX SC v0.54.0 |
-| Network | Devnet, Testnet, Mainnet |
-| Token | EGLD only |
-| Owner Control | withdrawAll function |
-| State Variables | 2 (numRequestsPerEgld, requests map) |
+| Aspect           | Details                                         |
+|------------------|-------------------------------------------------|
+| Language         | Rust                                            |
+| Framework        | MultiversX SC v0.54.0                           |
+| Network          | Devnet, Testnet, Mainnet                        |
+| Token            | EGLD only                                       |
+| Owner Control    | withdrawAll function                            |
+| State Variables  | 2 (numRequestsPerEgld, requests map)            |
 | Public Functions | 4 (init, addRequests, getRequests, withdrawAll) |
-| Events | 2 (addRequests, withdraw) |
+| Events           | 2 (addRequests, withdraw)                       |
 
 ---
 

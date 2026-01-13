@@ -58,7 +58,7 @@
       },
       "expect": {
         "out": [
-          "100000000000000000000"
+          "100"
         ]
       }
     },
@@ -77,6 +77,22 @@
       },
       "expect": {
         "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_after_change",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "42"
+        ]
+      },
+      "expect": {
+        "out": [
+          "100"
+        ]
       }
     },
     {
@@ -109,7 +125,7 @@
       },
       "expect": {
         "out": [
-          "300000000000000000000"
+          "300"
         ]
       }
     }

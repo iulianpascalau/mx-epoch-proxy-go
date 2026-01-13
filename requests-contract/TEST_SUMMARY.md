@@ -8,13 +8,13 @@ A comprehensive test suite with **15 test cases** covering all contract function
 
 ## 📊 Test Statistics
 
-| Category | Count |
-|----------|-------|
-| Test Functions | 15 |
-| Scenario Files | 15 |
-| Functions Tested | 5 |
-| Error Cases | 5 |
-| Integration Tests | 2 |
+| Category          | Count |
+|-------------------|-------|
+| Test Functions    | 15    |
+| Scenario Files    | 15    |
+| Functions Tested  | 5     |
+| Error Cases       | 5     |
+| Integration Tests | 2     |
 
 ---
 
@@ -155,13 +155,13 @@ cargo test -- --test-threads=1
 
 ## ✅ Coverage Matrix
 
-| Function | Valid | Invalid | Access | Edge | Integration |
-|----------|-------|---------|--------|------|-------------|
-| init | ✅ | ✅ | - | - | ✅ |
-| addRequests | ✅ | - | - | ✅ | ✅ |
-| getRequests | ✅ | - | - | ✅ | ✅ |
-| changeNumRequestsPerEGLD | ✅ | ✅ | ✅ | - | ✅ |
-| withdrawAll | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Function                 | Valid | Invalid | Access | Edge  | Integration |
+|--------------------------|-------|---------|--------|-------|-------------|
+| init                     | ✅     | ✅       | -      | -     | ✅           |
+| addRequests              | ✅     | -       | -      | ✅     | ✅           |
+| getRequests              | ✅     | -       | -      | ✅     | ✅           |
+| changeNumRequestsPerEGLD | ✅     | ✅       | ✅      | -     | ✅           |
+| withdrawAll              | ✅     | ✅       | ✅      | ✅     | ✅           |
 
 ---
 

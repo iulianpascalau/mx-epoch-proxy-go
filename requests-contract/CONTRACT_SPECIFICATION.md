@@ -39,8 +39,8 @@
 **Gas Estimate**: ~5,000 gas
 
 #### Parameters
-| Name | Type | Description |
-|------|------|-------------|
+| Name               | Type    | Description                         |
+|--------------------|---------|-------------------------------------|
 | numRequestsPerEgld | BigUint | Exchange rate (requests per 1 EGLD) |
 
 #### Validation
@@ -62,8 +62,8 @@ require!(numRequestsPerEgld > 0, "Number of requests per EGLD must be non-zero")
 - None
 
 #### Error Cases
-| Error | Cause | Resolution |
-|-------|-------|-----------|
+| Error                                          | Cause                  | Resolution             |
+|------------------------------------------------|------------------------|------------------------|
 | "Number of requests per EGLD must be non-zero" | numRequestsPerEgld = 0 | Provide positive value |
 
 ---
@@ -77,9 +77,9 @@ require!(numRequestsPerEgld > 0, "Number of requests per EGLD must be non-zero")
 **Annotation**: `#[payable("EGLD")]` `#[endpoint(addRequests)]`
 
 #### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| id | u64 | User identifier (0 to 2^64-1) |
+| Name   | Type   | Description                   |
+|--------|--------|-------------------------------|
+| id     | u64    | User identifier (0 to 2^64-1) |
 
 #### Payment
 - **Token**: EGLD only
@@ -93,16 +93,17 @@ require!(payment_amount > 0, "Payment amount must be greater than 0")
 
 #### Logic
 ```
-1. Get EGLD payment amount from call_value()
+1. Get EGLD payment amount from call_value() (in wei)
 2. Validate amount > 0
-3. Calculate: requests_to_add = payment_amount * numRequestsPerEgld
-4. Update: requests[id] += requests_to_add
-5. Emit AddRequests event
-6. EGLD remains in contract (not transferred)
+3. Convert wei to EGLD: amount_egld = amount_wei / 10^18
+4. Calculate: requests_to_add = amount_egld * numRequestsPerEgld
+5. Update: requests[id] += requests_to_add
+6. Emit AddRequests event
+7. EGLD remains in contract (not transferred)
 ```
 
 #### Storage Changes
-- `requests[id]` ← `requests[id]` + (payment_amount * numRequestsPerEgld)
+- `requests[id]` ← `requests[id]` + ((amount_wei / 10^18) * numRequestsPerEgld)
 
 #### Events
 ```
@@ -115,8 +116,8 @@ Data:
 ```
 
 #### Error Cases
-| Error | Cause | Resolution |
-|-------|-------|-----------|
+| Error                                   | Cause                  | Resolution                 |
+|-----------------------------------------|------------------------|----------------------------|
 | "Payment amount must be greater than 0" | No EGLD sent or 0 EGLD | Send EGLD with transaction |
 
 #### Example Execution
@@ -127,12 +128,12 @@ Input:
   - numRequestsPerEgld = 100
 
 Calculation:
-  - requests_to_add = 2500000000000000000 * 100
-  - requests_to_add = 250000000000000000000
+  - amount_egld = 2500000000000000000 / 1000000000000000000 = 2.5
+  - requests_to_add = 2.5 * 100 = 250
 
 Result:
-  - requests[42] += 250000000000000000000
-  - Event emitted: addRequests(42, 2500000000000000000, 250000000000000000000)
+  - requests[42] += 250
+  - Event emitted: addRequests(42, 2500000000000000000, 250)
 ```
 
 ---
@@ -146,13 +147,13 @@ Result:
 **Annotation**: `#[view(getRequests)]`
 
 #### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| id | u64 | User identifier |
+| Name   | Type | Description     |
+|--------|------|-----------------|
+| id     | u64  | User identifier |
 
 #### Return Value
-| Type | Description |
-|------|-------------|
+| Type    | Description                                            |
+|---------|--------------------------------------------------------|
 | BigUint | Current request balance for user (0 if never credited) |
 
 #### Logic
@@ -194,8 +195,8 @@ Scenarios:
 **Annotation**: `#[endpoint(changeNumRequestsPerEGLD)]`
 
 #### Parameters
-| Name | Type | Description |
-|------|------|-------------|
+| Name                  | Type    | Description                             |
+|-----------------------|---------|-----------------------------------------|
 | newNumRequestsPerEGLD | BigUint | New exchange rate (requests per 1 EGLD) |
 
 #### Access Control
@@ -229,9 +230,9 @@ Data:
 ```
 
 #### Error Cases
-| Error | Cause | Resolution |
-|-------|-------|-----------|
-| "Only the owner can change the exchange rate" | Caller is not owner | Use owner's wallet |
+| Error                                          | Cause                     | Resolution             |
+|------------------------------------------------|---------------------------|------------------------|
+| "Only the owner can change the exchange rate"  | Caller is not owner       | Use owner's wallet     |
 | "Number of requests per EGLD must be non-zero" | newNumRequestsPerEGLD = 0 | Provide positive value |
 
 #### Example Execution
@@ -294,10 +295,10 @@ Data:
 ```
 
 #### Error Cases
-| Error | Cause | Resolution |
-|-------|-------|-----------|
-| "Only the owner can withdraw" | Caller is not owner | Use owner's wallet |
-| "No EGLD to withdraw" | Contract balance = 0 | Wait for users to send EGLD |
+| Error                         | Cause                | Resolution                  |
+|-------------------------------|----------------------|-----------------------------|
+| "Only the owner can withdraw" | Caller is not owner  | Use owner's wallet          |
+| "No EGLD to withdraw"         | Contract balance = 0 | Wait for users to send EGLD |
 
 #### Example Execution
 ```
@@ -419,11 +420,12 @@ After addRequests(99, 2 EGLD):
 ### BigUint Operations
 - All amounts use `BigUint` (arbitrary precision unsigned integers)
 - No overflow possible (BigUint grows as needed)
-- Multiplication: `payment_amount * numRequestsPerEgld`
+- Division: `payment_amount_wei / 10^18` to convert to EGLD
+- Multiplication: `amount_egld * numRequestsPerEgld`
 
 ### EGLD Denomination
 - 1 EGLD = 10^18 wei
-- All contract operations use wei internally
+- Payments received in wei, converted to EGLD for calculation
 - Example: 2.5 EGLD = 2500000000000000000 wei
 
 ### Example Calculation
@@ -431,10 +433,13 @@ After addRequests(99, 2 EGLD):
 User sends: 2.5 EGLD = 2500000000000000000 wei
 numRequestsPerEgld: 100
 
-requests_to_add = 2500000000000000000 * 100
-                = 250000000000000000000
+Step 1: Convert wei to EGLD
+  amount_egld = 2500000000000000000 / 1000000000000000000 = 2.5
 
-This is 250 * 10^18, representing 250 requests
+Step 2: Calculate requests
+  requests_to_add = 2.5 * 100 = 250
+
+Result: User receives 250 requests
 ```
 
 ---
@@ -472,11 +477,11 @@ This is 250 * 10^18, representing 250 requests
 
 ## Gas Estimates
 
-| Function | Operation | Gas Cost |
-|----------|-----------|----------|
-| init | Storage write | ~5,000 |
-| addRequests | Storage read + write + event | ~50,000 |
-| getRequests | Storage read | ~2,500 |
+| Function    | Operation                       | Gas Cost |
+|-------------|---------------------------------|----------|
+| init        | Storage write                   | ~5,000   |
+| addRequests | Storage read + write + event    | ~50,000  |
+| getRequests | Storage read                    | ~2,500   |
 | withdrawAll | Storage read + transfer + event | ~100,000 |
 
 ---
@@ -614,9 +619,9 @@ Data:
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2025-01-13 | Initial release |
+| Version  | Date       | Changes         |
+|----------|------------|-----------------|
+| 1.0.0    | 2025-01-13 | Initial release |
 
 ---
 
