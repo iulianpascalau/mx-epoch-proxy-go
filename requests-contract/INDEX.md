@@ -161,16 +161,16 @@ mxpy contract call <contract-address> \
 
 ## 📊 Contract Specifications
 
-| Feature        | Details                                         |
-|----------------|-------------------------------------------------|
-| Language       | Rust                                            |
-| Framework      | MultiversX SC v0.54.0                           |
-| Networks       | Devnet, Testnet, Mainnet                        |
-| Token          | EGLD                                            |
-| Functions      | 4 (init, addRequests, getRequests, withdrawAll) |
-| Events         | 2 (addRequests, withdraw)                       |
-| Storage        | 2 mappers (numRequestsPerEgld, requests)        |
-| Access Control | Owner-only withdrawal                           |
+| Feature | Details |
+|---------|---------|
+| Language | Rust |
+| Framework | MultiversX SC v0.54.0 |
+| Networks | Devnet, Testnet, Mainnet |
+| Token | EGLD |
+| Functions | 4 (init, addRequests, getRequests, withdrawAll) |
+| Events | 2 (addRequests, withdraw) |
+| Storage | 2 mappers (numRequestsPerEgld, requests) |
+| Access Control | Owner-only withdrawal |
 
 ---
 
@@ -244,11 +244,11 @@ mxpy contract call <contract-address> \
 
 ## 🔗 Network Endpoints
 
-| Network  | URL                                | Chain ID |
-|----------|------------------------------------|----------|
-| Devnet   | https://devnet-api.multiversx.com  | D        |
-| Testnet  | https://testnet-api.multiversx.com | T        |
-| Mainnet  | https://api.multiversx.com         | 1        |
+| Network | URL | Chain ID |
+|---------|-----|----------|
+| Devnet | https://devnet-api.multiversx.com | D |
+| Testnet | https://testnet-api.multiversx.com | T |
+| Mainnet | https://api.multiversx.com | 1 |
 
 ---
 

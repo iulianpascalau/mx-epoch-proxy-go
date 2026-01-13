@@ -9,6 +9,7 @@ pub trait RequestsContract {
     fn init(&self, num_requests_per_egld: BigUint) {
         require!(num_requests_per_egld > 0, "Number of requests per EGLD must be non-zero");
         self.num_requests_per_egld().set(num_requests_per_egld);
+        self.is_paused().set(false);
     }
 
     /// Upgrade function - called when contract is upgraded
@@ -16,14 +17,22 @@ pub trait RequestsContract {
     fn upgrade(&self, num_requests_per_egld: BigUint) {
         require!(num_requests_per_egld > 0, "Number of requests per EGLD must be non-zero");
         self.num_requests_per_egld().set(num_requests_per_egld);
+        if !self.is_paused().is_empty() {
+            // is_paused already exists, keep current value
+        } else {
+            // First upgrade, initialize pause state
+            self.is_paused().set(false);
+        }
     }
 
-    /// Add requests for a given ID - payable only in EGLD
-    /// The number of requests added = (EGLD amount transferred in regular units) * num_requests_per_egld
-    /// Example: 2.5 EGLD * 100 rate = 250 requests
+    /// Add acquired requests for a given ID - payable only in EGLD
+    /// The number of acquired requests added = (EGLD amount transferred in regular units) * num_requests_per_egld
+    /// Example: 2.5 EGLD * 100 rate = 250 acquired requests
     #[payable("EGLD")]
     #[endpoint(addRequests)]
     fn add_requests(&self, id: u64) {
+        require!(!self.is_paused().get(), "Contract is paused");
+
         let payment = self.call_value().egld_value();
         let amount_wei = payment.clone_value();
 
@@ -36,16 +45,16 @@ pub trait RequestsContract {
         let num_requests_per_egld = self.num_requests_per_egld().get();
         let requests_to_add = amount_egld * num_requests_per_egld;
 
-        self.requests(&id).update(|requests| *requests += requests_to_add);
+        self.acquired_requests(&id).update(|requests| *requests += requests_to_add);
 
         self.add_requests_event(&id, &amount_wei, &requests_to_add);
     }
 
-    /// Get the number of requests for a given ID
+    /// Get the number of acquired requests for a given ID
     /// Returns 0 if the ID was not credited
     #[view(getRequests)]
     fn get_requests(&self, id: u64) -> BigUint {
-        self.requests(&id).get()
+        self.acquired_requests(&id).get()
     }
 
     /// Change the number of requests per EGLD
@@ -62,6 +71,34 @@ pub trait RequestsContract {
         self.num_requests_per_egld().set(new_num_requests_per_egld.clone());
 
         self.change_num_requests_per_egld_event(&old_value, &new_num_requests_per_egld);
+    }
+
+    /// Pause the contract - prevents new requests from being added
+    /// Can only be called by the owner
+    #[endpoint(pause)]
+    fn pause(&self) {
+        let caller = self.blockchain().get_caller();
+        let owner = self.blockchain().get_owner_address();
+
+        require!(caller == owner, "Only the owner can pause the contract");
+        require!(!self.is_paused().get(), "Contract is already paused");
+
+        self.is_paused().set(true);
+        self.pause_event();
+    }
+
+    /// Unpause the contract - allows new requests to be added again
+    /// Can only be called by the owner
+    #[endpoint(unpause)]
+    fn unpause(&self) {
+        let caller = self.blockchain().get_caller();
+        let owner = self.blockchain().get_owner_address();
+
+        require!(caller == owner, "Only the owner can unpause the contract");
+        require!(self.is_paused().get(), "Contract is not paused");
+
+        self.is_paused().set(false);
+        self.unpause_event();
     }
 
     /// Withdraw all available EGLD in the contract to the owner's address
@@ -101,6 +138,14 @@ pub trait RequestsContract {
         new_value: &BigUint,
     );
 
+    /// Event emitted when the contract is paused
+    #[event("pause")]
+    fn pause_event(&self);
+
+    /// Event emitted when the contract is unpaused
+    #[event("unpause")]
+    fn unpause_event(&self);
+
     /// Event emitted when EGLD is withdrawn
     #[event("withdraw")]
     fn withdraw_event(
@@ -113,7 +158,11 @@ pub trait RequestsContract {
     #[storage_mapper("numRequestsPerEgld")]
     fn num_requests_per_egld(&self) -> SingleValueMapper<BigUint>;
 
-    /// Storage mapper for requests count per ID
-    #[storage_mapper("requests")]
-    fn requests(&self, id: &u64) -> SingleValueMapper<BigUint>;
+    /// Storage mapper for acquired requests count per ID
+    #[storage_mapper("acquiredRequests")]
+    fn acquired_requests(&self, id: &u64) -> SingleValueMapper<BigUint>;
+
+    /// Storage mapper for pause state
+    #[storage_mapper("isPaused")]
+    fn is_paused(&self) -> SingleValueMapper<bool>;
 }

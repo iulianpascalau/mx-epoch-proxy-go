@@ -137,13 +137,13 @@ Git ignore rules:
 
 ## 📊 File Statistics
 
-| Category      | Count  | Total Lines  |
-|---------------|--------|--------------|
-| Contract Code | 1      | 91           |
-| Build Config  | 5      | ~50          |
-| Documentation | 6      | ~2000+       |
-| Configuration | 1      | ~20          |
-| **Total**     | **13** | **~2200+**   |
+| Category | Count | Total Lines |
+|----------|-------|-------------|
+| Contract Code | 1 | 91 |
+| Build Config | 5 | ~50 |
+| Documentation | 6 | ~2000+ |
+| Configuration | 1 | ~20 |
+| **Total** | **13** | **~2200+** |
 
 ## 🗂️ Directory Structure
 

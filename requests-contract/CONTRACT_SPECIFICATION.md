@@ -19,13 +19,21 @@
 - **Constraints**: Must be > 0
 - **Immutable**: Can be changed via upgrade
 
-#### 2. `requests: Map<u64, BigUint>`
-- **Storage Key**: `"requests" + id`
+#### 2. `acquired_requests: Map<u64, BigUint>`
+- **Storage Key**: `"acquiredRequests" + id`
 - **Type**: SingleValueMapper<BigUint> per ID
-- **Purpose**: Track request balance for each user ID
+- **Purpose**: Track acquired requests (credits) for each user ID
 - **Default Value**: 0 (if ID never credited)
 - **Constraints**: None (can grow indefinitely)
 - **Access**: Public read via `getRequests`, internal write via `addRequests`
+
+#### 3. `is_paused: bool`
+- **Storage Key**: `"isPaused"`
+- **Type**: SingleValueMapper<bool>
+- **Purpose**: Track whether the contract is paused
+- **Default Value**: false (contract active on deployment)
+- **Constraints**: Only owner can change
+- **Access**: Read in `addRequests`, write in `pause`/`unpause`
 
 ---
 
@@ -39,8 +47,8 @@
 **Gas Estimate**: ~5,000 gas
 
 #### Parameters
-| Name               | Type    | Description                         |
-|--------------------|---------|-------------------------------------|
+| Name | Type | Description |
+|------|------|-------------|
 | numRequestsPerEgld | BigUint | Exchange rate (requests per 1 EGLD) |
 
 #### Validation
@@ -62,8 +70,8 @@ require!(numRequestsPerEgld > 0, "Number of requests per EGLD must be non-zero")
 - None
 
 #### Error Cases
-| Error                                          | Cause                  | Resolution             |
-|------------------------------------------------|------------------------|------------------------|
+| Error | Cause | Resolution |
+|-------|-------|-----------|
 | "Number of requests per EGLD must be non-zero" | numRequestsPerEgld = 0 | Provide positive value |
 
 ---
@@ -77,9 +85,9 @@ require!(numRequestsPerEgld > 0, "Number of requests per EGLD must be non-zero")
 **Annotation**: `#[payable("EGLD")]` `#[endpoint(addRequests)]`
 
 #### Parameters
-| Name   | Type   | Description                   |
-|--------|--------|-------------------------------|
-| id     | u64    | User identifier (0 to 2^64-1) |
+| Name | Type | Description |
+|------|------|-------------|
+| id | u64 | User identifier (0 to 2^64-1) |
 
 #### Payment
 - **Token**: EGLD only
@@ -116,8 +124,8 @@ Data:
 ```
 
 #### Error Cases
-| Error                                   | Cause                  | Resolution                 |
-|-----------------------------------------|------------------------|----------------------------|
+| Error | Cause | Resolution |
+|-------|-------|-----------|
 | "Payment amount must be greater than 0" | No EGLD sent or 0 EGLD | Send EGLD with transaction |
 
 #### Example Execution
@@ -147,13 +155,13 @@ Result:
 **Annotation**: `#[view(getRequests)]`
 
 #### Parameters
-| Name   | Type | Description     |
-|--------|------|-----------------|
-| id     | u64  | User identifier |
+| Name | Type | Description |
+|------|------|-------------|
+| id | u64 | User identifier |
 
 #### Return Value
-| Type    | Description                                            |
-|---------|--------------------------------------------------------|
+| Type | Description |
+|------|-------------|
 | BigUint | Current request balance for user (0 if never credited) |
 
 #### Logic
@@ -195,8 +203,8 @@ Scenarios:
 **Annotation**: `#[endpoint(changeNumRequestsPerEGLD)]`
 
 #### Parameters
-| Name                  | Type    | Description                             |
-|-----------------------|---------|-----------------------------------------|
+| Name | Type | Description |
+|------|------|-------------|
 | newNumRequestsPerEGLD | BigUint | New exchange rate (requests per 1 EGLD) |
 
 #### Access Control
@@ -230,9 +238,9 @@ Data:
 ```
 
 #### Error Cases
-| Error                                          | Cause                     | Resolution             |
-|------------------------------------------------|---------------------------|------------------------|
-| "Only the owner can change the exchange rate"  | Caller is not owner       | Use owner's wallet     |
+| Error | Cause | Resolution |
+|-------|-------|-----------|
+| "Only the owner can change the exchange rate" | Caller is not owner | Use owner's wallet |
 | "Number of requests per EGLD must be non-zero" | newNumRequestsPerEGLD = 0 | Provide positive value |
 
 #### Example Execution
@@ -252,7 +260,91 @@ Result:
 
 ---
 
-### 5. Endpoint: `withdrawAll()`
+### 5. Endpoint: `pause()`
+
+**Visibility**: Public  
+**Payable**: No  
+**Access Control**: Owner only  
+**Gas Estimate**: ~50,000 gas  
+**Annotation**: `#[endpoint(pause)]`
+
+#### Parameters
+- None
+
+#### Access Control
+```
+require!(caller == owner, "Only the owner can pause the contract")
+require!(!is_paused, "Contract is already paused")
+```
+
+#### Logic
+```
+1. Verify caller is contract owner
+2. Verify contract is not already paused
+3. Set is_paused to true
+4. Emit pause event
+```
+
+#### Storage Changes
+- `is_paused` ← true
+
+#### Events
+```
+Event: pause
+Data: (none)
+```
+
+#### Error Cases
+| Error | Cause | Resolution |
+|-------|-------|-----------|
+| "Only the owner can pause the contract" | Caller is not owner | Use owner's wallet |
+| "Contract is already paused" | is_paused is already true | Unpause first if needed |
+
+---
+
+### 6. Endpoint: `unpause()`
+
+**Visibility**: Public  
+**Payable**: No  
+**Access Control**: Owner only  
+**Gas Estimate**: ~50,000 gas  
+**Annotation**: `#[endpoint(unpause)]`
+
+#### Parameters
+- None
+
+#### Access Control
+```
+require!(caller == owner, "Only the owner can unpause the contract")
+require!(is_paused, "Contract is not paused")
+```
+
+#### Logic
+```
+1. Verify caller is contract owner
+2. Verify contract is paused
+3. Set is_paused to false
+4. Emit unpause event
+```
+
+#### Storage Changes
+- `is_paused` ← false
+
+#### Events
+```
+Event: unpause
+Data: (none)
+```
+
+#### Error Cases
+| Error | Cause | Resolution |
+|-------|-------|-----------|
+| "Only the owner can unpause the contract" | Caller is not owner | Use owner's wallet |
+| "Contract is not paused" | is_paused is already false | Pause first if needed |
+
+---
+
+### 7. Endpoint: `withdrawAll()`
 
 **Visibility**: Public  
 **Payable**: No  
@@ -295,10 +387,10 @@ Data:
 ```
 
 #### Error Cases
-| Error                         | Cause                | Resolution                  |
-|-------------------------------|----------------------|-----------------------------|
-| "Only the owner can withdraw" | Caller is not owner  | Use owner's wallet          |
-| "No EGLD to withdraw"         | Contract balance = 0 | Wait for users to send EGLD |
+| Error | Cause | Resolution |
+|-------|-------|-----------|
+| "Only the owner can withdraw" | Caller is not owner | Use owner's wallet |
+| "No EGLD to withdraw" | Contract balance = 0 | Wait for users to send EGLD |
 
 #### Example Execution
 ```
@@ -322,11 +414,13 @@ User sends EGLD
     ↓
 addRequests(id) called
     ↓
+Check if contract is paused
+    ↓
 Validate EGLD > 0
     ↓
 Calculate: requests = EGLD * numRequestsPerEgld
     ↓
-requests[id] += requests
+acquired_requests[id] += requests
     ↓
 Emit event
     ↓
@@ -337,7 +431,7 @@ EGLD stored in contract
 ```
 Query getRequests(id)
     ↓
-Retrieve requests[id]
+Retrieve acquired_requests[id]
     ↓
 Return value (or 0)
     ↓
@@ -357,6 +451,36 @@ Get old value
 numRequestsPerEgld = newValue
     ↓
 Emit event with old and new values
+```
+
+### pause Flow
+```
+Owner calls pause()
+    ↓
+Verify caller = owner
+    ↓
+Verify contract not already paused
+    ↓
+is_paused = true
+    ↓
+Emit pause event
+    ↓
+addRequests now rejects with "Contract is paused"
+```
+
+### unpause Flow
+```
+Owner calls unpause()
+    ↓
+Verify caller = owner
+    ↓
+Verify contract is paused
+    ↓
+is_paused = false
+    ↓
+Emit unpause event
+    ↓
+addRequests now accepts requests again
 ```
 
 ### withdrawAll Flow
@@ -386,31 +510,55 @@ Contract balance = 0
 Storage Key: "numRequestsPerEgld"
 Type: SingleValueMapper<BigUint>
 Size: ~32 bytes
-Access: Read in addRequests, write in init
+Access: Read in addRequests, write in init/changeNumRequestsPerEGLD
 
-Storage Key: "requests" + id (concatenated)
+Storage Key: "acquiredRequests" + id (concatenated)
 Type: SingleValueMapper<BigUint> per ID
 Size: ~32 bytes per ID
 Access: Read in getRequests, write in addRequests
+Purpose: Tracks acquired credits for each user ID
+
+Storage Key: "isPaused"
+Type: SingleValueMapper<bool>
+Size: ~1 byte
+Access: Read in addRequests, write in pause/unpause
+Purpose: Tracks contract pause state
 ```
 
 ### Example Storage State
 ```
 After deployment with numRequestsPerEgld = 100:
   numRequestsPerEgld → 100
+  isPaused → false
 
 After addRequests(42, 1 EGLD):
   numRequestsPerEgld → 100
-  requests[42] → 100
+  isPaused → false
+  acquired_requests[42] → 100
 
 After addRequests(42, 0.5 EGLD):
   numRequestsPerEgld → 100
-  requests[42] → 150
+  isPaused → false
+  acquired_requests[42] → 150
+
+After pause():
+  numRequestsPerEgld → 100
+  isPaused → true
+  acquired_requests[42] → 150
+
+After addRequests(99, 2 EGLD) [fails - contract paused]:
+  (no changes)
+
+After unpause():
+  numRequestsPerEgld → 100
+  isPaused → false
+  acquired_requests[42] → 150
 
 After addRequests(99, 2 EGLD):
   numRequestsPerEgld → 100
-  requests[42] → 150
-  requests[99] → 200
+  isPaused → false
+  acquired_requests[42] → 150
+  acquired_requests[99] → 200
 ```
 
 ---
@@ -468,20 +616,23 @@ Result: User receives 250 requests
 ✅ **No token transfers in addRequests**: EGLD stays in contract  
 ✅ **Atomic withdrawal**: All EGLD transferred in one operation
 
-### Potential Issues
-⚠️ **No rate change mechanism**: numRequestsPerEgld can only be changed via upgrade  
-⚠️ **No pause mechanism**: Contract always active  
-⚠️ **No request consumption**: Requests only accumulate, never decrease  
+### Addressed Issues
+✅ **Rate change mechanism**: `changeNumRequestsPerEGLD` allows owner to update exchange rate  
+✅ **Pause mechanism**: `pause` and `unpause` endpoints allow owner to temporarily disable request additions  
+✅ **Request tracking**: Contract tracks acquired credits only (no consumption tracking needed)  
 
 ---
 
 ## Gas Estimates
 
-| Function    | Operation                       | Gas Cost |
-|-------------|---------------------------------|----------|
-| init        | Storage write                   | ~5,000   |
-| addRequests | Storage read + write + event    | ~50,000  |
-| getRequests | Storage read                    | ~2,500   |
+| Function | Operation | Gas Cost |
+|----------|-----------|----------|
+| init | Storage write | ~5,000 |
+| addRequests | Storage read + write + event + pause check | ~50,000 |
+| getRequests | Storage read | ~2,500 |
+| changeNumRequestsPerEGLD | Storage read + write + event | ~50,000 |
+| pause | Storage write + event | ~50,000 |
+| unpause | Storage write + event | ~50,000 |
 | withdrawAll | Storage read + transfer + event | ~100,000 |
 
 ---
@@ -504,6 +655,18 @@ Name: changeNumRequestsPerEGLD
 Data:
   - old_value (BigUint)
   - new_value (BigUint)
+```
+
+### Pause Event
+```
+Name: pause
+Data: (none)
+```
+
+### Unpause Event
+```
+Name: unpause
+Data: (none)
 ```
 
 ### Withdraw Event
@@ -587,6 +750,28 @@ Data:
 }
 ```
 
+### pause
+```json
+{
+  "name": "pause",
+  "onlyOwner": true,
+  "payable": false,
+  "inputs": [],
+  "outputs": []
+}
+```
+
+### unpause
+```json
+{
+  "name": "unpause",
+  "onlyOwner": true,
+  "payable": false,
+  "inputs": [],
+  "outputs": []
+}
+```
+
 ### withdrawAll
 ```json
 {
@@ -619,9 +804,9 @@ Data:
 
 ## Version History
 
-| Version  | Date       | Changes         |
-|----------|------------|-----------------|
-| 1.0.0    | 2025-01-13 | Initial release |
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-01-13 | Initial release |
 
 ---
 

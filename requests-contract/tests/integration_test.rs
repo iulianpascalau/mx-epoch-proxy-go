@@ -99,3 +99,51 @@ fn test_rate_change_affects_future_requests() {
     let mut world = world();
     world.run("scenarios/rate_change_affects_future.scen.json");
 }
+
+#[test]
+fn test_pause_success() {
+    let mut world = world();
+    world.run("scenarios/pause_success.scen.json");
+}
+
+#[test]
+fn test_pause_non_owner() {
+    let mut world = world();
+    world.run("scenarios/pause_non_owner.scen.json");
+}
+
+#[test]
+fn test_pause_already_paused() {
+    let mut world = world();
+    world.run("scenarios/pause_already_paused.scen.json");
+}
+
+#[test]
+fn test_unpause_success() {
+    let mut world = world();
+    world.run("scenarios/unpause_success.scen.json");
+}
+
+#[test]
+fn test_unpause_non_owner() {
+    let mut world = world();
+    world.run("scenarios/unpause_non_owner.scen.json");
+}
+
+#[test]
+fn test_unpause_not_paused() {
+    let mut world = world();
+    world.run("scenarios/unpause_not_paused.scen.json");
+}
+
+#[test]
+fn test_add_requests_when_paused() {
+    let mut world = world();
+    world.run("scenarios/add_requests_when_paused.scen.json");
+}
+
+#[test]
+fn test_pause_unpause_workflow() {
+    let mut world = world();
+    world.run("scenarios/pause_unpause_workflow.scen.json");
+}
