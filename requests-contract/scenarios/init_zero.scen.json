@@ -1,0 +1,33 @@
+{
+  "name": "Initialize contract with zero exchange rate",
+  "comment": "Deploy should fail when numRequestsPerEgld = 0",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "0"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "out": [],
+        "status": 4,
+        "message": "*Number of requests per EGLD must be non-zero*"
+      }
+    }
+  ]
+}

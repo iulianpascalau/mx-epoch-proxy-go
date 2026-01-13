@@ -1,0 +1,10 @@
+[package]
+name = "requests-contract-meta"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies.multiversx-sc-meta]
+version = "0.54.0"
+
+[dependencies]
+requests-contract = { path = "..", features = ["abi"] }

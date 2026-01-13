@@ -1,0 +1,44 @@
+{
+  "name": "Withdraw from empty contract",
+  "comment": "Owner tries to withdraw when contract has no EGLD, should fail",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "withdraw",
+      "tx": {
+        "from": "owner",
+        "to": "sc:deploy",
+        "function": "withdrawAll",
+        "arguments": [],
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 4,
+        "message": "*No EGLD to withdraw*"
+      }
+    }
+  ]
+}

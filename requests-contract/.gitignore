@@ -1,0 +1,23 @@
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+
+# Build outputs
+output/
+*.wasm
+*.abi.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+wallet.pem
+*.key

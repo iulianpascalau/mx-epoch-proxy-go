@@ -1,0 +1,100 @@
+{
+  "name": "Add requests accumulation for same user",
+  "comment": "Same user adds requests multiple times, balance should accumulate",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        },
+        "user": {
+          "nonce": 0,
+          "balance": "5000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_first",
+      "tx": {
+        "from": "user",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_first",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "42"
+        ]
+      },
+      "expect": {
+        "out": [
+          "100000000000000000000"
+        ]
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_second",
+      "tx": {
+        "from": "user",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "500000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_second",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "42"
+        ]
+      },
+      "expect": {
+        "out": [
+          "150000000000000000000"
+        ]
+      }
+    }
+  ]
+}

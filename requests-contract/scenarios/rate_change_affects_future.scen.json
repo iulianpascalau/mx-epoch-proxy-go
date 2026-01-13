@@ -1,0 +1,117 @@
+{
+  "name": "Rate change affects future requests",
+  "comment": "Verify that changing the rate affects future addRequests calls but not past balances",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        },
+        "user": {
+          "nonce": 0,
+          "balance": "5000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_before_change",
+      "tx": {
+        "from": "user",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_before",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "42"
+        ]
+      },
+      "expect": {
+        "out": [
+          "100000000000000000000"
+        ]
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "change_rate",
+      "tx": {
+        "from": "owner",
+        "to": "sc:deploy",
+        "function": "changeNumRequestsPerEGLD",
+        "arguments": [
+          "200"
+        ],
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_after_change",
+      "tx": {
+        "from": "user",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_after",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "42"
+        ]
+      },
+      "expect": {
+        "out": [
+          "300000000000000000000"
+        ]
+      }
+    }
+  ]
+}

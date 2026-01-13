@@ -1,0 +1,66 @@
+{
+  "name": "Get requests for existing user",
+  "comment": "Query requests for a user that has been credited",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        },
+        "user": {
+          "nonce": 0,
+          "balance": "2000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_requests",
+      "tx": {
+        "from": "user",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "99"
+        ],
+        "value": "2000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "99"
+        ]
+      },
+      "expect": {
+        "out": [
+          "200000000000000000000"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "Initialize contract with valid exchange rate",
+  "comment": "Deploy the contract with numRequestsPerEgld = 100",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "out": [],
+        "status": 0,
+        "logs": [],
+        "gas": "*",
+        "refund": "*"
+      }
+    }
+  ]
+}

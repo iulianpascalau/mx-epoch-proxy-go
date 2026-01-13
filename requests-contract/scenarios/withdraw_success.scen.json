@@ -1,0 +1,76 @@
+{
+  "name": "Withdraw all EGLD successfully",
+  "comment": "Owner withdraws all accumulated EGLD from contract",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        },
+        "user": {
+          "nonce": 0,
+          "balance": "3000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_requests",
+      "tx": {
+        "from": "user",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "2000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "withdraw",
+      "tx": {
+        "from": "owner",
+        "to": "sc:deploy",
+        "function": "withdrawAll",
+        "arguments": [],
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "out": [],
+        "status": 0,
+        "logs": [
+          {
+            "address": "sc:deploy",
+            "identifier": "withdraw",
+            "topics": [
+              "*"
+            ],
+            "data": "0x*"
+          }
+        ]
+      }
+    }
+  ]
+}

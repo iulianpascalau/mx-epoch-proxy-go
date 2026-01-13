@@ -1,0 +1,104 @@
+{
+  "name": "Add requests for multiple users",
+  "comment": "Different users add requests, each should have independent balances",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "owner": {
+          "nonce": 0,
+          "balance": "1000000000000000000"
+        },
+        "user1": {
+          "nonce": 0,
+          "balance": "2000000000000000000"
+        },
+        "user2": {
+          "nonce": 0,
+          "balance": "3000000000000000000"
+        }
+      }
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "owner",
+        "contractCode": "file:output/requests-contract.wasm",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": 60000000,
+        "gasPrice": 1000000000
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "user1_add",
+      "tx": {
+        "from": "user1",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "1"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "user2_add",
+      "tx": {
+        "from": "user2",
+        "to": "sc:deploy",
+        "function": "addRequests",
+        "arguments": [
+          "2"
+        ],
+        "value": "2000000000000000000",
+        "gasLimit": 5000000,
+        "gasPrice": 1000000000
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_user1",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "1"
+        ]
+      },
+      "expect": {
+        "out": [
+          "100000000000000000000"
+        ]
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_user2",
+      "tx": {
+        "to": "sc:deploy",
+        "function": "getRequests",
+        "arguments": [
+          "2"
+        ]
+      },
+      "expect": {
+        "out": [
+          "200000000000000000000"
+        ]
+      }
+    }
+  ]
+}

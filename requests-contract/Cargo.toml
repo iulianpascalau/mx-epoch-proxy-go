@@ -1,0 +1,17 @@
+[package]
+name = "requests-contract"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies.multiversx-sc]
+version = "0.54.0"
+
+[dev-dependencies.multiversx-sc-scenario]
+version = "0.54.0"
+
+[[bin]]
+name = "requests-contract-meta"
+path = "meta/src/main.rs"
