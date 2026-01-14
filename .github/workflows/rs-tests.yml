@@ -3,12 +3,8 @@ name: Rust Tests
 on:
   push:
     branches: [ main, rc/*, feat/* ]
-    paths:
-      - 'requests-contract/**'
   pull_request:
     branches: [ main, rc/*, feat/* ]
-    paths:
-      - 'requests-contract/**'
 
 jobs:
   test:
