@@ -63,9 +63,7 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 	query := `
 	CREATE TABLE IF NOT EXISTS balance_management (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		address TEXT,
-		current_balance REAL DEFAULT 0,
-		total_requests INTEGER DEFAULT 0
+		address TEXT
 	);`
 	_, err := wrapper.db.Exec(query)
 	if err != nil {
@@ -76,11 +74,11 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 
 // Get returns the row based on the ID
 func (wrapper *sqliteWrapper) Get(id int) (*common.BalanceEntry, error) {
-	query := `SELECT id, address, current_balance, total_requests FROM balance_management WHERE id = ?`
+	query := `SELECT id, address FROM balance_management WHERE id = ?`
 	row := wrapper.db.QueryRow(query, id)
 
 	var entry common.BalanceEntry
-	err := row.Scan(&entry.ID, &entry.Address, &entry.CurrentBalance, &entry.TotalRequests)
+	err := row.Scan(&entry.ID, &entry.Address)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("entry with id %d not found", id)
@@ -101,7 +99,7 @@ func (wrapper *sqliteWrapper) Add() (int, string, error) {
 		_ = tx.Rollback()
 	}()
 
-	query := `INSERT INTO balance_management (address, current_balance, total_requests) VALUES ("", 0, 0)`
+	query := `INSERT INTO balance_management (address) VALUES ("")`
 	result, err := tx.Exec(query)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to add entry: %w", err)
@@ -131,29 +129,9 @@ func (wrapper *sqliteWrapper) Add() (int, string, error) {
 	return int(id), address, nil
 }
 
-// UpdateBalance updates the balance details for the given id
-func (wrapper *sqliteWrapper) UpdateBalance(id int, currentBalance float64, totalRequests int) error {
-	query := `UPDATE balance_management SET current_balance = ?, total_requests = ? WHERE id = ?`
-	result, err := wrapper.db.Exec(query, currentBalance, totalRequests, id)
-	if err != nil {
-		return fmt.Errorf("failed to update entry: %w", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rows == 0 {
-		return fmt.Errorf("entry with id %d not found", id)
-	}
-
-	return nil
-}
-
 // GetAll provides all rows
 func (wrapper *sqliteWrapper) GetAll() ([]*common.BalanceEntry, error) {
-	query := `SELECT id, address, current_balance, total_requests FROM balance_management`
+	query := `SELECT id, address FROM balance_management`
 	rows, err := wrapper.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query all entries: %w", err)
@@ -165,7 +143,7 @@ func (wrapper *sqliteWrapper) GetAll() ([]*common.BalanceEntry, error) {
 	var entries []*common.BalanceEntry
 	for rows.Next() {
 		var entry common.BalanceEntry
-		err = rows.Scan(&entry.ID, &entry.Address, &entry.CurrentBalance, &entry.TotalRequests)
+		err = rows.Scan(&entry.ID, &entry.Address)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan entry: %w", err)
 		}

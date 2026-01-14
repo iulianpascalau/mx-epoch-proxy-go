@@ -3,9 +3,9 @@ package process
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/common"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
 )
@@ -13,34 +13,39 @@ import (
 var log = logger.GetOrCreate("process")
 
 const egldDecimals = 18
-const minimumBalance = float64(0.01)
 
 type balanceProcessor struct {
 	dataProvider           DataProvider
 	blockchainDataProvider BlockchainDataProvider
-	numRequestsPerEgldUnit int
+	balanceOperator        BalanceOperator
+	minimumBalanceToCall   float64
 }
 
 // NewBalanceProcessor creates a new instance of balanceProcessor
 func NewBalanceProcessor(
 	dataProvider DataProvider,
 	blockchainDataProvider BlockchainDataProvider,
-	numRequestsPerEgldUnit int,
+	balanceOperator BalanceOperator,
+	minimumBalanceToCall float64,
 ) (*balanceProcessor, error) {
-	if dataProvider == nil {
+	if check.IfNil(dataProvider) {
 		return nil, errNilDataProvider
 	}
-	if blockchainDataProvider == nil {
+	if check.IfNil(blockchainDataProvider) {
 		return nil, errNilBlockchainDataProvider
 	}
-	if numRequestsPerEgldUnit <= 0 {
-		return nil, errInvalidNumRequestsPerUnit
+	if check.IfNil(balanceOperator) {
+		return nil, errNilBalanceOperator
+	}
+	if minimumBalanceToCall <= 0 {
+		return nil, errInvalidMinimumBalanceToCall
 	}
 
 	return &balanceProcessor{
 		dataProvider:           dataProvider,
 		blockchainDataProvider: blockchainDataProvider,
-		numRequestsPerEgldUnit: numRequestsPerEgldUnit,
+		balanceOperator:        balanceOperator,
+		minimumBalanceToCall:   minimumBalanceToCall,
 	}, nil
 }
 
@@ -83,35 +88,15 @@ func (processor *balanceProcessor) processRecord(ctx context.Context, row *commo
 		return
 	}
 
-	err = processor.updateBalance(row, blockchainBalance)
+	if blockchainBalance < processor.minimumBalanceToCall {
+		log.Trace("balance is too low", "id", row.ID, "address", row.Address, "blockchain balance", accountData.Balance)
+		return
+	}
+
+	err = processor.balanceOperator.Process(ctx, row.ID)
 	if err != nil {
-		log.Warn("error updating balance", "id", row.ID, "address", row.Address, "blockchain balance", accountData.Balance, "error", err)
+		log.Error("error processing balance", "id", row.ID, "address", row.Address, "error", err)
 	}
-}
-
-func (processor *balanceProcessor) updateBalance(row *common.BalanceEntry, blockchainBalance float64) error {
-	if row.CurrentBalance == blockchainBalance {
-		// nothing's changed, return
-		return nil
-	}
-
-	amount := float64(0)
-	if blockchainBalance > row.CurrentBalance {
-		amount = blockchainBalance - row.CurrentBalance
-	}
-
-	numRequests := processor.computeNumRequestsToAdd(row, amount)
-
-	return processor.dataProvider.UpdateBalance(row.ID, blockchainBalance, row.TotalRequests+numRequests)
-}
-
-func (processor *balanceProcessor) computeNumRequestsToAdd(row *common.BalanceEntry, amount float64) int {
-	if amount < minimumBalance {
-		log.Debug("amount is too small", "id", row.ID, "address", row.Address, "amount", amount)
-		return 0
-	}
-
-	return int(math.Ceil(float64(processor.numRequestsPerEgldUnit) * amount))
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

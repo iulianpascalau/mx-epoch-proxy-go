@@ -4,8 +4,7 @@ import "github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/comm
 
 // DataProviderStub -
 type DataProviderStub struct {
-	GetAllHandler        func() ([]*common.BalanceEntry, error)
-	UpdateBalanceHandler func(id int, currentBalance float64, totalRequests int) error
+	GetAllHandler func() ([]*common.BalanceEntry, error)
 }
 
 // GetAll -
@@ -15,15 +14,6 @@ func (stub *DataProviderStub) GetAll() ([]*common.BalanceEntry, error) {
 	}
 
 	return make([]*common.BalanceEntry, 0), nil
-}
-
-// UpdateBalance -
-func (stub *DataProviderStub) UpdateBalance(id int, currentBalance float64, totalRequests int) error {
-	if stub.UpdateBalanceHandler != nil {
-		return stub.UpdateBalanceHandler(id, currentBalance, totalRequests)
-	}
-
-	return nil
 }
 
 // IsInterfaceNil -

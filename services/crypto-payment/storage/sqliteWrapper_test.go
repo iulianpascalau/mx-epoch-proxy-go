@@ -61,8 +61,6 @@ func TestSQLiteWrapper_AddAndGet(t *testing.T) {
 	require.NotNil(t, entry)
 	require.Equal(t, id, entry.ID)
 	require.Equal(t, address, entry.Address)
-	require.Equal(t, 0.0, entry.CurrentBalance)
-	require.Equal(t, 0, entry.TotalRequests)
 }
 
 func TestSQLiteWrapper_GetAll(t *testing.T) {
@@ -143,35 +141,4 @@ func TestSQLiteWrapper_Add_ErrorGeneratingAddress(t *testing.T) {
 	entries, err := wrapper.GetAll()
 	require.NoError(t, err)
 	require.Empty(t, entries)
-}
-
-func TestSQLiteWrapper_UpdateBalance(t *testing.T) {
-	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "test.db")
-
-	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
-	require.NoError(t, err)
-	defer func() {
-		_ = wrapper.Close()
-	}()
-
-	id, _, err := wrapper.Add()
-	require.NoError(t, err)
-
-	entry, err := wrapper.Get(id)
-	require.NoError(t, err)
-	require.Equal(t, 0.0, entry.CurrentBalance)
-	require.Equal(t, 0, entry.TotalRequests)
-
-	err = wrapper.UpdateBalance(id, 20.5, 5)
-	require.NoError(t, err)
-
-	entry, err = wrapper.Get(id)
-	require.NoError(t, err)
-	require.Equal(t, 20.5, entry.CurrentBalance)
-	require.Equal(t, 5, entry.TotalRequests)
-
-	err = wrapper.UpdateBalance(999, 1, 1)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "entry with id 999 not found")
 }
