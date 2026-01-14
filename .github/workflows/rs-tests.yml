@@ -1,0 +1,40 @@
+name: Rust Tests
+
+on:
+  push:
+    branches: [ main, rc/*, feat/* ]
+    paths:
+      - 'requests-contract/**'
+  pull_request:
+    paths:
+      - 'requests-contract/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Rust Automated Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: requests-contract
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            requests-contract/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Tests
+        run: cargo test
