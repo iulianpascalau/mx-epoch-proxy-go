@@ -1,6 +1,6 @@
 {
-  "name": "Add requests accumulation for same user",
-  "comment": "Same user adds requests multiple times, balance should accumulate",
+  "name": "Change exchange rate affects future requests only",
+  "comment": "Changing rate should not affect previously acquired requests",
   "steps": [
     {
       "step": "setState",
@@ -11,7 +11,7 @@
         },
         "address:user": {
           "nonce": "0",
-          "balance": "5000000000000000000"
+          "balance": "3000000000000000000"
         }
       },
       "newAddresses": [
@@ -37,7 +37,7 @@
     },
     {
       "step": "scCall",
-      "txId": "add_first",
+      "txId": "add_requests_1",
       "tx": {
         "from": "address:user",
         "to": "sc:requests",
@@ -55,7 +55,7 @@
     },
     {
       "step": "scQuery",
-      "txId": "query_first",
+      "txId": "query_before",
       "tx": {
         "to": "sc:requests",
         "function": "getRequests",
@@ -71,7 +71,24 @@
     },
     {
       "step": "scCall",
-      "txId": "add_second",
+      "txId": "change_rate",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "changeNumRequestsPerEGLD",
+        "arguments": [
+          "200"
+        ],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_requests_2",
       "tx": {
         "from": "address:user",
         "to": "sc:requests",
@@ -79,7 +96,7 @@
         "arguments": [
           "42"
         ],
-        "value": "500000000000000000",
+        "value": "1000000000000000000",
         "gasLimit": "5000000",
         "gasPrice": "1000000000"
       },
@@ -89,7 +106,7 @@
     },
     {
       "step": "scQuery",
-      "txId": "query_second",
+      "txId": "query_after",
       "tx": {
         "to": "sc:requests",
         "function": "getRequests",
@@ -99,7 +116,7 @@
       },
       "expect": {
         "out": [
-          "150"
+          "300"
         ]
       }
     }

@@ -1,0 +1,42 @@
+{
+  "name": "Initialize contract with valid exchange rate",
+  "comment": "Deploy the contract with numRequestsPerEgld = 100",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "out": [],
+        "status": "0",
+        "logs": [],
+        "gas": "*",
+        "refund": "*"
+      }
+    }
+  ]
+}

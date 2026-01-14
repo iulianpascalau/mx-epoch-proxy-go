@@ -1,0 +1,40 @@
+{
+  "name": "Initialize contract with zero exchange rate",
+  "comment": "Deploy should fail when numRequestsPerEgld = 0",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "0"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "out": [],
+        "status": "4",
+        "message": "str:Number of requests per EGLD must be non-zero"
+      }
+    }
+  ]
+}

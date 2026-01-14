@@ -1,6 +1,6 @@
 {
-  "name": "Add requests accumulation for same user",
-  "comment": "Same user adds requests multiple times, balance should accumulate",
+  "name": "Add requests for a single user",
+  "comment": "User sends 1 EGLD, should receive 100 requests (100 * 1 EGLD)",
   "steps": [
     {
       "step": "setState",
@@ -11,7 +11,7 @@
         },
         "address:user": {
           "nonce": "0",
-          "balance": "5000000000000000000"
+          "balance": "2000000000000000000"
         }
       },
       "newAddresses": [
@@ -37,7 +37,7 @@
     },
     {
       "step": "scCall",
-      "txId": "add_first",
+      "txId": "add_requests",
       "tx": {
         "from": "address:user",
         "to": "sc:requests",
@@ -50,12 +50,25 @@
         "gasPrice": "1000000000"
       },
       "expect": {
-        "status": "0"
+        "out": [],
+        "status": "0",
+        "logs": [
+          {
+            "address": "sc:requests",
+            "endpoint": "str:addRequests",
+            "topics": [
+              "str:addRequests",
+              "42",
+              "1000000000000000000"
+            ],
+            "data": "*"
+          }
+        ]
       }
     },
     {
       "step": "scQuery",
-      "txId": "query_first",
+      "txId": "query_requests",
       "tx": {
         "to": "sc:requests",
         "function": "getRequests",
@@ -66,40 +79,6 @@
       "expect": {
         "out": [
           "100"
-        ]
-      }
-    },
-    {
-      "step": "scCall",
-      "txId": "add_second",
-      "tx": {
-        "from": "address:user",
-        "to": "sc:requests",
-        "function": "addRequests",
-        "arguments": [
-          "42"
-        ],
-        "value": "500000000000000000",
-        "gasLimit": "5000000",
-        "gasPrice": "1000000000"
-      },
-      "expect": {
-        "status": "0"
-      }
-    },
-    {
-      "step": "scQuery",
-      "txId": "query_second",
-      "tx": {
-        "to": "sc:requests",
-        "function": "getRequests",
-        "arguments": [
-          "42"
-        ]
-      },
-      "expect": {
-        "out": [
-          "150"
         ]
       }
     }

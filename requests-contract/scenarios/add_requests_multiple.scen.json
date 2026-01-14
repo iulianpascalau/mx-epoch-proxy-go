@@ -1,6 +1,6 @@
 {
-  "name": "Add requests accumulation for same user",
-  "comment": "Same user adds requests multiple times, balance should accumulate",
+  "name": "Add requests for multiple users",
+  "comment": "Different users add requests, each should have independent balances",
   "steps": [
     {
       "step": "setState",
@@ -9,9 +9,13 @@
           "nonce": "0",
           "balance": "1000000000000000000"
         },
-        "address:user": {
+        "address:user1": {
           "nonce": "0",
-          "balance": "5000000000000000000"
+          "balance": "2000000000000000000"
+        },
+        "address:user2": {
+          "nonce": "0",
+          "balance": "3000000000000000000"
         }
       },
       "newAddresses": [
@@ -37,13 +41,13 @@
     },
     {
       "step": "scCall",
-      "txId": "add_first",
+      "txId": "user1_add",
       "tx": {
-        "from": "address:user",
+        "from": "address:user1",
         "to": "sc:requests",
         "function": "addRequests",
         "arguments": [
-          "42"
+          "1"
         ],
         "value": "1000000000000000000",
         "gasLimit": "5000000",
@@ -54,32 +58,16 @@
       }
     },
     {
-      "step": "scQuery",
-      "txId": "query_first",
-      "tx": {
-        "to": "sc:requests",
-        "function": "getRequests",
-        "arguments": [
-          "42"
-        ]
-      },
-      "expect": {
-        "out": [
-          "100"
-        ]
-      }
-    },
-    {
       "step": "scCall",
-      "txId": "add_second",
+      "txId": "user2_add",
       "tx": {
-        "from": "address:user",
+        "from": "address:user2",
         "to": "sc:requests",
         "function": "addRequests",
         "arguments": [
-          "42"
+          "2"
         ],
-        "value": "500000000000000000",
+        "value": "2000000000000000000",
         "gasLimit": "5000000",
         "gasPrice": "1000000000"
       },
@@ -89,17 +77,33 @@
     },
     {
       "step": "scQuery",
-      "txId": "query_second",
+      "txId": "query_user1",
       "tx": {
         "to": "sc:requests",
         "function": "getRequests",
         "arguments": [
-          "42"
+          "1"
         ]
       },
       "expect": {
         "out": [
-          "150"
+          "100"
+        ]
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_user2",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "2"
+        ]
+      },
+      "expect": {
+        "out": [
+          "200"
         ]
       }
     }

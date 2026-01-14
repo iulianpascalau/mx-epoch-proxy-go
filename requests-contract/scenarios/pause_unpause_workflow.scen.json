@@ -1,6 +1,6 @@
 {
-  "name": "Add requests accumulation for same user",
-  "comment": "Same user adds requests multiple times, balance should accumulate",
+  "name": "Pause and Unpause workflow",
+  "comment": "Owner checks pause affects adding requests, then unpauses",
   "steps": [
     {
       "step": "setState",
@@ -11,7 +11,7 @@
         },
         "address:user": {
           "nonce": "0",
-          "balance": "5000000000000000000"
+          "balance": "3000000000000000000"
         }
       },
       "newAddresses": [
@@ -37,13 +37,62 @@
     },
     {
       "step": "scCall",
-      "txId": "add_first",
+      "txId": "pause",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "pause",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_fail",
       "tx": {
         "from": "address:user",
         "to": "sc:requests",
         "function": "addRequests",
         "arguments": [
-          "42"
+          "1"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "4",
+        "message": "str:Contract is paused"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "unpause",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "unpause",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_success",
+      "tx": {
+        "from": "address:user",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "1"
         ],
         "value": "1000000000000000000",
         "gasLimit": "5000000",
@@ -51,56 +100,6 @@
       },
       "expect": {
         "status": "0"
-      }
-    },
-    {
-      "step": "scQuery",
-      "txId": "query_first",
-      "tx": {
-        "to": "sc:requests",
-        "function": "getRequests",
-        "arguments": [
-          "42"
-        ]
-      },
-      "expect": {
-        "out": [
-          "100"
-        ]
-      }
-    },
-    {
-      "step": "scCall",
-      "txId": "add_second",
-      "tx": {
-        "from": "address:user",
-        "to": "sc:requests",
-        "function": "addRequests",
-        "arguments": [
-          "42"
-        ],
-        "value": "500000000000000000",
-        "gasLimit": "5000000",
-        "gasPrice": "1000000000"
-      },
-      "expect": {
-        "status": "0"
-      }
-    },
-    {
-      "step": "scQuery",
-      "txId": "query_second",
-      "tx": {
-        "to": "sc:requests",
-        "function": "getRequests",
-        "arguments": [
-          "42"
-        ]
-      },
-      "expect": {
-        "out": [
-          "150"
-        ]
       }
     }
   ]
