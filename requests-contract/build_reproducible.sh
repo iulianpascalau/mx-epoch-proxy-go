@@ -12,7 +12,8 @@ SCRIPT_NAME="build_with_docker.py"
 echo "Downloading build script from ${SCRIPT_URL}..."
 curl -s -o "${SCRIPT_NAME}" "${SCRIPT_URL}"
 
-# Create output directory
+# Clean and create output directory
+rm -rf output
 mkdir -p output
 
 # Run the build
