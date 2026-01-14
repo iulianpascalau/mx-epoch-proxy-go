@@ -93,9 +93,11 @@ func (processor *balanceProcessor) processRecord(ctx context.Context, row *commo
 		return
 	}
 
-	err = processor.balanceOperator.Process(ctx, row.ID)
+	err = processor.balanceOperator.Process(ctx, row.ID, row.Address, accountData.Balance, accountData.Nonce)
 	if err != nil {
-		log.Error("error processing balance", "id", row.ID, "address", row.Address, "error", err)
+		log.Error("error processing balance",
+			"id", row.ID, "address", row.Address, "balance", accountData.Balance,
+			"nonce", accountData.Nonce, "error", err)
 	}
 }
 

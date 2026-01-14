@@ -22,6 +22,6 @@ type BlockchainDataProvider interface {
 
 // BalanceOperator defines the operations supported by a component able to process balance changes and SC calls
 type BalanceOperator interface {
-	Process(ctx context.Context, id int) error
+	Process(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error
 	IsInterfaceNil() bool
 }
