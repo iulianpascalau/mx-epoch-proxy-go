@@ -1,0 +1,106 @@
+{
+  "name": "Pause and Unpause workflow",
+  "comment": "Owner checks pause affects adding requests, then unpauses",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        },
+        "address:user": {
+          "nonce": "0",
+          "balance": "3000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "pause",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "pause",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_fail",
+      "tx": {
+        "from": "address:user",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "1"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "4",
+        "message": "str:Contract is paused"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "unpause",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "unpause",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_success",
+      "tx": {
+        "from": "address:user",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "1"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    }
+  ]
+}

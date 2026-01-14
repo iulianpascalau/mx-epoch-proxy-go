@@ -1,0 +1,177 @@
+{
+  "name": "Full workflow test",
+  "comment": "Complete workflow: deploy, add requests, query, change rate, withdraw",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        },
+        "address:user1": {
+          "nonce": "0",
+          "balance": "5000000000000000000"
+        },
+        "address:user2": {
+          "nonce": "0",
+          "balance": "3000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "user1_add_1",
+      "tx": {
+        "from": "address:user1",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "1"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "user2_add",
+      "tx": {
+        "from": "address:user2",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "2"
+        ],
+        "value": "2000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_user1",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "1"
+        ]
+      },
+      "expect": {
+        "out": [
+          "100"
+        ]
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_user2",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "2"
+        ]
+      },
+      "expect": {
+        "out": [
+          "200"
+        ]
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "change_rate",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "changeNumRequestsPerEGLD",
+        "arguments": [
+          "150"
+        ],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "user1_add_2",
+      "tx": {
+        "from": "address:user1",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "1"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_user1_after_rate_change",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "1"
+        ]
+      },
+      "expect": {
+        "out": [
+          "250"
+        ]
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "withdraw",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "withdrawAll",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    }
+  ]
+}
