@@ -73,7 +73,7 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 }
 
 // Get returns the row based on the ID
-func (wrapper *sqliteWrapper) Get(id int) (*common.BalanceEntry, error) {
+func (wrapper *sqliteWrapper) Get(id uint64) (*common.BalanceEntry, error) {
 	query := `SELECT id, address FROM balance_management WHERE id = ?`
 	row := wrapper.db.QueryRow(query, id)
 
@@ -90,7 +90,7 @@ func (wrapper *sqliteWrapper) Get(id int) (*common.BalanceEntry, error) {
 }
 
 // Add creates a new entry and returns the created id and the address string
-func (wrapper *sqliteWrapper) Add() (int, string, error) {
+func (wrapper *sqliteWrapper) Add() (uint64, string, error) {
 	tx, err := wrapper.db.Begin()
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to begin transaction: %w", err)
@@ -126,7 +126,7 @@ func (wrapper *sqliteWrapper) Add() (int, string, error) {
 		return 0, "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return int(id), address, nil
+	return uint64(id), address, nil
 }
 
 // GetAll provides all rows

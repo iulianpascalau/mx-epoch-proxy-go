@@ -116,7 +116,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -148,7 +148,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -184,7 +184,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -222,7 +222,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -256,7 +256,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -292,7 +292,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -328,7 +328,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -371,8 +371,8 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		processBalanceOperatorCalled := false
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
-				assert.Equal(t, 0, id)
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+				assert.Equal(t, uint64(0), id)
 				assert.Equal(t, "erd19x6dfsupwtsl46nmgpxw30xcka72e4z0x3ngh6h0yjy6zwtrgh5q8px2wc", bech32Address)
 				assert.Equal(t, "1200000000000000000", value)
 				assert.Equal(t, uint64(37), nonce)
@@ -421,8 +421,8 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		processBalanceOperatorCalled := false
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id int, bech32Address string, value string, nonce uint64) error {
-				assert.Equal(t, 0, id)
+			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+				assert.Equal(t, uint64(0), id)
 				assert.Equal(t, "erd19x6dfsupwtsl46nmgpxw30xcka72e4z0x3ngh6h0yjy6zwtrgh5q8px2wc", bech32Address)
 				assert.Equal(t, "1200000000000000000", value)
 				assert.Equal(t, uint64(37), nonce)

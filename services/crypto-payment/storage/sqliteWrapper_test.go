@@ -75,10 +75,10 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 
 	// Add multiple entries
 	count := 5
-	ids := make([]int, 0, count)
+	ids := make([]uint64, 0, count)
 	for i := 0; i < count; i++ {
-		id, _, err := wrapper.Add()
-		require.NoError(t, err)
+		id, _, errAdd := wrapper.Add()
+		require.NoError(t, errAdd)
 		ids = append(ids, id)
 	}
 
@@ -88,7 +88,7 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 	require.Len(t, entries, count)
 
 	// Verify IDs present
-	retrievedIDs := make(map[int]bool)
+	retrievedIDs := make(map[uint64]bool)
 	for _, e := range entries {
 		retrievedIDs[e.ID] = true
 	}

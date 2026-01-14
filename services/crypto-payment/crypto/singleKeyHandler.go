@@ -1,13 +1,13 @@
 package crypto
 
 import (
-	"github.com/multiversx/mx-chain-crypto-go"
+	mxCrypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-sdk-go/data"
 )
 
 type singleKeyHandler struct {
-	privateKey    crypto.PrivateKey
-	publicKey     crypto.PublicKey
+	privateKey    mxCrypto.PrivateKey
+	publicKey     mxCrypto.PublicKey
 	bech32Address string
 }
 
