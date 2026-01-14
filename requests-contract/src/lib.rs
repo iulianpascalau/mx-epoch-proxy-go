@@ -40,10 +40,9 @@ pub trait RequestsContract {
 
         // Convert from wei to EGLD (1 EGLD = 10^18 wei)
         let one_egld = BigUint::from(1_000_000_000_000_000_000u64);
-        let amount_egld = amount_wei.clone() / one_egld;
 
         let num_requests_per_egld = self.num_requests_per_egld().get();
-        let requests_to_add = amount_egld * num_requests_per_egld;
+        let requests_to_add = (amount_wei.clone() * &num_requests_per_egld) / one_egld;
 
         self.acquired_requests(&id).update(|requests| *requests += requests_to_add.clone());
 
