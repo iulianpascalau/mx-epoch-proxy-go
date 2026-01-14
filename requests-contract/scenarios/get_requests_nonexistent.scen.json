@@ -1,0 +1,51 @@
+{
+  "name": "Get requests for nonexistent user",
+  "comment": "Query requests for a user that was never credited, should return 0",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "999"
+        ]
+      },
+      "expect": {
+        "out": [
+          "0"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "name": "Pause contract successfully",
+  "comment": "Owner pauses the contract",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "pause",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "pause",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "out": [],
+        "status": "0",
+        "logs": [
+          {
+            "address": "sc:requests",
+            "endpoint": "str:pause",
+            "topics": [
+              "str:pause"
+            ],
+            "data": "*"
+          }
+        ]
+      }
+    }
+  ]
+}

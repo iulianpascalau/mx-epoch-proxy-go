@@ -1,0 +1,38 @@
+name: Check Contract Build
+
+on:
+  push:
+    branches: [ main, rc/*, feat/* ]
+    paths:
+      - 'requests-contract/**'
+  pull_request:
+    paths:
+      - 'requests-contract/**'
+  workflow_dispatch:
+
+jobs:
+  check-build:
+    name: Check Reproducible Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: requests-contract
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Contract
+        run: |
+          chmod +x build_reproducible.sh
+          ./build_reproducible.sh
+
+      - name: Check for changes
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Error: The requests-contract/output directory is not up to date."
+            echo "Please run ./build_reproducible.sh locally and commit the changes."
+            git diff
+            exit 1
+          fi

@@ -1,0 +1,53 @@
+{
+  "name": "Change exchange rate to zero",
+  "comment": "Owner tries to change exchange rate to 0, should fail",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "change_rate",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "changeNumRequestsPerEGLD",
+        "arguments": [
+          "0"
+        ],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "4",
+        "message": "str:Number of requests per EGLD must be non-zero"
+      }
+    }
+  ]
+}

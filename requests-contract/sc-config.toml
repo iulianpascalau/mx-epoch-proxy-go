@@ -1,0 +1,4 @@
+[settings]
+
+[[proxy]]
+path = "src/requests_proxy.rs"
