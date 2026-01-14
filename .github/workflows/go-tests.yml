@@ -3,6 +3,8 @@ name: Go Tests
 on:
   push:
     branches: [ main, rc/*, feat/* ]
+  pull_request:
+    branches: [ main, rc/*, feat/* ]
 
 jobs:
   test:
