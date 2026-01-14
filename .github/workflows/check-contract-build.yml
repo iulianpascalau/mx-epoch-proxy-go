@@ -6,6 +6,7 @@ on:
     paths:
       - 'requests-contract/**'
   pull_request:
+    branches: [ main, rc/*, feat/* ]
     paths:
       - 'requests-contract/**'
   workflow_dispatch:

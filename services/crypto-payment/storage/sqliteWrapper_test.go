@@ -17,12 +17,12 @@ func TestNewSQLiteWrapper(t *testing.T) {
 	t.Run("nil address handler", func(t *testing.T) {
 		wrapper, err := NewSQLiteWrapper(dbPath, nil)
 		require.Nil(t, wrapper)
-		require.Equal(t, errNilAddressHandler, err)
+		require.Equal(t, errNilMultipleAddressesHandler, err)
 		assert.True(t, wrapper.IsInterfaceNil())
 	})
 
 	t.Run("success", func(t *testing.T) {
-		wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+		wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.MultipleAddressesHandlerStub{})
 		require.NoError(t, err)
 		defer func() {
 			_ = wrapper.Close()
@@ -37,8 +37,8 @@ func TestSQLiteWrapper_AddAndGet(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	mockAddr := &testsCommon.AddressHandlerStub{
-		GetAddressAtIndexHandler: func(index uint32) (string, error) {
+	mockAddr := &testsCommon.MultipleAddressesHandlerStub{
+		GetBech32AddressAtIndexHandler: func(index uint32) (string, error) {
 			return fmt.Sprintf("mock-addr-%d", index), nil
 		},
 	}
@@ -61,16 +61,13 @@ func TestSQLiteWrapper_AddAndGet(t *testing.T) {
 	require.NotNil(t, entry)
 	require.Equal(t, id, entry.ID)
 	require.Equal(t, address, entry.Address)
-	require.Equal(t, 0.0, entry.LastBalance)
-	require.Equal(t, 0.0, entry.CurrentBalance)
-	require.Equal(t, 0, entry.TotalRequests)
 }
 
 func TestSQLiteWrapper_GetAll(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.MultipleAddressesHandlerStub{})
 	require.NoError(t, err)
 	defer func() {
 		_ = wrapper.Close()
@@ -78,10 +75,10 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 
 	// Add multiple entries
 	count := 5
-	ids := make([]int, 0, count)
+	ids := make([]uint64, 0, count)
 	for i := 0; i < count; i++ {
-		id, _, err := wrapper.Add()
-		require.NoError(t, err)
+		id, _, errAdd := wrapper.Add()
+		require.NoError(t, errAdd)
 		ids = append(ids, id)
 	}
 
@@ -91,7 +88,7 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 	require.Len(t, entries, count)
 
 	// Verify IDs present
-	retrievedIDs := make(map[int]bool)
+	retrievedIDs := make(map[uint64]bool)
 	for _, e := range entries {
 		retrievedIDs[e.ID] = true
 	}
@@ -105,7 +102,7 @@ func TestSQLiteWrapper_GetNonExistent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.MultipleAddressesHandlerStub{})
 	require.NoError(t, err)
 	defer func() {
 		_ = wrapper.Close()
@@ -121,8 +118,8 @@ func TestSQLiteWrapper_Add_ErrorGeneratingAddress(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 
 	expectedErr := fmt.Errorf("gen error")
-	mockAddr := &testsCommon.AddressHandlerStub{
-		GetAddressAtIndexHandler: func(index uint32) (string, error) {
+	mockAddr := &testsCommon.MultipleAddressesHandlerStub{
+		GetBech32AddressAtIndexHandler: func(index uint32) (string, error) {
 			return "", expectedErr
 		},
 	}
