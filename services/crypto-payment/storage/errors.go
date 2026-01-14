@@ -2,4 +2,4 @@ package storage
 
 import "errors"
 
-var errNilAddressHandler = errors.New("nil address handler")
+var errNilMultipleAddressesHandler = errors.New("nil multiple addresses handler")

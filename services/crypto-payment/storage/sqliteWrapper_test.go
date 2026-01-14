@@ -17,12 +17,12 @@ func TestNewSQLiteWrapper(t *testing.T) {
 	t.Run("nil address handler", func(t *testing.T) {
 		wrapper, err := NewSQLiteWrapper(dbPath, nil)
 		require.Nil(t, wrapper)
-		require.Equal(t, errNilAddressHandler, err)
+		require.Equal(t, errNilMultipleAddressesHandler, err)
 		assert.True(t, wrapper.IsInterfaceNil())
 	})
 
 	t.Run("success", func(t *testing.T) {
-		wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+		wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.MultipleAddressesHandlerStub{})
 		require.NoError(t, err)
 		defer func() {
 			_ = wrapper.Close()
@@ -37,8 +37,8 @@ func TestSQLiteWrapper_AddAndGet(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	mockAddr := &testsCommon.AddressHandlerStub{
-		GetAddressAtIndexHandler: func(index uint32) (string, error) {
+	mockAddr := &testsCommon.MultipleAddressesHandlerStub{
+		GetBech32AddressAtIndexHandler: func(index uint32) (string, error) {
 			return fmt.Sprintf("mock-addr-%d", index), nil
 		},
 	}
@@ -67,7 +67,7 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.MultipleAddressesHandlerStub{})
 	require.NoError(t, err)
 	defer func() {
 		_ = wrapper.Close()
@@ -102,7 +102,7 @@ func TestSQLiteWrapper_GetNonExistent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.AddressHandlerStub{})
+	wrapper, err := NewSQLiteWrapper(dbPath, &testsCommon.MultipleAddressesHandlerStub{})
 	require.NoError(t, err)
 	defer func() {
 		_ = wrapper.Close()
@@ -118,8 +118,8 @@ func TestSQLiteWrapper_Add_ErrorGeneratingAddress(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 
 	expectedErr := fmt.Errorf("gen error")
-	mockAddr := &testsCommon.AddressHandlerStub{
-		GetAddressAtIndexHandler: func(index uint32) (string, error) {
+	mockAddr := &testsCommon.MultipleAddressesHandlerStub{
+		GetBech32AddressAtIndexHandler: func(index uint32) (string, error) {
 			return "", expectedErr
 		},
 	}

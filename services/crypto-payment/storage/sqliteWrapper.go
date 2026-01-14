@@ -14,13 +14,13 @@ import (
 // sqliteWrapper handles the connection to the SQLite database
 type sqliteWrapper struct {
 	db             *sql.DB
-	addressHandler AddressHandler
+	addressHandler MultipleAddressesHandler
 }
 
 // NewSQLiteWrapper creates a new instance of SQLiteWrapper
-func NewSQLiteWrapper(dbPath string, addressHandler AddressHandler) (*sqliteWrapper, error) {
+func NewSQLiteWrapper(dbPath string, addressHandler MultipleAddressesHandler) (*sqliteWrapper, error) {
 	if check.IfNil(addressHandler) {
-		return nil, errNilAddressHandler
+		return nil, errNilMultipleAddressesHandler
 	}
 
 	err := prepareDirectories(dbPath)
@@ -110,7 +110,7 @@ func (wrapper *sqliteWrapper) Add() (int, string, error) {
 		return 0, "", fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
-	address, err := wrapper.addressHandler.GetAddressAtIndex(uint32(id))
+	address, err := wrapper.addressHandler.GetBech32AddressAtIndex(uint32(id))
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to generate address: %w", err)
 	}

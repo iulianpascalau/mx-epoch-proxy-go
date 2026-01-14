@@ -1,7 +1,7 @@
 package storage
 
-// AddressHandler defines the operations implemented by a struct able to hold and manage addresses
-type AddressHandler interface {
-	GetAddressAtIndex(index uint32) (string, error)
+// MultipleAddressesHandler defines the operations implemented by a struct able to hold and manage keys & addresses
+type MultipleAddressesHandler interface {
+	GetBech32AddressAtIndex(index uint32) (string, error)
 	IsInterfaceNil() bool
 }
