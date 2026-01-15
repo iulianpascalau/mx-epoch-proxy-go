@@ -8,6 +8,9 @@ import (
 // PaymentGasLimit is the gas limit for the payment transaction
 const PaymentGasLimit = 50000
 
+// CallGasLimit is the gas limit for a SC call
+const CallGasLimit = 3000000
+
 // GetContractPath returns the absolute path to the wasm file
 func GetContractPath(contractName string) string {
 	_, filename, _, _ := runtime.Caller(0)

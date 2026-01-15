@@ -1,5 +1,3 @@
-//go:build slow
-
 package _go
 
 import (
@@ -18,6 +16,9 @@ const functionGetRequests = "getRequests"
 var log = logger.GetOrCreate("integrationTests")
 
 func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
+	if !IsSlowTestTag {
+		t.Skip("Skipping slow test")
+	}
 	cryptoService := framework.NewCryptoPaymentService(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -28,7 +29,7 @@ func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
 
 	cryptoService.CreateService()
 
-	log.Info("======== 1. all users initiate some payments")
+	log.Info("======== 1. All users initiate some payments")
 	txHash1 := cryptoService.ChainSimulator.SendTxWithoutGenerateBlocks(
 		ctx,
 		cryptoService.Keys.UserAKeys.MvxSk,
@@ -103,7 +104,7 @@ func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
 	checkCredits(ctx, cryptoService, cryptoService.Keys.UserCKeys.ID, 1500000) // 500000 * 3
 	log.Info("Done ✓")
 
-	log.Info("======== 10. another round of payments")
+	log.Info("======== 10. Another round of payments")
 	txHash1 = cryptoService.ChainSimulator.SendTxWithoutGenerateBlocks(
 		ctx,
 		cryptoService.Keys.UserAKeys.MvxSk,

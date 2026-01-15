@@ -82,6 +82,19 @@
         },
         {
             "docs": [
+                "Check if the contract is paused"
+            ],
+            "name": "isPaused",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "docs": [
                 "Change the number of requests per EGLD",
                 "Can only be called by the owner"
             ],

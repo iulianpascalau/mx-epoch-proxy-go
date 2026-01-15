@@ -25,9 +25,10 @@ type CryptoPaymentService struct {
 	Keys           *KeysStore
 	ChainSimulator *chainSimulatorWrapper
 
-	ContractAddress  *MvxAddress
-	SQLiteWrapper    SQLiteWrapper
-	BalanceProcessor BalanceProcessor
+	ContractAddress    *MvxAddress
+	SQLiteWrapper      SQLiteWrapper
+	BalanceProcessor   BalanceProcessor
+	RelayedTxProcessor process.BalanceOperator
 }
 
 // NewCryptoPaymentService creates a new CryptoPaymentService instance
@@ -72,6 +73,7 @@ func (crs *CryptoPaymentService) Setup(ctx context.Context) {
 // TearDown cleans up the test environment
 func (crs *CryptoPaymentService) TearDown() {
 	_ = crs.SQLiteWrapper.Close()
+	_ = crs
 }
 
 // CreateService will assemble all the service processing components
@@ -117,7 +119,7 @@ func (crs *CryptoPaymentService) CreateService() {
 	log.Info("registered user C", "UserC address", crs.Keys.UserCKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserCKeys.ID)
 
-	relayedTxProcessor, err := process.NewRelayedTxProcessor(
+	crs.RelayedTxProcessor, err = process.NewRelayedTxProcessor(
 		crs.ChainSimulator.Proxy(),
 		multipleAddressHandler,
 		relayersHandlers,
@@ -129,7 +131,7 @@ func (crs *CryptoPaymentService) CreateService() {
 	crs.BalanceProcessor, err = process.NewBalanceProcessor(
 		crs.SQLiteWrapper,
 		crs.ChainSimulator.Proxy(),
-		relayedTxProcessor,
+		crs.RelayedTxProcessor,
 		minimumBalanceToCall,
 	)
 	require.Nil(crs, err)

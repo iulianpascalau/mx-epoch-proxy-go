@@ -49,12 +49,20 @@ pub trait RequestsContract {
         self.add_requests_event(&id, &amount_wei, &requests_to_add);
     }
 
+
     /// Get the number of acquired requests for a given ID
     /// Returns 0 if the ID was not credited
     #[view(getRequests)]
     fn get_requests(&self, id: u64) -> BigUint {
         self.acquired_requests(&id).get()
     }
+
+    /// Check if the contract is paused
+    #[view(isPaused)]
+    fn get_is_paused(&self) -> bool {
+        self.is_paused().get()
+    }
+
 
     /// Change the number of requests per EGLD
     /// Can only be called by the owner
