@@ -20,12 +20,13 @@ type BlockchainDataProvider interface {
 	GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
 	SendTransaction(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
+	SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
 	IsInterfaceNil() bool
 }
 
 // BalanceOperator defines the operations supported by a component able to process balance changes and SC calls
 type BalanceOperator interface {
-	Process(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error
+	Process(ctx context.Context, id uint64, senderAddress core.AddressHandler, value string, nonce uint64) error
 	IsInterfaceNil() bool
 }
 
@@ -40,5 +41,13 @@ type MultipleKeysHandler interface {
 type SingleKeyHandler interface {
 	Sign(msg []byte) ([]byte, error)
 	GetBech32Address() string
+	GetAddress() core.AddressHandler
 	IsInterfaceNil() bool
+}
+
+// NonceTransactionsHandler represents the interface able to handle the current nonce and the transactions resend mechanism
+type NonceTransactionsHandler interface {
+	ApplyNonceAndGasPrice(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	Close() error
 }

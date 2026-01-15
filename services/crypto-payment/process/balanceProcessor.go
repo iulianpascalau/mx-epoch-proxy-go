@@ -12,8 +12,6 @@ import (
 
 var log = logger.GetOrCreate("process")
 
-const egldDecimals = 18
-
 type balanceProcessor struct {
 	dataProvider           DataProvider
 	blockchainDataProvider BlockchainDataProvider
@@ -49,8 +47,8 @@ func NewBalanceProcessor(
 	}, nil
 }
 
-// Process will update the inner data provider state based on the accounts balances changes
-func (processor *balanceProcessor) Process(ctx context.Context) error {
+// ProcessAll will update the inner data provider state based on the accounts balances changes for all registered payment addresses
+func (processor *balanceProcessor) ProcessAll(ctx context.Context) error {
 	allRows, err := processor.dataProvider.GetAll()
 	if err != nil {
 		return fmt.Errorf("%w when getting all records", err)
@@ -82,7 +80,13 @@ func (processor *balanceProcessor) processRecord(ctx context.Context, row *commo
 		return
 	}
 
-	blockchainBalance, err := accountData.GetBalance(egldDecimals)
+	networkConfig, err := processor.blockchainDataProvider.GetNetworkConfig(ctx)
+	if err != nil {
+		log.Debug("error getting the network configs", "error", err)
+		return
+	}
+
+	blockchainBalance, err := accountData.GetBalance(networkConfig.Denomination)
 	if err != nil {
 		log.Debug("error getting the balance", "id", row.ID, "address", row.Address, "blockchain balance", accountData.Balance, "error", err)
 		return
@@ -93,7 +97,7 @@ func (processor *balanceProcessor) processRecord(ctx context.Context, row *commo
 		return
 	}
 
-	err = processor.balanceOperator.Process(ctx, row.ID, row.Address, accountData.Balance, accountData.Nonce)
+	err = processor.balanceOperator.Process(ctx, row.ID, addressHandler, accountData.Balance, accountData.Nonce)
 	if err != nil {
 		log.Error("error processing balance",
 			"id", row.ID, "address", row.Address, "balance", accountData.Balance,

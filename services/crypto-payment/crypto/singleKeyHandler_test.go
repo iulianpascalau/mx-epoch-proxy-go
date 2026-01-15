@@ -66,3 +66,18 @@ func TestSingleKeyHandler_GetBech32Address(t *testing.T) {
 
 	assert.Equal(t, expectedAddress, skh.GetBech32Address())
 }
+
+func TestSingleKeyHandler_GetAddress(t *testing.T) {
+	t.Parallel()
+
+	privateKeyBytes := bytes.Repeat([]byte{1}, 32)
+	skh, err := NewSingleKeyHandler(privateKeyBytes)
+	require.NoError(t, err)
+
+	// Calculate expected address
+	privateKey, _ := keyGenerator.PrivateKeyFromByteArray(privateKeyBytes)
+	publicKey := privateKey.GeneratePublic()
+	publicKeyBytes, _ := publicKey.ToByteArray()
+
+	assert.Equal(t, publicKeyBytes, skh.GetAddress().AddressBytes())
+}
