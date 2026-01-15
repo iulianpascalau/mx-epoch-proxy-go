@@ -61,7 +61,8 @@ func TestPauseUnpause(t *testing.T) {
 
 	log.Info("   ===== 4b. Trying to process payments")
 	err := cryptoService.BalanceProcessor.ProcessAll(ctx)
-	require.Nil(t, err)
+	require.NotNil(t, err)
+	log.Error("Error processing payments", "error", err)
 	log.Info("   Done ✓")
 
 	log.Info("   ===== 4c. Generate blocks until the payments are completed")

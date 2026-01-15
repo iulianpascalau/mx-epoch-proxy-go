@@ -133,6 +133,7 @@ func (crs *CryptoPaymentService) CreateService() {
 		crs.ChainSimulator.Proxy(),
 		crs.RelayedTxProcessor,
 		minimumBalanceToCall,
+		crs.ContractAddress.Bech32(),
 	)
 	require.Nil(crs, err)
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/multiversx/mx-sdk-go/data"
 )
 
+const isPausedView = "isPaused"
+
 var log = logger.GetOrCreate("process")
 
 type balanceProcessor struct {
@@ -17,6 +19,7 @@ type balanceProcessor struct {
 	blockchainDataProvider BlockchainDataProvider
 	balanceOperator        BalanceOperator
 	minimumBalanceToCall   float64
+	contractBech32Address  string
 }
 
 // NewBalanceProcessor creates a new instance of balanceProcessor
@@ -25,6 +28,7 @@ func NewBalanceProcessor(
 	blockchainDataProvider BlockchainDataProvider,
 	balanceOperator BalanceOperator,
 	minimumBalanceToCall float64,
+	contractBech32Address string,
 ) (*balanceProcessor, error) {
 	if check.IfNil(dataProvider) {
 		return nil, errNilDataProvider
@@ -38,17 +42,29 @@ func NewBalanceProcessor(
 	if minimumBalanceToCall <= 0 {
 		return nil, errInvalidMinimumBalanceToCall
 	}
+	if len(contractBech32Address) == 0 {
+		return nil, errEmptyContractBech32Address
+	}
 
 	return &balanceProcessor{
 		dataProvider:           dataProvider,
 		blockchainDataProvider: blockchainDataProvider,
 		balanceOperator:        balanceOperator,
 		minimumBalanceToCall:   minimumBalanceToCall,
+		contractBech32Address:  contractBech32Address,
 	}, nil
 }
 
 // ProcessAll will update the inner data provider state based on the accounts balances changes for all registered payment addresses
 func (processor *balanceProcessor) ProcessAll(ctx context.Context) error {
+	isPaused, err := processor.checkContractIsPaused(ctx)
+	if err != nil {
+		return fmt.Errorf("%w while processing payment addresses", err)
+	}
+	if isPaused {
+		return errContractIsPaused
+	}
+
 	allRows, err := processor.dataProvider.GetAll()
 	if err != nil {
 		return fmt.Errorf("%w when getting all records", err)
@@ -58,6 +74,25 @@ func (processor *balanceProcessor) ProcessAll(ctx context.Context) error {
 		processor.processRecord(ctx, row)
 	}
 	return nil
+}
+
+func (processor *balanceProcessor) checkContractIsPaused(ctx context.Context) (bool, error) {
+	vmRequest := &data.VmValueRequest{
+		Address:  processor.contractBech32Address,
+		FuncName: isPausedView,
+		Args:     nil,
+	}
+
+	result, err := processor.blockchainDataProvider.ExecuteVMQuery(ctx, vmRequest)
+	if err != nil {
+		return true, fmt.Errorf("error executing VM query: %w", err)
+	}
+
+	if result.Data == nil || result.Data.ReturnData == nil || len(result.Data.ReturnData) == 0 || len(result.Data.ReturnData[0]) == 0 {
+		return false, nil
+	}
+
+	return result.Data.ReturnData[0][0] == 1, nil
 }
 
 func (processor *balanceProcessor) processRecord(ctx context.Context, row *common.BalanceEntry) {

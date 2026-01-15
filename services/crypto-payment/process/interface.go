@@ -21,6 +21,7 @@ type BlockchainDataProvider interface {
 	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
 	SendTransaction(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
 	SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+	ExecuteVMQuery(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	IsInterfaceNil() bool
 }
 
