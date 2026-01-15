@@ -1,9 +1,12 @@
 package testsCommon
 
+import "github.com/multiversx/mx-sdk-go/core"
+
 // SingleKeyHandler -
 type SingleKeyHandler struct {
 	SignHandler             func(msg []byte) ([]byte, error)
 	GetBech32AddressHandler func() string
+	GetAddressHandler       func() core.AddressHandler
 }
 
 // Sign -
@@ -22,6 +25,15 @@ func (stub *SingleKeyHandler) GetBech32Address() string {
 	}
 
 	return ""
+}
+
+// GetAddress -
+func (stub *SingleKeyHandler) GetAddress() core.AddressHandler {
+	if stub.GetAddressHandler != nil {
+		return stub.GetAddressHandler()
+	}
+
+	return nil
 }
 
 // IsInterfaceNil -

@@ -9,7 +9,10 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-core-go/hashing/keccak"
+	"github.com/multiversx/mx-sdk-go/blockchain"
 	"github.com/multiversx/mx-sdk-go/builders"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
 )
 
 const requestsAddEndpoint = "addRequests"
@@ -19,7 +22,7 @@ var hashSigningTxHasher = keccak.NewKeccak()
 type relayedTxProcessor struct {
 	blockchainDataProvider BlockchainDataProvider
 	userKeys               MultipleKeysHandler
-	relayerKey             SingleKeyHandler
+	relayersKeys           map[uint32]SingleKeyHandler
 	gasLimit               uint64
 	contractBech32Address  string
 }
@@ -28,7 +31,7 @@ type relayedTxProcessor struct {
 func NewRelayedTxProcessor(
 	blockchainDataProvider BlockchainDataProvider,
 	userKeys MultipleKeysHandler,
-	relayerKey SingleKeyHandler,
+	relayersKeys []SingleKeyHandler,
 	gasLimit uint64,
 	contractBech32Address string,
 ) (*relayedTxProcessor, error) {
@@ -38,9 +41,12 @@ func NewRelayedTxProcessor(
 	if check.IfNil(userKeys) {
 		return nil, errNilUserKeysHandler
 	}
-	if check.IfNil(relayerKey) {
-		return nil, errNilRelayerKeysHandler
+
+	relayersMap, err := makeRelayersMap(relayersKeys, blockchainDataProvider)
+	if err != nil {
+		return nil, err
 	}
+
 	if gasLimit == 0 {
 		return nil, errZeroGasLimit
 	}
@@ -51,17 +57,57 @@ func NewRelayedTxProcessor(
 	return &relayedTxProcessor{
 		blockchainDataProvider: blockchainDataProvider,
 		userKeys:               userKeys,
-		relayerKey:             relayerKey,
+		relayersKeys:           relayersMap,
 		gasLimit:               gasLimit,
 		contractBech32Address:  contractBech32Address,
 	}, nil
 }
 
+func makeRelayersMap(relayersKeys []SingleKeyHandler, blockchainDataProvider BlockchainDataProvider) (map[uint32]SingleKeyHandler, error) {
+	if relayersKeys == nil {
+		return nil, errNilRelayersKeysMap
+	}
+
+	networkConfig, err := blockchainDataProvider.GetNetworkConfig(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	shardCoordinator, err := blockchain.NewShardCoordinator(networkConfig.NumShardsWithoutMeta, 0)
+	if err != nil {
+		return nil, err
+	}
+	relayersMap := make(map[uint32]SingleKeyHandler, len(relayersKeys))
+	for _, relayerKey := range relayersKeys {
+		shardID, errCompute := shardCoordinator.ComputeShardId(relayerKey.GetAddress())
+		if errCompute != nil {
+			return nil, errCompute
+		}
+		relayersMap[shardID] = relayerKey
+	}
+
+	for shardID := uint32(0); shardID < networkConfig.NumShardsWithoutMeta; shardID++ {
+		if check.IfNil(relayersMap[shardID]) {
+			return nil, fmt.Errorf("relayer key for shard %d is nil", shardID)
+		}
+	}
+
+	return relayersMap, nil
+}
+
 // Process implements BalanceOperator
-func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 	networkConfig, err := processor.blockchainDataProvider.GetNetworkConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get network config: %w", err)
+	}
+
+	if check.IfNil(sender) {
+		return errNilSender
+	}
+	senderBech32Address, err := sender.AddressAsBech32String()
+	if err != nil {
+		return fmt.Errorf("failed to convert sender address to bech32 string: %w", err)
 	}
 
 	// 1. Prepare the data field
@@ -76,7 +122,7 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, bec
 		Nonce:    nonce,
 		Value:    value,
 		Receiver: processor.contractBech32Address,
-		Sender:   bech32Address,
+		Sender:   senderBech32Address,
 		GasPrice: networkConfig.MinGasPrice,
 		GasLimit: processor.gasLimit,
 		Data:     dataField,
@@ -96,22 +142,28 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, bec
 	}
 	tx.Signature = hex.EncodeToString(userSig)
 
-	// 4. Sign the frontend transaction with the singleKeyHandler and populate relayer specific fields
-	relayerSig, err := processor.relayerKey.Sign(unsignedtTxBytes)
+	// 4. select the correct relayer (same shard with the sender)
+	relayerKey, err := processor.selectRelayer(networkConfig, sender)
+	if err != nil {
+		return fmt.Errorf("failed to select a valid: %w", err)
+	}
+
+	// 5. Sign the frontend transaction with the singleKeyHandler and populate relayer specific fields
+	relayerSig, err := relayerKey.Sign(unsignedtTxBytes)
 	if err != nil {
 		return fmt.Errorf("failed to sign the transaction with relayer key: %w", err)
 	}
 	tx.RelayerSignature = hex.EncodeToString(relayerSig)
-	tx.RelayerAddr = processor.relayerKey.GetBech32Address()
+	tx.RelayerAddr = relayerKey.GetBech32Address()
 
-	// 5. Send transaction
+	// 6. Send transaction
 	hash, err := processor.blockchainDataProvider.SendTransaction(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
 
 	log.Info("Transaction sent",
-		"sender", bech32Address,
+		"sender", senderBech32Address,
 		"nonce", nonce,
 		"value", value,
 		"data field", string(dataField),
@@ -132,6 +184,25 @@ func generateTransactionBytesToSign(tx *transaction.FrontendTransaction) ([]byte
 	}
 
 	return unsignedMessage, nil
+}
+
+func (processor *relayedTxProcessor) selectRelayer(networkConfig *data.NetworkConfig, sender core.AddressHandler) (SingleKeyHandler, error) {
+	shardCoordinator, err := blockchain.NewShardCoordinator(networkConfig.NumShardsWithoutMeta, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	shardID, err := shardCoordinator.ComputeShardId(sender)
+	if err != nil {
+		return nil, err
+	}
+
+	relayerKey := processor.relayersKeys[shardID]
+	if check.IfNil(relayerKey) {
+		return nil, fmt.Errorf("no relayer key found for shard %d", shardID)
+	}
+
+	return relayerKey, nil
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

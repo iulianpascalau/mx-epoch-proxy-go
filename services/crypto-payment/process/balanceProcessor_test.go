@@ -93,7 +93,7 @@ func TestNewBalanceProcessor(t *testing.T) {
 	})
 }
 
-func TestBalanceProcessor_Process(t *testing.T) {
+func TestBalanceProcessor_ProcessAll(t *testing.T) {
 	t.Parallel()
 
 	expectedErr := errors.New("expected error")
@@ -116,7 +116,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -125,7 +125,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.Error(t, err)
 		require.ErrorIs(t, err, expectedErr)
 	})
@@ -148,7 +148,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -157,7 +157,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 	})
 
@@ -184,7 +184,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -195,7 +195,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		cancelFunc()
-		err := bp.Process(ctx)
+		err := bp.ProcessAll(ctx)
 		require.NoError(t, err)
 	})
 
@@ -222,7 +222,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -231,7 +231,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 	})
 
@@ -256,7 +256,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -265,7 +265,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 	})
 
@@ -292,7 +292,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -301,7 +301,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 	})
 
@@ -325,10 +325,15 @@ func TestBalanceProcessor_Process(t *testing.T) {
 					Balance: "9000000000000000",
 				}, nil
 			},
+			GetNetworkConfigHandler: func(ctx context.Context) (*data.NetworkConfig, error) {
+				return &data.NetworkConfig{
+					Denomination: 18,
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Fail(t, "should not be called")
 
 				return nil
@@ -337,7 +342,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 	})
 
@@ -371,8 +376,9 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		processBalanceOperatorCalled := false
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Equal(t, uint64(0), id)
+				bech32Address, _ := sender.AddressAsBech32String()
 				assert.Equal(t, "erd19x6dfsupwtsl46nmgpxw30xcka72e4z0x3ngh6h0yjy6zwtrgh5q8px2wc", bech32Address)
 				assert.Equal(t, "1200000000000000000", value)
 				assert.Equal(t, uint64(37), nonce)
@@ -384,7 +390,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 		assert.True(t, getAllWasCalled)
 		assert.True(t, getAccountWasCalled)
@@ -417,12 +423,18 @@ func TestBalanceProcessor_Process(t *testing.T) {
 					Balance: "1200000000000000000", //1.2 egld
 				}, nil
 			},
+			GetNetworkConfigHandler: func(ctx context.Context) (*data.NetworkConfig, error) {
+				return &data.NetworkConfig{
+					Denomination: 18,
+				}, nil
+			},
 		}
 
 		processBalanceOperatorCalled := false
 		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, bech32Address string, value string, nonce uint64) error {
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
 				assert.Equal(t, uint64(0), id)
+				bech32Address, _ := sender.AddressAsBech32String()
 				assert.Equal(t, "erd19x6dfsupwtsl46nmgpxw30xcka72e4z0x3ngh6h0yjy6zwtrgh5q8px2wc", bech32Address)
 				assert.Equal(t, "1200000000000000000", value)
 				assert.Equal(t, uint64(37), nonce)
@@ -434,7 +446,7 @@ func TestBalanceProcessor_Process(t *testing.T) {
 
 		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
 
-		err := bp.Process(context.Background())
+		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
 		assert.True(t, getAllWasCalled)
 		assert.True(t, getAccountWasCalled)

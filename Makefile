@@ -22,6 +22,12 @@ clean-tests:
 tests: clean-tests
 	go test ./...
 
+slow-tests: clean-tests
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up -d
+	@go test ./integrationTests/... -v -timeout 40m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
 build:
 	cd ./services/proxy && go build -v \
 	-o ${binary} \
