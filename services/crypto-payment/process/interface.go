@@ -21,12 +21,14 @@ type BlockchainDataProvider interface {
 	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
 	SendTransaction(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
 	SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+	ExecuteVMQuery(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	IsInterfaceNil() bool
 }
 
 // BalanceOperator defines the operations supported by a component able to process balance changes and SC calls
 type BalanceOperator interface {
 	Process(ctx context.Context, id uint64, senderAddress core.AddressHandler, value string, nonce uint64) error
+	Close() error
 	IsInterfaceNil() bool
 }
 

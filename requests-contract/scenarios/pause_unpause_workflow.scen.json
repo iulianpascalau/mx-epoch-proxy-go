@@ -33,6 +33,23 @@
         ],
         "gasLimit": "60000000",
         "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "check_initially_not_paused",
+      "tx": {
+        "to": "sc:requests",
+        "function": "isPaused",
+        "arguments": []
+      },
+      "expect": {
+        "out": [
+          ""
+        ]
       }
     },
     {
@@ -48,6 +65,20 @@
       },
       "expect": {
         "status": "0"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "check_paused",
+      "tx": {
+        "to": "sc:requests",
+        "function": "isPaused",
+        "arguments": []
+      },
+      "expect": {
+        "out": [
+          "1"
+        ]
       }
     },
     {
@@ -82,6 +113,20 @@
       },
       "expect": {
         "status": "0"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "check_unpaused",
+      "tx": {
+        "to": "sc:requests",
+        "function": "isPaused",
+        "arguments": []
+      },
+      "expect": {
+        "out": [
+          ""
+        ]
       }
     },
     {

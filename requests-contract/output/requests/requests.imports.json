@@ -31,5 +31,6 @@
   "managedTransferValueExecute",
   "managedWriteLog",
   "signalError",
+  "smallIntFinishSigned",
   "smallIntGetUnsignedArgument"
 ]

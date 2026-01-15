@@ -7,6 +7,7 @@ import (
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/testsCommon"
+	"github.com/multiversx/mx-chain-core-go/data/vm"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,7 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
 			0.01,
+			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -37,6 +39,7 @@ func TestNewBalanceProcessor(t *testing.T) {
 			nil,
 			&testsCommon.BalanceOperatorStub{},
 			0.01,
+			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -50,6 +53,7 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.BlockchainDataProviderStub{},
 			nil,
 			0.01,
+			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -63,6 +67,7 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
 			0,
+			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -73,10 +78,25 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
 			-0.0001,
+			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
 		assert.Equal(t, errInvalidMinimumBalanceToCall, err)
+	})
+	t.Run("empty contract address should error", func(t *testing.T) {
+		t.Parallel()
+
+		instance, err := NewBalanceProcessor(
+			&testsCommon.DataProviderStub{},
+			&testsCommon.BlockchainDataProviderStub{},
+			&testsCommon.BalanceOperatorStub{},
+			0.01,
+			"",
+		)
+		assert.Nil(t, instance)
+		assert.True(t, instance.IsInterfaceNil())
+		assert.Equal(t, errEmptyContractBech32Address, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -86,6 +106,7 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
 			0.01,
+			"erd1test",
 		)
 		assert.NotNil(t, instance)
 		assert.False(t, instance.IsInterfaceNil())
@@ -98,7 +119,53 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 
 	expectedErr := errors.New("expected error")
 
-	t.Run("get all errors should error", func(t *testing.T) {
+	t.Run("contract paused should error", func(t *testing.T) {
+		t.Parallel()
+
+		dataProvider := &testsCommon.DataProviderStub{
+			GetAllHandler: func() ([]*common.BalanceEntry, error) {
+				assert.Fail(t, "should not be called")
+				return nil, nil
+			},
+		}
+
+		blockchainDataProvider := &testsCommon.BlockchainDataProviderStub{
+			GetAccountHandler: func(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
+				assert.Fail(t, "should not be called")
+
+				return &data.Account{}, nil
+			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{1}},
+					},
+				}, nil
+			},
+		}
+
+		balanceOperator := &testsCommon.BalanceOperatorStub{
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
+				assert.Fail(t, "should not be called")
+
+				return nil
+			},
+		}
+
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
+
+		err := bp.ProcessAll(context.Background())
+		require.Error(t, err)
+		require.ErrorIs(t, err, errContractIsPaused)
+	})
+
+	t.Run("vm query returns invalid response", func(t *testing.T) {
 		t.Parallel()
 
 		dataProvider := &testsCommon.DataProviderStub{
@@ -123,7 +190,101 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
+
+		t.Run("nil response.Data", func(t *testing.T) {
+			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{}, nil
+			}
+
+			err := bp.ProcessAll(context.Background())
+			require.Error(t, err)
+			require.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("nil response.Data.ReturnData", func(t *testing.T) {
+			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{},
+				}, nil
+			}
+
+			err := bp.ProcessAll(context.Background())
+			require.Error(t, err)
+			require.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("len(response.Data.ReturnData) == 0", func(t *testing.T) {
+			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			}
+
+			err := bp.ProcessAll(context.Background())
+			require.Error(t, err)
+			require.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("len(response.Data.ReturnData[0]) == 0", func(t *testing.T) {
+			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{}},
+					},
+				}, nil
+			}
+
+			err := bp.ProcessAll(context.Background())
+			require.Error(t, err)
+			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+
+	t.Run("get all errors should error", func(t *testing.T) {
+		t.Parallel()
+
+		dataProvider := &testsCommon.DataProviderStub{
+			GetAllHandler: func() ([]*common.BalanceEntry, error) {
+				return nil, expectedErr
+			},
+		}
+
+		blockchainDataProvider := &testsCommon.BlockchainDataProviderStub{
+			GetAccountHandler: func(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
+				assert.Fail(t, "should not be called")
+
+				return &data.Account{}, nil
+			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
+		}
+
+		balanceOperator := &testsCommon.BalanceOperatorStub{
+			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
+				assert.Fail(t, "should not be called")
+
+				return nil
+			},
+		}
+
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.Error(t, err)
@@ -145,6 +306,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 
 				return &data.Account{}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
@@ -155,7 +323,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
@@ -181,6 +355,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 
 				return &data.Account{}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
@@ -191,7 +372,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		cancelFunc()
@@ -219,6 +406,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 
 				return &data.Account{}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
@@ -229,7 +423,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
@@ -253,6 +453,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			GetAccountHandler: func(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
 				return nil, expectedErr
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
@@ -263,7 +470,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
@@ -289,6 +502,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 					Balance: "not-a-balance",
 				}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
@@ -299,7 +519,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
@@ -330,6 +556,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 					Denomination: 18,
 				}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		balanceOperator := &testsCommon.BalanceOperatorStub{
@@ -340,7 +573,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
@@ -372,6 +611,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 					Balance: "1200000000000000000", //1.2 egld
 				}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		processBalanceOperatorCalled := false
@@ -388,7 +634,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)
@@ -428,6 +680,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 					Denomination: 18,
 				}, nil
 			},
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+					},
+				}, nil
+			},
 		}
 
 		processBalanceOperatorCalled := false
@@ -444,7 +703,13 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
-		bp, _ := NewBalanceProcessor(dataProvider, blockchainDataProvider, balanceOperator, 0.01)
+		bp, _ := NewBalanceProcessor(
+			dataProvider,
+			blockchainDataProvider,
+			balanceOperator,
+			0.01,
+			"erd1test",
+		)
 
 		err := bp.ProcessAll(context.Background())
 		require.NoError(t, err)

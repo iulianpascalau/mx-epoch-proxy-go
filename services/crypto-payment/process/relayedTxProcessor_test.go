@@ -138,6 +138,9 @@ func TestNewRelayedTxProcessor(t *testing.T) {
 		require.NotNil(t, proc)
 		require.NoError(t, err)
 		assert.False(t, proc.IsInterfaceNil())
+
+		err = proc.Close()
+		require.NoError(t, err)
 	})
 }
 

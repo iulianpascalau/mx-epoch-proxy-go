@@ -14,6 +14,7 @@ type BlockchainDataProviderStub struct {
 	GetNetworkConfigHandler func(ctx context.Context) (*data.NetworkConfig, error)
 	SendTransactionHandler  func(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
 	SendTransactionsHandler func(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+	ExecuteVMQueryHandler   func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
 // SendTransactions -
@@ -48,6 +49,15 @@ func (stub *BlockchainDataProviderStub) SendTransaction(ctx context.Context, tra
 		return stub.SendTransactionHandler(ctx, transaction)
 	}
 	return "", nil
+}
+
+// ExecuteVMQuery -
+func (stub *BlockchainDataProviderStub) ExecuteVMQuery(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+	if stub.ExecuteVMQueryHandler != nil {
+		return stub.ExecuteVMQueryHandler(ctx, vmRequest)
+	}
+
+	return &data.VmValuesResponseData{}, nil
 }
 
 // IsInterfaceNil -
