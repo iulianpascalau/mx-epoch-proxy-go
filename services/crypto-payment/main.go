@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"time"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/api"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/crypto"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/storage"
 	"github.com/joho/godotenv"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-sdk-go/interactors"
 	"github.com/urfave/cli"
 )
 
@@ -62,6 +67,12 @@ VERSION:
 		Usage: "This flag specifies the `directory` where the node will store databases and logs.",
 		Value: "",
 	}
+	// apiPort defines the port for the API web server
+	apiPort = cli.IntFlag{
+		Name:  "api-port",
+		Usage: "The port used to start the API web server.",
+		Value: 8080,
+	}
 )
 
 func main() {
@@ -74,6 +85,7 @@ func main() {
 		logLevel,
 		logSaveFile,
 		workingDirectory,
+		apiPort,
 	}
 	app.Authors = []cli.Author{
 		{
@@ -126,7 +138,40 @@ func run(ctx *cli.Context) error {
 		log.Warn("load env file", "error", err)
 	}
 
-	// Service logic would go here
+	mnemonics := os.Getenv("MNEMONICS")
+	if len(mnemonics) == 0 {
+		return fmt.Errorf("missing MNEMONICS environment variable")
+	}
+
+	walletInteractor := interactors.NewWallet()
+	multipleKeysHandler, err := crypto.NewMultipleKeysHandler(walletInteractor, mnemonics)
+	if err != nil {
+		return err
+	}
+
+	dbPath := filepath.Join(workingDir, "crypto-payment.db")
+	sqliteWrapper, err := storage.NewSQLiteWrapper(dbPath, multipleKeysHandler)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = sqliteWrapper.Close()
+	}()
+
+	apiHandler, err := api.NewHandler(sqliteWrapper)
+	if err != nil {
+		return err
+	}
+
+	httpServer := api.NewHTTPServer(apiHandler, ctx.Int(apiPort.Name))
+	err = httpServer.Start()
+	defer func() {
+		_ = httpServer.Close()
+	}()
+	if err != nil {
+		return err
+	}
+
 	log.Info("Service is running... Press Ctrl+C to stop")
 
 	sigs := make(chan os.Signal, 1)
