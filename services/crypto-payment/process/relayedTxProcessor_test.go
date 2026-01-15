@@ -532,6 +532,15 @@ func TestRelayedTxProcessor_Process(t *testing.T) {
 					NumShardsWithoutMeta:  1,
 				}, nil
 			},
+			GetAccountHandler: func(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
+				if bytes.Equal(address.AddressBytes(), senderAddr.AddressBytes()) {
+					return &data.Account{
+						Nonce: 37,
+					}, nil
+				}
+
+				return &data.Account{}, nil
+			},
 			SendTransactionHandler: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
 				assert.Equal(t, uint64(37), tx.Nonce)
 				assert.Equal(t, "1200000000000000000", tx.Value)

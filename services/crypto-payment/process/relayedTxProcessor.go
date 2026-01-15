@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
@@ -13,9 +14,11 @@ import (
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV2"
 )
 
 const requestsAddEndpoint = "addRequests"
+const intervalToResendTxs = time.Minute
 
 var hashSigningTxHasher = keccak.NewKeccak()
 
@@ -25,6 +28,7 @@ type relayedTxProcessor struct {
 	relayersKeys           map[uint32]SingleKeyHandler
 	gasLimit               uint64
 	contractBech32Address  string
+	nonceTxHandler         NonceTransactionsHandler
 }
 
 // NewRelayedTxProcessor creates a new instance of relayedTxProcessor
@@ -54,12 +58,23 @@ func NewRelayedTxProcessor(
 		return nil, errEmptyContractBech32Address
 	}
 
+	argsNonceTxHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
+		Proxy:            blockchainDataProvider,
+		IntervalToResend: intervalToResendTxs,
+	}
+
+	nonceTxHandler, err := nonceHandlerV2.NewNonceTransactionHandlerV2(argsNonceTxHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	return &relayedTxProcessor{
 		blockchainDataProvider: blockchainDataProvider,
 		userKeys:               userKeys,
 		relayersKeys:           relayersMap,
 		gasLimit:               gasLimit,
 		contractBech32Address:  contractBech32Address,
+		nonceTxHandler:         nonceTxHandler,
 	}, nil
 }
 
@@ -123,11 +138,14 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, sen
 		Value:    value,
 		Receiver: processor.contractBech32Address,
 		Sender:   senderBech32Address,
-		GasPrice: networkConfig.MinGasPrice,
 		GasLimit: processor.gasLimit,
 		Data:     dataField,
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
+	}
+	err = processor.nonceTxHandler.ApplyNonceAndGasPrice(ctx, sender, tx)
+	if err != nil {
+		return fmt.Errorf("failed to apply nonce and gas price: %w", err)
 	}
 
 	// 3. Sign the frontend transaction with the key at the provided index
@@ -157,7 +175,7 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, sen
 	tx.RelayerAddr = relayerKey.GetBech32Address()
 
 	// 6. Send transaction
-	hash, err := processor.blockchainDataProvider.SendTransaction(ctx, tx)
+	hash, err := processor.nonceTxHandler.SendTransaction(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
@@ -203,6 +221,11 @@ func (processor *relayedTxProcessor) selectRelayer(networkConfig *data.NetworkCo
 	}
 
 	return relayerKey, nil
+}
+
+// Close closes any subcomponents it uses
+func (processor *relayedTxProcessor) Close() error {
+	return processor.nonceTxHandler.Close()
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

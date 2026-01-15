@@ -13,6 +13,16 @@ type BlockchainDataProviderStub struct {
 	GetAccountHandler       func(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 	GetNetworkConfigHandler func(ctx context.Context) (*data.NetworkConfig, error)
 	SendTransactionHandler  func(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
+	SendTransactionsHandler func(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+}
+
+// SendTransactions -
+func (stub *BlockchainDataProviderStub) SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error) {
+	if stub.SendTransactionsHandler != nil {
+		return stub.SendTransactionsHandler(ctx, txs)
+	}
+
+	return make([]string, 0), nil
 }
 
 // GetAccount -

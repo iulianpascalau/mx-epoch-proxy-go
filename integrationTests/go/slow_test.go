@@ -1,6 +1,6 @@
 //go:build slow
 
-package integrationTests
+package _go
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/framework"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/go/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
 )
