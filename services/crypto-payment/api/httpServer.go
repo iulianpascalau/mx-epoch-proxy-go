@@ -24,6 +24,7 @@ func NewHTTPServer(handler *Handler, port int) *httpServer {
 
 	router.GET("/config", handler.GetConfig)
 	router.POST("/create-address", handler.CreateAddress)
+	router.GET("/account", handler.GetAccount)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),

@@ -12,6 +12,7 @@ import (
 // DataProvider defines the operations required from the storage layer
 type DataProvider interface {
 	GetAll() ([]*common.BalanceEntry, error)
+	Get(id uint64) (*common.BalanceEntry, error)
 	IsInterfaceNil() bool
 }
 
@@ -58,5 +59,14 @@ type NonceTransactionsHandler interface {
 type ContractHandler interface {
 	IsContractPaused(ctx context.Context) (bool, error)
 	GetRequestsPerEGLD(ctx context.Context) (uint64, error)
+	GetRequests(ctx context.Context, id uint64) (uint64, error)
+	IsInterfaceNil() bool
+}
+
+// Cacher defines the operations to cache data
+type Cacher interface {
+	Get(key string) (interface{}, bool)
+	Set(key string, value interface{})
+	Close()
 	IsInterfaceNil() bool
 }

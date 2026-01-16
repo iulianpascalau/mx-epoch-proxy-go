@@ -89,11 +89,11 @@ func (wrapper *sqliteWrapper) Get(id uint64) (*common.BalanceEntry, error) {
 	return &entry, nil
 }
 
-// Add creates a new entry and returns the created id and the address string
-func (wrapper *sqliteWrapper) Add() (uint64, string, error) {
+// Add creates a new entry and returns the created id
+func (wrapper *sqliteWrapper) Add() (uint64, error) {
 	tx, err := wrapper.db.Begin()
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to begin transaction: %w", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -102,31 +102,31 @@ func (wrapper *sqliteWrapper) Add() (uint64, string, error) {
 	query := `INSERT INTO balance_management (address) VALUES ("")`
 	result, err := tx.Exec(query)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to add entry: %w", err)
+		return 0, fmt.Errorf("failed to add entry: %w", err)
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to get last insert id: %w", err)
+		return 0, fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
 	address, err := wrapper.addressHandler.GetBech32AddressAtIndex(uint32(id))
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to generate address: %w", err)
+		return 0, fmt.Errorf("failed to generate address: %w", err)
 	}
 
 	updateQuery := `UPDATE balance_management SET address = ? WHERE id = ?`
 	_, err = tx.Exec(updateQuery, address, id)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to update address: %w", err)
+		return 0, fmt.Errorf("failed to update address: %w", err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to commit transaction: %w", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return uint64(id), address, nil
+	return uint64(id), nil
 }
 
 // GetAll provides all rows
