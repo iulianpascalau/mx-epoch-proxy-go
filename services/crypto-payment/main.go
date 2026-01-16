@@ -186,6 +186,7 @@ func run(ctx *cli.Context) error {
 	contractQueryHandler, err := process.NewContractQueryHandler(
 		proxy,
 		config.Config.ContractAddress,
+		time.Minute,
 	)
 	if err != nil {
 		return err

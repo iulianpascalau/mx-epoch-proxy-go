@@ -120,19 +120,8 @@ func TestPauseUnpause(t *testing.T) {
 }
 
 func checkIsPaused(ctx context.Context, service *framework.CryptoPaymentService, expected bool) {
-	result := service.ChainSimulator.ExecuteVMQuery(
-		ctx,
-		service.ContractAddress,
-		"isPaused",
-		make([]string, 0),
-	)
-
-	isPaused := false
-	if len(result) > 0 {
-		if len(result[0]) > 0 {
-			isPaused = result[0][0] == 1
-		}
-	}
+	isPaused, err := service.ContractQueryHandler.IsContractPaused(ctx)
+	require.Nil(service, err)
 
 	require.Equal(service, expected, isPaused)
 }

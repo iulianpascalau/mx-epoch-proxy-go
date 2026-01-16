@@ -14,12 +14,12 @@ import (
 const (
 	isPausedFunc        = "isPaused"
 	requestsPerEgldFunc = "getRequestsPerEgld"
-	cacheValidity       = time.Minute
 )
 
 type contractQueryHandler struct {
 	blockchainDataProvider BlockchainDataProvider
 	contractBech32Address  string
+	cacheValidity          time.Duration
 
 	mut           sync.RWMutex
 	isPausedValue bool
@@ -30,6 +30,7 @@ type contractQueryHandler struct {
 func NewContractQueryHandler(
 	blockchainDataProvider BlockchainDataProvider,
 	contractBech32Address string,
+	cacheValidity time.Duration,
 ) (*contractQueryHandler, error) {
 	if check.IfNil(blockchainDataProvider) {
 		return nil, fmt.Errorf("nil blockchain data provider")
@@ -37,17 +38,21 @@ func NewContractQueryHandler(
 	if len(contractBech32Address) == 0 {
 		return nil, fmt.Errorf("empty contract address")
 	}
+	if cacheValidity < 0 {
+		return nil, fmt.Errorf("invalid cache validity duration")
+	}
 
 	return &contractQueryHandler{
 		blockchainDataProvider: blockchainDataProvider,
 		contractBech32Address:  contractBech32Address,
+		cacheValidity:          cacheValidity,
 	}, nil
 }
 
 // IsContractPaused checks if the contract is paused, using caching
 func (cqh *contractQueryHandler) IsContractPaused(ctx context.Context) (bool, error) {
 	cqh.mut.RLock()
-	if time.Since(cqh.lastCacheTime) < cacheValidity {
+	if time.Since(cqh.lastCacheTime) < cqh.cacheValidity {
 		defer cqh.mut.RUnlock()
 		return cqh.isPausedValue, nil
 	}
@@ -57,7 +62,7 @@ func (cqh *contractQueryHandler) IsContractPaused(ctx context.Context) (bool, er
 	defer cqh.mut.Unlock()
 
 	// Double check after acquiring lock
-	if time.Since(cqh.lastCacheTime) < cacheValidity {
+	if time.Since(cqh.lastCacheTime) < cqh.cacheValidity {
 		return cqh.isPausedValue, nil
 	}
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/testsCommon"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
@@ -20,7 +21,7 @@ func TestNewContractQueryHandler(t *testing.T) {
 	t.Run("nil proxy should error", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewContractQueryHandler(nil, "erd1test")
+		handler, err := NewContractQueryHandler(nil, "erd1test", time.Minute)
 		require.Nil(t, handler)
 		require.EqualError(t, err, "nil blockchain data provider")
 	})
@@ -28,7 +29,7 @@ func TestNewContractQueryHandler(t *testing.T) {
 	t.Run("empty contract address should error", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewContractQueryHandler(&testsCommon.BlockchainDataProviderStub{}, "")
+		handler, err := NewContractQueryHandler(&testsCommon.BlockchainDataProviderStub{}, "", time.Minute)
 		require.Nil(t, handler)
 		require.EqualError(t, err, "empty contract address")
 	})
@@ -36,7 +37,7 @@ func TestNewContractQueryHandler(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewContractQueryHandler(&testsCommon.BlockchainDataProviderStub{}, "erd1test")
+		handler, err := NewContractQueryHandler(&testsCommon.BlockchainDataProviderStub{}, "erd1test", time.Minute)
 		require.NotNil(t, handler)
 		require.NoError(t, err)
 		require.False(t, handler.IsInterfaceNil())
@@ -56,7 +57,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.False(t, paused)
 		require.Equal(t, expectedErr, err)
@@ -71,7 +72,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.False(t, paused)
@@ -88,7 +89,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.False(t, paused)
@@ -105,7 +106,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.False(t, paused)
@@ -122,7 +123,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.False(t, paused)
@@ -139,7 +140,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.True(t, paused)
@@ -156,7 +157,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.False(t, paused)
@@ -175,7 +176,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.True(t, paused)
@@ -201,7 +202,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		val, err := handler.GetRequestsPerEGLD(context.Background())
 		require.Equal(t, uint64(0), val)
 		require.Equal(t, expectedErr, err)
@@ -218,7 +219,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		val, err := handler.GetRequestsPerEGLD(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, uint64(0), val)
@@ -236,7 +237,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		val, err := handler.GetRequestsPerEGLD(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, uint64(10), val)
@@ -256,7 +257,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewContractQueryHandler(proxy, "erd1test")
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", time.Minute)
 		val, err := handler.GetRequestsPerEGLD(context.Background())
 		require.Error(t, err)
 		require.True(t, strings.Contains(err.Error(), "is not a uint64"))
