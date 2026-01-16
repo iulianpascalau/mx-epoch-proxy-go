@@ -23,13 +23,14 @@ type AccessKeyDetails struct {
 
 // UsersDetails holds details about a user
 type UsersDetails struct {
-	MaxRequests    uint64
-	GlobalCounter  uint64
-	Username       string
-	HashedPassword string
-	AccountType    AccountType
-	IsActive       bool
-	IsAdmin        bool
+	MaxRequests     uint64
+	GlobalCounter   uint64
+	Username        string
+	HashedPassword  string
+	AccountType     AccountType
+	IsActive        bool
+	IsAdmin         bool
+	CryptoPaymentID uint64
 }
 
 // Claims struct holds the JWT claims
@@ -37,4 +38,13 @@ type Claims struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
+}
+
+// AccountSettings represents the settings for an account
+type AccountSettings struct {
+	Type                   AccountType
+	IsUnlimited            bool
+	RequestCount           uint64
+	MaxRequests            uint64
+	CryptoPaymentInitiated bool
 }

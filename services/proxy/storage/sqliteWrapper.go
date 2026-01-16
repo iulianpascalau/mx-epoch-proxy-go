@@ -80,7 +80,8 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		is_active BOOLEAN DEFAULT TRUE,
 		activation_token TEXT DEFAULT '',
 		pending_email TEXT DEFAULT '',
-		change_email_token TEXT DEFAULT ''
+		change_email_token TEXT DEFAULT '',
+		crypto_payment_id INTEGER DEFAULT NULL
 	);`
 	_, err := wrapper.db.Exec(usersTable)
 	if err != nil {
@@ -93,6 +94,7 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN activation_token TEXT DEFAULT '';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN pending_email TEXT DEFAULT '';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN change_email_token TEXT DEFAULT '';")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN crypto_payment_id INTEGER DEFAULT NULL;")
 
 	keysTable := `
 	CREATE TABLE IF NOT EXISTS access_keys (
@@ -391,14 +393,19 @@ func (wrapper *sqliteWrapper) GetUser(username string) (*common.UsersDetails, er
 }
 
 func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDetails, error) {
-	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active FROM users WHERE username = ?`
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active, crypto_payment_id FROM users WHERE username = ?`
 	var details common.UsersDetails
-	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive)
+	var cryptoPaymentID sql.NullInt64
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive, &cryptoPaymentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("error querying user: %w", err)
+	}
+
+	if cryptoPaymentID.Valid {
+		details.CryptoPaymentID = uint64(cryptoPaymentID.Int64)
 	}
 
 	return &details, nil
@@ -449,7 +456,7 @@ func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.Acc
 // GetAllUsers returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, error) {
 	query := `
-		SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active
+		SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active, crypto_payment_id
 		FROM users
 	`
 	rows, err := wrapper.db.Query(query)
@@ -463,9 +470,13 @@ func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, err
 	result := make(map[string]common.UsersDetails)
 	for rows.Next() {
 		var details common.UsersDetails
-		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive)
+		var cryptoPaymentID sql.NullInt64
+		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive, &cryptoPaymentID)
 		if err != nil {
 			return nil, err
+		}
+		if cryptoPaymentID.Valid {
+			details.CryptoPaymentID = uint64(cryptoPaymentID.Int64)
 		}
 		result[strings.ToLower(details.Username)] = details
 	}
@@ -661,12 +672,13 @@ func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
 	}()
 
 	// 1. Find user with this token
-	querySelect := `SELECT username, pending_email, hashed_password, is_admin, max_requests, request_count, account_type, is_active FROM users WHERE change_email_token = ?`
+	querySelect := `SELECT username, pending_email, hashed_password, is_admin, max_requests, request_count, account_type, is_active, crypto_payment_id FROM users WHERE change_email_token = ?`
 	var oldUsername, newEmail, hashedPassword, accountType string
 	var isAdmin, isActive bool
 	var maxRequests, requestCount uint64
+	var cryptoPaymentID sql.NullInt64
 
-	err = tx.QueryRow(querySelect, token).Scan(&oldUsername, &newEmail, &hashedPassword, &isAdmin, &maxRequests, &requestCount, &accountType, &isActive)
+	err = tx.QueryRow(querySelect, token).Scan(&oldUsername, &newEmail, &hashedPassword, &isAdmin, &maxRequests, &requestCount, &accountType, &isActive, &cryptoPaymentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("invalid or expired token")
@@ -691,10 +703,10 @@ func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
 	}
 
 	insertQueryFull := `
-	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type, is_active, activation_token, pending_email, change_email_token) 
-	VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '')
+	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type, is_active, activation_token, pending_email, change_email_token, crypto_payment_id) 
+	VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '', ?)
 	`
-	_, err = tx.Exec(insertQueryFull, newEmail, hashedPassword, isAdmin, maxRequests, requestCount, accountType, isActive)
+	_, err = tx.Exec(insertQueryFull, newEmail, hashedPassword, isAdmin, maxRequests, requestCount, accountType, isActive, cryptoPaymentID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new user entry: %w", err)
 	}
@@ -724,4 +736,31 @@ func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
 // IsInterfaceNil returns true if the value under the interface is nil
 func (wrapper *sqliteWrapper) IsInterfaceNil() bool {
 	return wrapper == nil
+}
+
+// SetCryptoPaymentID updates the user's crypto payment ID
+func (wrapper *sqliteWrapper) SetCryptoPaymentID(username string, paymentID uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET crypto_payment_id = ? WHERE username = ?`
+	result, err := tx.Exec(query, paymentID, username)
+	if err != nil {
+		return fmt.Errorf("failed to set crypto payment ID: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
 }

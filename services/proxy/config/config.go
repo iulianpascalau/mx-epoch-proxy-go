@@ -7,6 +7,7 @@ type Config struct {
 	Gateways        []GatewayConfig
 	ClosedEndpoints []string
 	AppDomains      AppDomainsConfig
+	CryptoPayment   CryptoPaymentConfig
 }
 
 // GatewayConfig defines a gateway and its set epochs
@@ -29,4 +30,13 @@ type FreeAccountConfig struct {
 type AppDomainsConfig struct {
 	Backend  string
 	Frontend string
+}
+
+// CryptoPaymentConfig holds the configuration for the crypto-payment service integration
+type CryptoPaymentConfig struct {
+	URL                          string
+	ServiceApiKey                string
+	TimeoutInSeconds             uint64
+	ConfigCacheDurationInSeconds uint64
+	Enabled                      bool
 }

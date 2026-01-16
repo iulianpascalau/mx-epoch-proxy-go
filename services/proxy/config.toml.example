@@ -21,3 +21,19 @@ ClosedEndpoints = [
 [AppDomains]
     Backend = "http://localhost:8080"
     Frontend = "http://localhost:5173"
+
+[CryptoPayment]
+    # Enable/disable crypto-payment integration
+    Enabled = true
+
+    # URL of the crypto-payment service
+    URL = "http://localhost:8081"
+
+    # API key for service-to-service authentication
+    ServiceApiKey = "secure-random-key"
+
+    # Timeout for HTTP requests in seconds
+    TimeoutInSeconds = 10
+
+    # Cache duration for /config endpoint in seconds
+    ConfigCacheDurationInSeconds = 60

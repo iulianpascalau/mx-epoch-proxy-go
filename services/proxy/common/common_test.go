@@ -81,3 +81,61 @@ func TestCronJob(t *testing.T) {
 		assert.Equal(t, uint64(3), atomic.LoadUint64(&counter))
 	})
 }
+
+func TestCreateAccountSettings(t *testing.T) {
+	t.Parallel()
+
+	t.Run("premium - unlimited", func(t *testing.T) {
+		settings := CreateAccountSettings(string(PremiumAccountType), 100, 0, 0)
+		assert.Equal(t, PremiumAccountType, settings.Type)
+		assert.Equal(t, uint64(0), settings.MaxRequests)
+		assert.Equal(t, uint64(100), settings.RequestCount)
+		assert.Equal(t, false, settings.CryptoPaymentInitiated)
+		assert.Equal(t, true, settings.IsUnlimited)
+	})
+
+	t.Run("premium - limited", func(t *testing.T) {
+		settings := CreateAccountSettings(string(PremiumAccountType), 100, 200, 1)
+		assert.Equal(t, PremiumAccountType, settings.Type)
+		assert.Equal(t, uint64(200), settings.MaxRequests)
+		assert.Equal(t, uint64(100), settings.RequestCount)
+		assert.Equal(t, true, settings.CryptoPaymentInitiated)
+		assert.Equal(t, false, settings.IsUnlimited)
+	})
+
+	t.Run("premium - limited and max reached", func(t *testing.T) {
+		settings := CreateAccountSettings(string(PremiumAccountType), 200, 200, 1)
+		assert.Equal(t, FreeAccountType, settings.Type)
+		assert.Equal(t, uint64(200), settings.MaxRequests)
+		assert.Equal(t, uint64(200), settings.RequestCount)
+		assert.Equal(t, true, settings.CryptoPaymentInitiated)
+		assert.Equal(t, false, settings.IsUnlimited)
+	})
+
+	t.Run("free - no payment id", func(t *testing.T) {
+		settings := CreateAccountSettings(string(FreeAccountType), 0, 0, 0)
+		assert.Equal(t, FreeAccountType, settings.Type)
+		assert.Equal(t, uint64(0), settings.MaxRequests)
+		assert.Equal(t, uint64(0), settings.RequestCount)
+		assert.Equal(t, false, settings.CryptoPaymentInitiated)
+		assert.Equal(t, false, settings.IsUnlimited)
+	})
+
+	t.Run("free - with payment ID but no payments", func(t *testing.T) {
+		settings := CreateAccountSettings(string(FreeAccountType), 0, 0, 1)
+		assert.Equal(t, FreeAccountType, settings.Type)
+		assert.Equal(t, uint64(0), settings.MaxRequests)
+		assert.Equal(t, uint64(0), settings.RequestCount)
+		assert.Equal(t, true, settings.CryptoPaymentInitiated)
+		assert.Equal(t, false, settings.IsUnlimited)
+	})
+
+	t.Run("free - with payment ID and with payment", func(t *testing.T) {
+		settings := CreateAccountSettings(string(FreeAccountType), 0, 100, 1)
+		assert.Equal(t, PremiumAccountType, settings.Type)
+		assert.Equal(t, uint64(100), settings.MaxRequests)
+		assert.Equal(t, uint64(0), settings.RequestCount)
+		assert.Equal(t, true, settings.CryptoPaymentInitiated)
+		assert.Equal(t, false, settings.IsUnlimited)
+	})
+}

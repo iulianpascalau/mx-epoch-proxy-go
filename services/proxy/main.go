@@ -17,6 +17,7 @@ import (
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/config"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/process"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/serviceWrappers"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/storage"
 	"github.com/joho/godotenv"
 	"github.com/multiversx/mx-chain-core-go/core"
@@ -308,6 +309,23 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	httpRequester := process.NewHttpRequester(time.Duration(cfg.CryptoPayment.TimeoutInSeconds) * time.Second)
+	cryptoPaymentClient, err := serviceWrappers.NewCryptoPaymentClient(httpRequester, cfg.CryptoPayment)
+	if err != nil {
+		return err
+	}
+
+	mutexManager := process.NewUserMutexManager()
+	cryptoPaymentHandler, err := api.NewCryptoPaymentHandler(
+		cryptoPaymentClient,
+		sqliteWrapper,
+		authenticator,
+		mutexManager,
+	)
+	if err != nil {
+		return err
+	}
+
 	handlers := map[string]http.Handler{
 		api.EndpointApiAccessKeys:         accessKeysHandler,
 		api.EndpointApiAdminUsers:         usersHandler,
@@ -317,9 +335,14 @@ func run(ctx *cli.Context) error {
 		api.EndpointApiActivate:           registrationHandler,
 		api.EndpointApiChangePassword:     userCredentialsHandler,
 		api.EndpointApiRequestEmailChange: userCredentialsHandler,
-		api.EndpointApiConfirmEmailChange: userCredentialsHandler,
-		api.EndpointCaptchaSingle:         http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
-		api.EndpointCaptchaMultiple:       http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
+
+		api.EndpointApiConfirmEmailChange:         userCredentialsHandler,
+		api.EndpointApiCryptoPaymentConfig:        cryptoPaymentHandler,
+		api.EndpointApiCryptoPaymentCreateAddress: cryptoPaymentHandler,
+		api.EndpointApiCryptoPaymentAccount:       cryptoPaymentHandler,
+		api.EndpointApiAdminCryptoPaymentAccount:  cryptoPaymentHandler,
+		api.EndpointCaptchaSingle:                 http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
+		api.EndpointCaptchaMultiple:               http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
 		api.EndpointAppInfo: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)

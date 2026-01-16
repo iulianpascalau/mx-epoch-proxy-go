@@ -49,3 +49,39 @@ func CronJobStarter(ctx context.Context, handler func(), timeToCall time.Duratio
 		}
 	}()
 }
+
+// CreateAccountSettings implements a high-level logic to decide the type of a certain account
+func CreateAccountSettings(accountType string, requestCount uint64, maxRequests uint64, cryptoPaymentId int) AccountSettings {
+	settings := AccountSettings{
+		RequestCount: requestCount,
+		MaxRequests:  maxRequests,
+	}
+
+	if maxRequests == 0 && accountType == string(PremiumAccountType) {
+		// the account is premium (no heavy throttling) with unlimited request
+		settings.IsUnlimited = true
+		settings.Type = PremiumAccountType
+		settings.CryptoPaymentInitiated = false
+
+		return settings
+	}
+
+	settings.CryptoPaymentInitiated = cryptoPaymentId > 0
+
+	if maxRequests > 0 && requestCount < maxRequests {
+		// the account is premium (no heavy throttling) with credits still left
+		settings.IsUnlimited = false
+		settings.Type = PremiumAccountType
+
+		return settings
+	}
+
+	// the account should be treated as free because the user depleted it's purchased credits but requests should still work although heavily throttled
+	// or
+	// the account was declared free and no purchase completed
+
+	settings.IsUnlimited = false
+	settings.Type = FreeAccountType
+
+	return settings
+}
