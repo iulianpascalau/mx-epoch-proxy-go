@@ -8,15 +8,15 @@ import (
 )
 
 type configHandler struct {
-	walletAddress   string
-	explorerAddress string
+	walletURL       string
+	explorerURL     string
 	contractHandler ContractHandler
 }
 
 // NewConfigHandler creates a new instance of configHandler
 func NewConfigHandler(
-	walletAddress string,
-	explorerAddress string,
+	walletURL string,
+	explorerURL string,
 	contractHandler ContractHandler,
 ) (*configHandler, error) {
 	if check.IfNil(contractHandler) {
@@ -24,8 +24,8 @@ func NewConfigHandler(
 	}
 
 	return &configHandler{
-		walletAddress:   walletAddress,
-		explorerAddress: explorerAddress,
+		walletURL:       walletURL,
+		explorerURL:     explorerURL,
 		contractHandler: contractHandler,
 	}, nil
 }
@@ -44,8 +44,8 @@ func (ch *configHandler) GetConfig(ctx context.Context) (map[string]interface{},
 
 	return map[string]interface{}{
 		"isContractPaused": isPaused,
-		"walletAddress":    ch.walletAddress,
-		"explorerAddress":  ch.explorerAddress,
+		"walletURL":        ch.walletURL,
+		"explorerURL":      ch.explorerURL,
 		"requestsPerEGLD":  requestsPerEgld,
 	}, nil
 }
