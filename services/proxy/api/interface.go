@@ -24,6 +24,7 @@ type KeyAccessProvider interface {
 	UpdatePassword(username string, password string) error
 	RequestEmailChange(username string, newEmail string, token string) error
 	ConfirmEmailChange(token string) (string, error)
+	SetCryptoPaymentID(username string, paymentID uint64) error
 	IsInterfaceNil() bool
 }
 
@@ -46,5 +47,20 @@ type CaptchaHandler interface {
 type Authenticator interface {
 	GenerateToken(username string, isAdmin bool) (string, error)
 	CheckAuth(r *http.Request) (*common.Claims, error)
+	IsInterfaceNil() bool
+}
+
+// CryptoPaymentClient handles communication with the crypto-payment service
+type CryptoPaymentClient interface {
+	GetConfig() (*common.CryptoPaymentConfig, error)
+	CreateAddress() (*common.CreateAddressResponse, error)
+	GetAccount(paymentID uint64) (*common.AccountInfo, error)
+	IsInterfaceNil() bool
+}
+
+// MutexHandler defines the operations supported by a component able to lock/unlock users
+type MutexHandler interface {
+	TryLock(username string) error
+	Unlock(username string)
 	IsInterfaceNil() bool
 }

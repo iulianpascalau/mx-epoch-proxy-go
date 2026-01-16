@@ -26,6 +26,22 @@ ClosedEndpoints = [
     "/transaction/send-multiple",
     "/transaction/send-user-funds"
 ]
+
+[CryptoPayment]
+    # Enable/disable crypto-payment integration
+    Enabled = true
+
+    # URL of the crypto-payment service
+    URL = "http://localhost:8081"
+
+    # API key for service-to-service authentication
+    ServiceApiKey = "secure-random-key"
+
+    # Timeout for HTTP requests in seconds
+    TimeoutInSeconds = 10
+
+    # Cache duration for /config endpoint in seconds
+    ConfigCacheDurationInSeconds = 60
 `
 
 	expectedCfg := Config{
@@ -60,6 +76,13 @@ ClosedEndpoints = [
 			"/transaction/send/",
 			"/transaction/send-multiple",
 			"/transaction/send-user-funds",
+		},
+		CryptoPayment: CryptoPaymentConfig{
+			Enabled:                      true,
+			URL:                          "http://localhost:8081",
+			ServiceApiKey:                "secure-random-key",
+			TimeoutInSeconds:             10,
+			ConfigCacheDurationInSeconds: 60,
 		},
 	}
 

@@ -1,4 +1,4 @@
-Port = 8080
+Port = 8081
 
 # WalletURL represents the wallet HTTP address
 WalletURL = "devnet-wallet.multiversx.com"

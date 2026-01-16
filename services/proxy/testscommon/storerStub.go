@@ -20,6 +20,7 @@ type StorerStub struct {
 	UpdatePasswordHandler        func(username string, password string) error
 	RequestEmailChangeHandler    func(username string, newEmail string, token string) error
 	ConfirmEmailChangeHandler    func(token string) (string, error)
+	SetCryptoPaymentIDHandler    func(username string, paymentID uint64) error
 }
 
 func (stub *StorerStub) ActivateUser(token string) error {
@@ -152,4 +153,11 @@ func (stub *StorerStub) ConfirmEmailChange(token string) (string, error) {
 		return stub.ConfirmEmailChangeHandler(token)
 	}
 	return "", nil
+}
+
+func (stub *StorerStub) SetCryptoPaymentID(username string, paymentID uint64) error {
+	if stub.SetCryptoPaymentIDHandler != nil {
+		return stub.SetCryptoPaymentIDHandler(username, paymentID)
+	}
+	return nil
 }
