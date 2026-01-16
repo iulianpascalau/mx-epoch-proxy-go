@@ -18,3 +18,6 @@ SCSettingsCacheInSeconds = 60
 MinimumBalanceToProcess = 0.01
 
 TimeToProcessAddressesInSeconds = 60
+
+# ServiceApiKey represents the shared secret for API authentication
+ServiceApiKey = "secure-random-key"

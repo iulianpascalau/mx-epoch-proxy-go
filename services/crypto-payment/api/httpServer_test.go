@@ -16,7 +16,7 @@ func TestHTTPServer_StartAndClose(t *testing.T) {
 	h, _ := NewHandler(storage, &mockConfigProvider{config: map[string]interface{}{"key": "value"}}, &mockAccountHandler{})
 
 	// Use port 0 to let the OS assign a free port
-	server := NewHTTPServer(h, 0)
+	server := NewHTTPServer(h, 0, "test-api-key")
 
 	// Start the server
 	err := server.Start()

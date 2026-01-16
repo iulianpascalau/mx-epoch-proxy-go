@@ -11,4 +11,5 @@ type Config struct {
 	SCSettingsCacheInSeconds        uint32
 	MinimumBalanceToProcess         float64
 	TimeToProcessAddressesInSeconds uint32
+	ServiceApiKey                   string
 }

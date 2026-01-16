@@ -19,12 +19,20 @@ type httpServer struct {
 }
 
 // NewHTTPServer creates a new instance of httpServer
-func NewHTTPServer(handler *Handler, port int) *httpServer {
+func NewHTTPServer(handler *Handler, port int, serviceApiKey string) *httpServer {
 	router := gin.Default()
 
+	// Public endpoints
 	router.GET("/config", handler.GetConfig)
-	router.POST("/create-address", handler.CreateAddress)
-	router.GET("/account", handler.GetAccount)
+
+	// Protected endpoints
+	protected := router.Group("/")
+	if len(serviceApiKey) > 0 {
+		middleware := NewAuthenticationMiddleware(serviceApiKey)
+		protected.Use(middleware.Middleware())
+	}
+	protected.POST("/create-address", handler.CreateAddress)
+	protected.GET("/account", handler.GetAccount)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
