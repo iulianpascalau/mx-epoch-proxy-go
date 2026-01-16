@@ -219,7 +219,7 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	httpServer := api.NewHTTPServer(apiHandler, ctx.Int(apiPort.Name))
+	httpServer := api.NewHTTPServer(apiHandler, ctx.Int(apiPort.Name), cfg.ServiceApiKey)
 	err = httpServer.Start()
 	defer func() {
 		_ = httpServer.Close()
