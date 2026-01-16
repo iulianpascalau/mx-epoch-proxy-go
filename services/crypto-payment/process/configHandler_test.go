@@ -34,8 +34,8 @@ func TestNewConfigHandler(t *testing.T) {
 func TestConfigHandler_GetConfig(t *testing.T) {
 	t.Parallel()
 
-	expectedWallet := "wallet_addr"
-	expectedExplorer := "explorer_addr"
+	expectedWallet := "wallet_url"
+	expectedExplorer := "explorer_url"
 
 	t.Run("contract paused error", func(t *testing.T) {
 		t.Parallel()
@@ -93,7 +93,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 
 		assert.True(t, config["isContractPaused"].(bool))
 		assert.Equal(t, expectedRate, config["requestsPerEGLD"])
-		assert.Equal(t, expectedWallet, config["walletAddress"])
-		assert.Equal(t, expectedExplorer, config["explorerAddress"])
+		assert.Equal(t, expectedWallet, config["walletURL"])
+		assert.Equal(t, expectedExplorer, config["explorerURL"])
 	})
 }
