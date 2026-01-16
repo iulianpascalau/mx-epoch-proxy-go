@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink, Zap, AlertTriangle, CreditCard, RefreshCw, Wallet } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -21,6 +21,23 @@ interface UserDetails {
     IsAdmin: boolean;
     AccountType: string;
     IsActive: boolean;
+    PaymentID?: number; // Added for crypto payment
+}
+
+interface CryptoPaymentState {
+    isServiceAvailable: boolean;
+    isPaused: boolean;
+    requestsPerEGLD: number;
+    walletURL: string;
+    explorerURL: string;
+    contractAddress: string;
+
+    paymentId: number | null;
+    depositAddress: string | null;
+    numberOfRequests: number;
+
+    isLoading: boolean;
+    error: string | null;
 }
 
 const copyToClipboard = async (text: string) => {
@@ -80,6 +97,101 @@ export const Dashboard = () => {
         key: string | null;
         direction: 'asc' | 'desc';
     }>({ type: null, key: null, direction: 'asc' });
+
+    // Crypto Payment State
+    const [cryptoState, setCryptoState] = useState<CryptoPaymentState>({
+        isServiceAvailable: true,
+        isPaused: false,
+        requestsPerEGLD: 10000,
+        walletURL: 'https://devnet-wallet.multiversx.com',
+        explorerURL: 'https://devnet-explorer.multiversx.com',
+        contractAddress: 'erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw',
+        paymentId: null,
+        depositAddress: null,
+        numberOfRequests: 0,
+        isLoading: false,
+        error: null
+    });
+
+    // Mock Crypto API
+    const fetchCryptoData = async () => {
+        setCryptoState(prev => ({ ...prev, isLoading: true, error: null }));
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Mock Configuration
+        const mockConfig = {
+            isAvailable: true,
+            isPaused: false, // Set to true to test paused state
+            requestsPerEGLD: 500000,
+            walletURL: "https://devnet-wallet.multiversx.com",
+            explorerURL: "https://devnet-explorer.multiversx.com",
+            contractAddress: "erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw"
+        };
+
+        // Mock Account (dependent on user state, simplified for demo)
+        // In reality we would check if user has PaymentID
+        const mockAccount = {
+            paymentId: user?.is_admin ? 12345 : null, // Admin gets dummy payment ID for demo
+            depositAddress: user?.is_admin ? "erd1spyavw0956vq68xj8y4tenjpq2wd5a9p2c6j8gsz7ztyrnpxrruq0gwzgd" : null,
+            numberOfRequests: user?.is_admin ? 8500 : 0
+        };
+
+        setCryptoState(prev => ({
+            ...prev,
+            isServiceAvailable: mockConfig.isAvailable,
+            isPaused: mockConfig.isPaused,
+            requestsPerEGLD: mockConfig.requestsPerEGLD,
+            walletURL: mockConfig.walletURL,
+            explorerURL: mockConfig.explorerURL,
+            contractAddress: mockConfig.contractAddress,
+            paymentId: mockAccount.paymentId,
+            depositAddress: mockAccount.depositAddress,
+            numberOfRequests: mockAccount.numberOfRequests,
+            isLoading: false
+        }));
+    };
+
+    const handleRequestAddress = async () => {
+        if (cryptoState.isPaused) return;
+        setCryptoState(prev => ({ ...prev, isLoading: true }));
+
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const newPaymentId = Math.floor(Math.random() * 10000) + 1;
+        const newAddress = "erd1mocknewaddress" + Math.random().toString(36).substring(7);
+
+        setCryptoState(prev => ({
+            ...prev,
+            paymentId: newPaymentId,
+            depositAddress: newAddress,
+            numberOfRequests: 0,
+            isLoading: false
+        }));
+    };
+
+    const handleRefreshBalance = async () => {
+        setCryptoState(prev => ({ ...prev, isLoading: true }));
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Simulate balance increase if address exists
+        if (cryptoState.paymentId) {
+            setCryptoState(prev => ({
+                ...prev,
+                numberOfRequests: prev.numberOfRequests + 100, // Simulate incoming payment
+                isLoading: false
+            }));
+        } else {
+            setCryptoState(prev => ({ ...prev, isLoading: false }));
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchCryptoData();
+        }
+    }, [user]);
 
     useEffect(() => {
         const token = getAccessKey();
@@ -411,6 +523,189 @@ export const Dashboard = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+
+                    {/* Crypto Payment / Premium Management Section */}
+                    {/* Only show for non-admin users or admins who want to see the UI */}
+                    {!user.is_admin && users[user.username.toLowerCase()] && (
+                        <div className="glass-panel p-6 col-span-1 lg:col-span-2 relative overflow-hidden">
+                            {/* Background accent for premium feel */}
+                            {users[user.username.toLowerCase()].AccountType === 'premium' && (
+                                <div className="absolute top-0 right-0 p-32 bg-amber-500/10 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                            )}
+
+                            <div className="flex justify-between items-center mb-6 flex-wrap gap-4 relative z-10">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <Zap className={users[user.username.toLowerCase()].AccountType === 'premium' ? "text-amber-400" : "text-indigo-400"} />
+                                    {users[user.username.toLowerCase()].AccountType === 'premium' ? "Premium Account Management" : "Upgrade to Premium"}
+                                </h2>
+                                {/* Service Status Indicator */}
+                                <div className="flex items-center gap-2 text-sm bg-black/20 px-3 py-1 rounded-full">
+                                    <div className={`w-2 h-2 rounded-full ${!cryptoState.isServiceAvailable ? 'bg-red-500' : cryptoState.isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                                    <span className="text-slate-400">
+                                        {!cryptoState.isServiceAvailable ? 'Crypto Service Unavailable' : cryptoState.isPaused ? 'Payments Paused' : 'Crypto Service Online'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {cryptoState.error && (
+                                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-lg mb-6 flex items-center gap-3">
+                                    <AlertTriangle size={20} />
+                                    {cryptoState.error}
+                                </div>
+                            )}
+
+                            {/* State: Loading */}
+                            {cryptoState.isLoading && !cryptoState.depositAddress && (
+                                <div className="flex justify-center p-8">
+                                    <Loader className="animate-spin text-indigo-500" size={30} />
+                                </div>
+                            )}
+
+                            {/* State: Free User - No Payment ID */}
+                            {!cryptoState.paymentId && users[user.username.toLowerCase()].AccountType !== 'premium' && !cryptoState.isLoading && (
+                                <div className="space-y-6 relative z-10">
+                                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-6">
+                                        <div className="flex items-start gap-4">
+                                            <div className="bg-indigo-500/20 p-3 rounded-full text-indigo-400 hidden sm:block">
+                                                <CreditCard size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-medium text-white mb-2">Unlock Unlimited Requests</h3>
+                                                <p className="text-slate-400 mb-4 text-sm leading-relaxed max-w-2xl">
+                                                    Upgrade your account to Premium by making a secure crypto payment.
+                                                    You are paying directly to the smart contract using eGLD.
+                                                    Zero gas fees for deposit transaction relay.
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 mb-6">
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Rate: {cryptoState.requestsPerEGLD.toLocaleString()} req / 1 eGLD</span>
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Instant Activation</span>
+                                                </div>
+                                                <button
+                                                    onClick={handleRequestAddress}
+                                                    disabled={cryptoState.isPaused || !cryptoState.isServiceAvailable}
+                                                    className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center gap-2"
+                                                >
+                                                    {cryptoState.isLoading ? <Loader className="animate-spin" size={18} /> : <Wallet size={18} />}
+                                                    Request Payment Address
+                                                </button>
+                                                {cryptoState.isPaused && (
+                                                    <p className="text-amber-400 text-xs mt-3 flex items-center gap-1">
+                                                        <AlertTriangle size={12} /> Service is currently paused. Payments are disabled.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* State: Has Payment ID / Premium User */}
+                            {cryptoState.paymentId && (
+                                <div className="space-y-6 relative z-10">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Left: Payment Info */}
+                                        <div className="bg-white/5 rounded-lg p-5 border border-white/10">
+                                            <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Deposit Details</h3>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Your Unique Deposit Address</label>
+                                                    <div className="flex items-center gap-2 bg-black/20 p-2 rounded border border-white/5">
+                                                        <code className="text-xs text-indigo-300 break-all font-mono">{cryptoState.depositAddress}</code>
+                                                        <button
+                                                            onClick={() => copyToClipboard(cryptoState.depositAddress || "")}
+                                                            className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                                                            title="Copy Address"
+                                                        >
+                                                            <Copy size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-xs text-slate-500 block mb-1">Payment ID</label>
+                                                        <div className="text-slate-200 font-mono">#{cryptoState.paymentId}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs text-slate-500 block mb-1">Current Rate</label>
+                                                        <div className="text-slate-200">{cryptoState.requestsPerEGLD.toLocaleString()} req/eGLD</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-2 flex gap-2">
+                                                    <a
+                                                        href={`${cryptoState.walletURL}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs py-2 rounded flex items-center justify-center gap-2 transition-colors border border-indigo-500/20"
+                                                    >
+                                                        <Wallet size={14} /> Open Web Wallet
+                                                    </a>
+                                                    <a
+                                                        href={`${cryptoState.explorerURL}/accounts/${cryptoState.depositAddress}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-xs py-2 rounded flex items-center justify-center gap-2 transition-colors"
+                                                    >
+                                                        <ExternalLink size={14} /> Explorer
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right: Balance & Status */}
+                                        <div className="bg-white/5 rounded-lg p-5 border border-white/10 flex flex-col justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Requests Balance</h3>
+
+                                                <div className="mb-2">
+                                                    <span className="text-3xl font-bold text-white">{cryptoState.numberOfRequests.toLocaleString()}</span>
+                                                    <span className="text-slate-500 text-sm ml-2">available credits</span>
+                                                </div>
+
+                                                {/* Visual Bar */}
+                                                <div className="w-full bg-black/30 h-2 rounded-full mb-4 overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                                                        style={{ width: users[user.username.toLowerCase()].AccountType === 'premium' ? '100%' : '5%' }}
+                                                    ></div>
+                                                </div>
+
+                                                {users[user.username.toLowerCase()].AccountType === 'premium' ? (
+                                                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                                                        <Check size={12} /> Account is Premium active
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-amber-400 flex items-center gap-1">
+                                                        <Loader className="animate-spin" size={12} /> Waiting for deposit...
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-6 pt-4 border-t border-white/5">
+                                                <button
+                                                    onClick={handleRefreshBalance}
+                                                    className="w-full bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded text-xs flex items-center justify-center gap-2 transition-colors"
+                                                >
+                                                    <RefreshCw size={14} className={cryptoState.isLoading ? "animate-spin" : ""} />
+                                                    Refresh Contract Balance
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {cryptoState.isPaused && (
+                                        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-200 p-3 rounded text-sm text-center">
+                                            ⚠️ The smart contract is currently paused. Deposits made now will be processed when it resumes.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         </div>
                     )}
 
