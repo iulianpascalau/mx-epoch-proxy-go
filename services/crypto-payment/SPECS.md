@@ -25,8 +25,11 @@ The solution consists of three main components interacting asynchronously:
     -   The `crypto-payment` service increments its internal index counter.
     -   It derives a new public key/address from its master mnemonic using the HD path (e.g., `m/44'/508'/0'/0/index`).
     -   It stores the `{index, address}` tuple in its local database.
-    -   It returns the `index` (Payment ID) and `address` to the Proxy.
-4.  **Display**: The Proxy links this `Payment ID` to the User in its database and displays the `address` to the User.
+    -   It returns the `index` (Payment ID) to the Proxy.
+4.  **Display**:
+    -   The Proxy links this `Payment ID` to the User in its database.
+    -   The Proxy calls `GET /account?id=<id>` to retrieve the address to display to the User.
+    -   The Proxy displays the `address` and `numberOfRequests` to the User.
 
 ### Phase 2: Payment & Monitoring
 5.  **User Payment**: The user sends eGLD to the displayed unique address.
@@ -56,30 +59,83 @@ The solution consists of three main components interacting asynchronously:
     -   `max_requests` updated to the new limit.
     -   `account_type` set to `premium`.
 
-## 4. Data Models
+## 4. API Endpoints
+
+### 4.1. `POST /create-address`
+Generates a new deposit address.
+
+**Request:** Empty body.
+
+**Response:**
+```json
+{
+  "id": 123
+}
+```
+
+### 4.2. `GET /account`
+Retrieves account details for a payment ID.
+
+**Query Parameters:**
+- `id` (required): The Payment ID (uint64).
+
+**Response:**
+```json
+{
+  "address": "erd1...",
+  "numberOfRequests": 1500000
+}
+```
+
+### 4.3. `GET /config`
+Retrieves public configuration required by the client/proxy.
+
+**Response:**
+```json
+{
+  "walletUrl": "https://devnet-wallet.multiversx.com",
+  "explorerUrl": "https://devnet-explorer.multiversx.com",
+  "contractAddress": "erd1...",
+  "requestsPerEGLD": 1000000,
+  "isContractPaused": false
+}
+```
+
+## 5. Data Models
 
 ### Proxy Database (`sqlite.db`)
 Changes to `users` table:
 -   `payment_id` (Integer, Nullable): Links the user to the crypto-payment system.
 
-### Crypto Payment Database (`crypto.db`)
+### Crypto Payment Database (`crypto-payment.db`)
 New SQLite database for the microservice.
-**Table: `addresses`**
+**Table: `payment_address`** (Created by `sqliteWrapper`)
 -   `id` (Integer, Primary Key): The derivation index (Payment ID).
 -   `address` (Text, Unique): The derived Bech32 address.
--   `status` (Text): `waiting_deposit` | `processing` | `swept`.
--   `created_at` (Timestamp).
--   `last_sweep_at` (Timestamp).
 
-## 5. Security Considerations
+## 6. Implementation Details
+-   **Balance Processor**: A background process (`BalanceProcessor`) periodically scans all generated addresses for balances.
+-   **Relayed Transactions**: If a balance is found, a relayed transaction is constructed and sent to the network to sweep funds to the contract.
+-   **Contract Query**: The service caches (`timeCacher`) contract query results (`isPaused`, `requestsPerEgld`) to ensure performance and reduce network load.
+-   **Caching**: A simple in-memory cache with a global flush strategy is used to store high-frequency data (like contract config values).
+
+## 7. Security Considerations
 -   **Isolation**: The `crypto-payment` service contains the "Crown Jewels" (the Mnemonic). It must be isolated.
 -   **Relayer Wallet**: The Hot Wallet key is also sensitive as it holds gas funds.
 -   **Input Validation**: The Proxy must validate that the `crypto-payment` service is the only one calling its internal webhooks (if used).
 
-## 6. Configuration
+## 8. Configuration
 
 ### Crypto Payment Service
--   `MNEMONIC`: 24-word secret phrase.
--   `RELAYER_PRIVATE_KEY` (or PEM): Key for the gas-paying wallet.
--   `TARGET_SC_ADDRESS`: Address of the Licensing Smart Contract.
--   `OBSERVER_URL`: Gateway URL for monitoring.
+-   `MNEMONIC` (Env variable): 24-word secret phrase for user address derivation.
+-   `config.toml`:
+    -   `Port`: API Port (default 8080).
+    -   `WalletURL`: URL of the Web Wallet (e.g., `devnet-wallet.multiversx.com`).
+    -   `ExplorerURL`: URL of the Explorer (e.g., `devnet-explorer.multiversx.com`).
+    -   `ProxyURL`: URL of the MultiversX Proxy/Gateway.
+    -   `ContractAddress`: Address of the Licensing Smart Contract.
+    -   `CallSCGasLimit`: Gas limit for the relayed transaction (default 40,000,000).
+    -   `SCSettingsCacheInSeconds`: Cache TTL for contract queries (e.g., 60s).
+    -   `MinimumBalanceToProcess`: Minimum eGLD balance to trigger a sweep (e.g., 0.01).
+    -   `TimeToProcessAddressesInSeconds`: Interval for the Balance Processor cron job.
+-   `*.pem` files in working directory: Loaded as Relayer Sk(s) for paying gas.
