@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/crypto"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
@@ -25,10 +26,11 @@ type CryptoPaymentService struct {
 	Keys           *KeysStore
 	ChainSimulator *chainSimulatorWrapper
 
-	ContractAddress    *MvxAddress
-	SQLiteWrapper      SQLiteWrapper
-	BalanceProcessor   BalanceProcessor
-	RelayedTxProcessor process.BalanceOperator
+	ContractAddress      *MvxAddress
+	SQLiteWrapper        SQLiteWrapper
+	BalanceProcessor     BalanceProcessor
+	RelayedTxProcessor   process.BalanceOperator
+	ContractQueryHandler process.ContractHandler
 }
 
 // NewCryptoPaymentService creates a new CryptoPaymentService instance
@@ -128,12 +130,19 @@ func (crs *CryptoPaymentService) CreateService() {
 	)
 	require.Nil(crs, err)
 
+	crs.ContractQueryHandler, err = process.NewContractQueryHandler(
+		crs.ChainSimulator.Proxy(),
+		crs.ContractAddress.Bech32(),
+		time.Millisecond,
+	)
+	require.Nil(crs, err)
+
 	crs.BalanceProcessor, err = process.NewBalanceProcessor(
 		crs.SQLiteWrapper,
 		crs.ChainSimulator.Proxy(),
 		crs.RelayedTxProcessor,
+		crs.ContractQueryHandler,
 		minimumBalanceToCall,
-		crs.ContractAddress.Bech32(),
 	)
 	require.Nil(crs, err)
 }

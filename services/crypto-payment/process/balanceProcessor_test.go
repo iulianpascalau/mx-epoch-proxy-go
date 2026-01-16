@@ -24,8 +24,8 @@ func TestNewBalanceProcessor(t *testing.T) {
 			nil,
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -38,8 +38,8 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.DataProviderStub{},
 			nil,
 			&testsCommon.BalanceOperatorStub{},
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -52,8 +52,8 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.DataProviderStub{},
 			&testsCommon.BlockchainDataProviderStub{},
 			nil,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -66,8 +66,8 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.DataProviderStub{},
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
+			&testsCommon.ContractHandlerStub{},
 			0,
-			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
@@ -77,26 +77,26 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.DataProviderStub{},
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
+			&testsCommon.ContractHandlerStub{},
 			-0.0001,
-			"erd1test",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
 		assert.Equal(t, errInvalidMinimumBalanceToCall, err)
 	})
-	t.Run("empty contract address should error", func(t *testing.T) {
+	t.Run("nil contract handler should error", func(t *testing.T) {
 		t.Parallel()
 
 		instance, err := NewBalanceProcessor(
 			&testsCommon.DataProviderStub{},
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
+			nil,
 			0.01,
-			"",
 		)
 		assert.Nil(t, instance)
 		assert.True(t, instance.IsInterfaceNil())
-		assert.Equal(t, errEmptyContractBech32Address, err)
+		assert.Equal(t, "nil contract handler", err.Error())
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -105,8 +105,8 @@ func TestNewBalanceProcessor(t *testing.T) {
 			&testsCommon.DataProviderStub{},
 			&testsCommon.BlockchainDataProviderStub{},
 			&testsCommon.BalanceOperatorStub{},
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 		assert.NotNil(t, instance)
 		assert.False(t, instance.IsInterfaceNil())
@@ -152,12 +152,18 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			},
 		}
 
+		contractHandler := &testsCommon.ContractHandlerStub{
+			IsContractPausedHandler: func(ctx context.Context) (bool, error) {
+				return true, nil
+			},
+		}
+
 		bp, _ := NewBalanceProcessor(
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			contractHandler,
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -165,85 +171,28 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 		require.ErrorIs(t, err, errContractIsPaused)
 	})
 
-	t.Run("vm query returns invalid response", func(t *testing.T) {
-		t.Parallel()
-
-		dataProvider := &testsCommon.DataProviderStub{
-			GetAllHandler: func() ([]*common.BalanceEntry, error) {
-				return nil, expectedErr
+	t.Run("check paused returns error", func(t *testing.T) {
+		contractHandler := &testsCommon.ContractHandlerStub{
+			IsContractPausedHandler: func(ctx context.Context) (bool, error) {
+				return false, expectedErr
 			},
 		}
 
-		blockchainDataProvider := &testsCommon.BlockchainDataProviderStub{
-			GetAccountHandler: func(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
-				assert.Fail(t, "should not be called")
-
-				return &data.Account{}, nil
-			},
-		}
-
-		balanceOperator := &testsCommon.BalanceOperatorStub{
-			ProcessHandler: func(ctx context.Context, id uint64, sender core.AddressHandler, value string, nonce uint64) error {
-				assert.Fail(t, "should not be called")
-
-				return nil
-			},
-		}
+		dataProvider := &testsCommon.DataProviderStub{}
+		blockchainDataProvider := &testsCommon.BlockchainDataProviderStub{}
+		balanceOperator := &testsCommon.BalanceOperatorStub{}
 
 		bp, _ := NewBalanceProcessor(
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			contractHandler,
 			0.01,
-			"erd1test",
 		)
 
-		t.Run("nil response.Data", func(t *testing.T) {
-			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				return &data.VmValuesResponseData{}, nil
-			}
-
-			err := bp.ProcessAll(context.Background())
-			require.Error(t, err)
-			require.ErrorIs(t, err, expectedErr)
-		})
-		t.Run("nil response.Data.ReturnData", func(t *testing.T) {
-			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{},
-				}, nil
-			}
-
-			err := bp.ProcessAll(context.Background())
-			require.Error(t, err)
-			require.ErrorIs(t, err, expectedErr)
-		})
-		t.Run("len(response.Data.ReturnData) == 0", func(t *testing.T) {
-			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnData: make([][]byte, 0),
-					},
-				}, nil
-			}
-
-			err := bp.ProcessAll(context.Background())
-			require.Error(t, err)
-			require.ErrorIs(t, err, expectedErr)
-		})
-		t.Run("len(response.Data.ReturnData[0]) == 0", func(t *testing.T) {
-			blockchainDataProvider.ExecuteVMQueryHandler = func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnData: [][]byte{{}},
-					},
-				}, nil
-			}
-
-			err := bp.ProcessAll(context.Background())
-			require.Error(t, err)
-			require.ErrorIs(t, err, expectedErr)
-		})
+		err := bp.ProcessAll(context.Background())
+		require.Error(t, err)
+		require.ErrorIs(t, err, expectedErr)
 	})
 
 	t.Run("get all errors should error", func(t *testing.T) {
@@ -282,8 +231,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -327,8 +276,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -376,8 +325,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		ctx, cancelFunc := context.WithCancel(context.Background())
@@ -427,8 +376,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -474,8 +423,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -523,8 +472,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -577,8 +526,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -638,8 +587,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
@@ -707,8 +656,8 @@ func TestBalanceProcessor_ProcessAll(t *testing.T) {
 			dataProvider,
 			blockchainDataProvider,
 			balanceOperator,
+			&testsCommon.ContractHandlerStub{},
 			0.01,
-			"erd1test",
 		)
 
 		err := bp.ProcessAll(context.Background())
