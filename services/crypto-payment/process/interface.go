@@ -53,3 +53,10 @@ type NonceTransactionsHandler interface {
 	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
 	Close() error
 }
+
+// ContractHandler defines the operations to query the contract state
+type ContractHandler interface {
+	IsContractPaused(ctx context.Context) (bool, error)
+	GetRequestsPerEGLD(ctx context.Context) (uint64, error)
+	IsInterfaceNil() bool
+}

@@ -95,6 +95,19 @@
         },
         {
             "docs": [
+                "Get the number of requests per EGLD"
+            ],
+            "name": "getRequestsPerEgld",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
                 "Change the number of requests per EGLD",
                 "Can only be called by the owner"
             ],

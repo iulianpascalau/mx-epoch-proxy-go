@@ -1,0 +1,5 @@
+[Config]
+WalletAddress = "erd1..."
+ExplorerAddress = "https://explorer.multiversx.com"
+ContractAddress = "erd1qqqqqqqqqqqqqpgq..."
+ProxyUrl = "https://devnet-gateway.multiversx.com"

@@ -11,11 +11,14 @@ import (
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/crypto"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/storage"
 	"github.com/joho/godotenv"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-sdk-go/blockchain"
 	"github.com/multiversx/mx-sdk-go/interactors"
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
 
@@ -29,6 +32,15 @@ const (
 
 // appVersion should be populated at build time using ldflags
 var appVersion = "undefined"
+
+type tomlConfig struct {
+	Config struct {
+		WalletAddress   string
+		ExplorerAddress string
+		ContractAddress string
+		ProxyUrl        string
+	}
+}
 
 var (
 	helpTemplate = `NAME:
@@ -158,7 +170,37 @@ func run(ctx *cli.Context) error {
 		_ = sqliteWrapper.Close()
 	}()
 
-	apiHandler, err := api.NewHandler(sqliteWrapper)
+	config, err := loadConfig(workingDir)
+	if err != nil {
+		return err
+	}
+
+	proxyArgs := blockchain.ArgsProxy{
+		ProxyURL: config.Config.ProxyUrl,
+	}
+	proxy, err := blockchain.NewProxy(proxyArgs)
+	if err != nil {
+		return err
+	}
+
+	contractQueryHandler, err := process.NewContractQueryHandler(
+		proxy,
+		config.Config.ContractAddress,
+	)
+	if err != nil {
+		return err
+	}
+
+	configHandler, err := process.NewConfigHandler(
+		config.Config.WalletAddress,
+		config.Config.ExplorerAddress,
+		contractQueryHandler,
+	)
+	if err != nil {
+		return err
+	}
+
+	apiHandler, err := api.NewHandler(sqliteWrapper, configHandler)
 	if err != nil {
 		return err
 	}
@@ -209,4 +251,23 @@ func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) (F
 	log.LogIfError(err)
 
 	return fileLogging, nil
+}
+
+func loadConfig(workingDir string) (*tomlConfig, error) {
+	configFile := filepath.Join(workingDir, "config.toml")
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		return nil, fmt.Errorf("config file not found: %s", configFile)
+	}
+
+	var config tomlConfig
+	tree, err := toml.LoadFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	err = tree.Unmarshal(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }

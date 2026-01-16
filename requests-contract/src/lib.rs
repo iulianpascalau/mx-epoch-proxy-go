@@ -63,6 +63,12 @@ pub trait RequestsContract {
         self.is_paused().get()
     }
 
+    /// Get the number of requests per EGLD
+    #[view(getRequestsPerEgld)]
+    fn get_requests_per_egld(&self) -> BigUint {
+        self.num_requests_per_egld().get()
+    }
+
 
     /// Change the number of requests per EGLD
     /// Can only be called by the owner

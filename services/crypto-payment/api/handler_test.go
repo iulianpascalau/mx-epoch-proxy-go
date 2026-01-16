@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -28,40 +29,62 @@ func (m *mockStorage) IsInterfaceNil() bool {
 	return m == nil
 }
 
+type mockConfigProvider struct {
+	config map[string]interface{}
+	err    error
+}
+
+func (m *mockConfigProvider) GetConfig(_ context.Context) (map[string]interface{}, error) {
+	return m.config, m.err
+}
+
+func (m *mockConfigProvider) IsInterfaceNil() bool {
+	return m == nil
+}
+
 func TestNewHandler(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil storage", func(t *testing.T) {
-		h, err := NewHandler(nil)
+		h, err := NewHandler(nil, &mockConfigProvider{})
 		require.EqualError(t, err, "nil storage")
 		require.Nil(t, h)
 	})
 
+	t.Run("nil config provider", func(t *testing.T) {
+		h, err := NewHandler(&mockStorage{}, nil)
+		require.EqualError(t, err, "nil config provider")
+		require.Nil(t, h)
+	})
+
 	t.Run("success", func(t *testing.T) {
-		h, err := NewHandler(&mockStorage{})
+		h, err := NewHandler(&mockStorage{}, &mockConfigProvider{})
 		require.NoError(t, err)
 		require.NotNil(t, h)
 	})
 }
 
-func TestHandler_Ping(t *testing.T) {
+func TestHandler_GetConfig(t *testing.T) {
 	t.Parallel()
 
 	storage := &mockStorage{}
-	h, _ := NewHandler(storage)
+	expectedConfig := map[string]interface{}{"key": "value"}
+	configProvider := &mockConfigProvider{config: expectedConfig}
+	h, _ := NewHandler(storage, configProvider)
 
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/config", nil)
 
-	h.Ping(c)
+	h.GetConfig(c)
 
 	require.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]string
+	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	require.Equal(t, "alive", response["status"])
+	require.Equal(t, "value", response["key"])
 }
 
 func TestHandler_CreateAddress(t *testing.T) {
@@ -74,7 +97,7 @@ func TestHandler_CreateAddress(t *testing.T) {
 			addID:   expectedID,
 			addAddr: expectedAddr,
 		}
-		h, _ := NewHandler(storage)
+		h, _ := NewHandler(storage, &mockConfigProvider{})
 
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()
@@ -97,7 +120,7 @@ func TestHandler_CreateAddress(t *testing.T) {
 		storage := &mockStorage{
 			addErr: expectedErr,
 		}
-		h, _ := NewHandler(storage)
+		h, _ := NewHandler(storage, &mockConfigProvider{})
 
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()

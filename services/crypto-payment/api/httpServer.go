@@ -22,7 +22,7 @@ type httpServer struct {
 func NewHTTPServer(handler *Handler, port int) *httpServer {
 	router := gin.Default()
 
-	router.GET("/ping", handler.Ping)
+	router.GET("/config", handler.GetConfig)
 	router.POST("/create-address", handler.CreateAddress)
 
 	server := &http.Server{

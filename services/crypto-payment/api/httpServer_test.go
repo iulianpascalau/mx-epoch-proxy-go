@@ -13,7 +13,7 @@ func TestHTTPServer_StartAndClose(t *testing.T) {
 	t.Parallel()
 
 	storage := &mockStorage{}
-	h, _ := NewHandler(storage)
+	h, _ := NewHandler(storage, &mockConfigProvider{config: map[string]interface{}{"key": "value"}})
 
 	// Use port 0 to let the OS assign a free port
 	server := NewHTTPServer(h, 0)
@@ -33,9 +33,9 @@ func TestHTTPServer_StartAndClose(t *testing.T) {
 	// Wait a bit for goroutine to pick up
 	time.Sleep(100 * time.Millisecond)
 
-	url := "http://" + addr + "/ping"
+	url := "http://" + addr + "/config"
 	if strings.HasPrefix(addr, ":") {
-		url = "http://localhost" + addr + "/ping"
+		url = "http://localhost" + addr + "/config"
 	} else if strings.HasPrefix(addr, "0.0.0.0") {
 		url = strings.Replace(url, "0.0.0.0", "localhost", 1)
 	}
