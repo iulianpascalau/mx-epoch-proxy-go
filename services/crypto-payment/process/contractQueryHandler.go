@@ -15,6 +15,8 @@ const (
 
 	keyIsPaused        = "isPaused"
 	keyRequestsPerEgld = "requestsPerEgld"
+
+	contractNotFoundStatus = "contract not found"
 )
 
 type contractQueryHandler struct {
@@ -64,7 +66,12 @@ func (cqh *contractQueryHandler) IsContractPaused(ctx context.Context) (bool, er
 		return false, err
 	}
 
-	if res.Data == nil || res.Data.ReturnData == nil || len(res.Data.ReturnData) == 0 || len(res.Data.ReturnData[0]) == 0 {
+	if res.Data == nil || res.Data.ReturnCode == contractNotFoundStatus {
+		// malformed response or the contract was not found, signal that the contract is paused
+		return true, nil
+	}
+
+	if res.Data.ReturnData == nil || len(res.Data.ReturnData) == 0 || len(res.Data.ReturnData[0]) == 0 {
 		isPaused = false
 	} else {
 		isPaused = res.Data.ReturnData[0][0] == 1

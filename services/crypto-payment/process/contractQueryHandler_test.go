@@ -74,7 +74,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
-		require.False(t, paused)
+		require.True(t, paused)
 	})
 
 	t.Run("nil return data", func(t *testing.T) {
@@ -126,6 +126,25 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
 		require.False(t, paused)
+	})
+
+	t.Run("contract missing", func(t *testing.T) {
+		t.Parallel()
+
+		proxy := &testsCommon.BlockchainDataProviderStub{
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: contractNotFoundStatus,
+					},
+				}, nil
+			},
+		}
+
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
+		paused, err := handler.IsContractPaused(context.Background())
+		require.NoError(t, err)
+		require.True(t, paused)
 	})
 
 	t.Run("paused", func(t *testing.T) {

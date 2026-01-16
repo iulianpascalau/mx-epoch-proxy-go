@@ -1,5 +1,20 @@
-[Config]
-WalletAddress = "erd1..."
-ExplorerAddress = "https://explorer.multiversx.com"
-ContractAddress = "erd1qqqqqqqqqqqqqpgq..."
-ProxyUrl = "https://devnet-gateway.multiversx.com"
+Port = 8080
+
+# WalletURL represents the wallet HTTP address
+WalletURL = "devnet-wallet.multiversx.com"
+
+# ExplorerURL represents the explorer HTTP address
+ExplorerURL = "devnet-explorer.multiversx.com"
+
+# ProxyURL represents the proxy URL for the API
+ProxyURL = "https://devnet-gateway.multiversx.com"
+
+ContractAddress = "erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw"
+
+CallSCGasLimit = 40000000
+
+SCSettingsCacheInSeconds = 60
+
+MinimumBalanceToProcess = 0.01
+
+TimeToProcessAddressesInSeconds = 60
