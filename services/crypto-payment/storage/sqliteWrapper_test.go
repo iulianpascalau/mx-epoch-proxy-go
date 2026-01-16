@@ -50,17 +50,19 @@ func TestSQLiteWrapper_AddAndGet(t *testing.T) {
 	}()
 
 	// Test Add
-	id, address, err := wrapper.Add()
+	id, err := wrapper.Add()
 	require.NoError(t, err)
 	require.NotZero(t, id)
-	require.Equal(t, fmt.Sprintf("mock-addr-%d", id), address)
 
 	// Test Get
+
 	entry, err := wrapper.Get(id)
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.Equal(t, id, entry.ID)
-	require.Equal(t, address, entry.Address)
+	require.NotNil(t, entry)
+	require.Equal(t, id, entry.ID)
+	require.Equal(t, fmt.Sprintf("mock-addr-%d", id), entry.Address)
 }
 
 func TestSQLiteWrapper_GetAll(t *testing.T) {
@@ -77,7 +79,7 @@ func TestSQLiteWrapper_GetAll(t *testing.T) {
 	count := 5
 	ids := make([]uint64, 0, count)
 	for i := 0; i < count; i++ {
-		id, _, errAdd := wrapper.Add()
+		id, errAdd := wrapper.Add()
 		require.NoError(t, errAdd)
 		ids = append(ids, id)
 	}
@@ -130,12 +132,11 @@ func TestSQLiteWrapper_Add_ErrorGeneratingAddress(t *testing.T) {
 		_ = wrapper.Close()
 	}()
 
-	id, addr, err := wrapper.Add()
+	id, err := wrapper.Add()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to generate address")
 	require.Contains(t, err.Error(), expectedErr.Error())
 	require.Zero(t, id)
-	require.Empty(t, addr)
 
 	// Verify nothing was inserted (transaction rolled back)
 	entries, err := wrapper.GetAll()

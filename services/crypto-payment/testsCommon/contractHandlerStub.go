@@ -6,6 +6,7 @@ import "context"
 type ContractHandlerStub struct {
 	IsContractPausedHandler   func(ctx context.Context) (bool, error)
 	GetRequestsPerEGLDHandler func(ctx context.Context) (uint64, error)
+	GetRequestsHandler        func(ctx context.Context, id uint64) (uint64, error)
 }
 
 // IsContractPaused checks if the contract is paused
@@ -20,6 +21,14 @@ func (s *ContractHandlerStub) IsContractPaused(ctx context.Context) (bool, error
 func (s *ContractHandlerStub) GetRequestsPerEGLD(ctx context.Context) (uint64, error) {
 	if s.GetRequestsPerEGLDHandler != nil {
 		return s.GetRequestsPerEGLDHandler(ctx)
+	}
+	return 0, nil
+}
+
+// GetRequests returns the number of requests for a specific ID
+func (s *ContractHandlerStub) GetRequests(ctx context.Context, id uint64) (uint64, error) {
+	if s.GetRequestsHandler != nil {
+		return s.GetRequestsHandler(ctx, id)
 	}
 	return 0, nil
 }

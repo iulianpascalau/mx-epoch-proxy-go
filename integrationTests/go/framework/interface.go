@@ -34,7 +34,7 @@ type Proxy interface {
 // SQLiteWrapper defines the behavior of a SQLite database wrapper
 type SQLiteWrapper interface {
 	Get(id uint64) (*common.BalanceEntry, error)
-	Add() (uint64, string, error)
+	Add() (uint64, error)
 	GetAll() ([]*common.BalanceEntry, error)
 	Close() error
 	IsInterfaceNil() bool

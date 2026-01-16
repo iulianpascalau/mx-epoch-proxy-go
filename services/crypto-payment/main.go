@@ -183,10 +183,13 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	cacher := storage.NewTimeCacher(time.Minute)
+	defer cacher.Close()
+
 	contractQueryHandler, err := process.NewContractQueryHandler(
 		proxy,
 		config.Config.ContractAddress,
-		time.Minute,
+		cacher,
 	)
 	if err != nil {
 		return err
@@ -201,7 +204,12 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	apiHandler, err := api.NewHandler(sqliteWrapper, configHandler)
+	accountHandler, err := process.NewAccountHandler(contractQueryHandler, sqliteWrapper)
+	if err != nil {
+		return err
+	}
+
+	apiHandler, err := api.NewHandler(sqliteWrapper, configHandler, accountHandler)
 	if err != nil {
 		return err
 	}

@@ -31,6 +31,7 @@ type CryptoPaymentService struct {
 	BalanceProcessor     BalanceProcessor
 	RelayedTxProcessor   process.BalanceOperator
 	ContractQueryHandler process.ContractHandler
+	Cacher               process.Cacher
 }
 
 // NewCryptoPaymentService creates a new CryptoPaymentService instance
@@ -74,8 +75,12 @@ func (crs *CryptoPaymentService) Setup(ctx context.Context) {
 
 // TearDown cleans up the test environment
 func (crs *CryptoPaymentService) TearDown() {
-	_ = crs.SQLiteWrapper.Close()
-	_ = crs
+	if crs.SQLiteWrapper != nil {
+		_ = crs.SQLiteWrapper.Close()
+	}
+	if crs.Cacher != nil {
+		crs.Cacher.Close()
+	}
 }
 
 // CreateService will assemble all the service processing components
@@ -103,20 +108,29 @@ func (crs *CryptoPaymentService) CreateService() {
 	// Add users to DB
 	var bech32Address string
 
-	crs.Keys.UserAKeys.ID, bech32Address, err = crs.SQLiteWrapper.Add()
+	crs.Keys.UserAKeys.ID, err = crs.SQLiteWrapper.Add()
 	require.Nil(crs, err)
+	entryA, err := crs.SQLiteWrapper.Get(crs.Keys.UserAKeys.ID)
+	require.Nil(crs, err)
+	bech32Address = entryA.Address
 	crs.Keys.UserAKeys.PayAddress = NewMvxAddressFromBech32(crs, bech32Address)
 	log.Info("registered user A", "UserA address", crs.Keys.UserAKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserAKeys.ID)
 
-	crs.Keys.UserBKeys.ID, bech32Address, err = crs.SQLiteWrapper.Add()
+	crs.Keys.UserBKeys.ID, err = crs.SQLiteWrapper.Add()
 	require.Nil(crs, err)
+	entryB, err := crs.SQLiteWrapper.Get(crs.Keys.UserBKeys.ID)
+	require.Nil(crs, err)
+	bech32Address = entryB.Address
 	crs.Keys.UserBKeys.PayAddress = NewMvxAddressFromBech32(crs, bech32Address)
 	log.Info("registered user B", "UserB address", crs.Keys.UserBKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserBKeys.ID)
 
-	crs.Keys.UserCKeys.ID, bech32Address, err = crs.SQLiteWrapper.Add()
+	crs.Keys.UserCKeys.ID, err = crs.SQLiteWrapper.Add()
 	require.Nil(crs, err)
+	entryC, err := crs.SQLiteWrapper.Get(crs.Keys.UserCKeys.ID)
+	require.Nil(crs, err)
+	bech32Address = entryC.Address
 	crs.Keys.UserCKeys.PayAddress = NewMvxAddressFromBech32(crs, bech32Address)
 	log.Info("registered user C", "UserC address", crs.Keys.UserCKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserCKeys.ID)
@@ -130,10 +144,12 @@ func (crs *CryptoPaymentService) CreateService() {
 	)
 	require.Nil(crs, err)
 
+	crs.Cacher = storage.NewTimeCacher(time.Millisecond)
+
 	crs.ContractQueryHandler, err = process.NewContractQueryHandler(
 		crs.ChainSimulator.Proxy(),
 		crs.ContractAddress.Bech32(),
-		time.Millisecond,
+		crs.Cacher,
 	)
 	require.Nil(crs, err)
 

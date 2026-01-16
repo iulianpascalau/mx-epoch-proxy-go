@@ -13,7 +13,7 @@ func TestHTTPServer_StartAndClose(t *testing.T) {
 	t.Parallel()
 
 	storage := &mockStorage{}
-	h, _ := NewHandler(storage, &mockConfigProvider{config: map[string]interface{}{"key": "value"}})
+	h, _ := NewHandler(storage, &mockConfigProvider{config: map[string]interface{}{"key": "value"}}, &mockAccountHandler{})
 
 	// Use port 0 to let the OS assign a free port
 	server := NewHTTPServer(h, 0)
