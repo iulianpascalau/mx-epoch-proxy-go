@@ -210,7 +210,12 @@ func TestCryptoPaymentHandler_HandleGetAccount(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		storerStub.GetUserHandler = func(username string) (*common.UsersDetails, error) {
-			return &common.UsersDetails{Username: "user", CryptoPaymentID: 100, MaxRequests: 50, AccountType: common.FreeAccountType}, nil
+			return &common.UsersDetails{
+				Username:        "user",
+				CryptoPaymentID: 100,
+				MaxRequests:     50,
+				IsPremium:       false,
+			}, nil
 		}
 		clientStub.GetAccountHandler = func(paymentID uint64) (*common.AccountInfo, error) {
 			assert.Equal(t, uint64(100), paymentID)
@@ -221,29 +226,6 @@ func TestCryptoPaymentHandler_HandleGetAccount(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/api/crypto-payment/account", nil)
 		handler.ServeHTTP(w, r)
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("sync account type", func(t *testing.T) {
-		storerStub.GetUserHandler = func(username string) (*common.UsersDetails, error) {
-			return &common.UsersDetails{Username: "user", CryptoPaymentID: 100, MaxRequests: 50, AccountType: common.FreeAccountType}, nil
-		}
-		clientStub.GetAccountHandler = func(paymentID uint64) (*common.AccountInfo, error) {
-			return &common.AccountInfo{PaymentID: 100, NumberOfRequests: 100}, nil // Changed
-		}
-		updateCalled := false
-		storerStub.UpdateUserHandler = func(username, password string, isAdmin bool, maxRequests uint64, accountType string) error {
-			updateCalled = true
-			assert.Equal(t, "user", username)
-			assert.Equal(t, uint64(100), maxRequests)
-			assert.Equal(t, string(common.PremiumAccountType), accountType)
-			return nil
-		}
-
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/api/crypto-payment/account", nil)
-		handler.ServeHTTP(w, r)
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.True(t, updateCalled)
 	})
 
 	t.Run("no payment id", func(t *testing.T) {

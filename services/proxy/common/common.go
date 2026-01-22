@@ -57,7 +57,7 @@ func ProcessUserDetails(userDetails *UsersDetails) {
 		return
 	}
 
-	if userDetails.MaxRequests == 0 && userDetails.DBAccountType == PremiumAccountType {
+	if userDetails.IsPremium {
 		// the account is premium (no heavy throttling) with unlimited request
 		userDetails.IsUnlimited = true
 		userDetails.ProcessedAccountType = PremiumAccountType

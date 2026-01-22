@@ -2,11 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
@@ -206,23 +204,6 @@ func (h *cryptoPaymentHandler) handleGetAccount(w http.ResponseWriter, r *http.R
 		"address":          info.Address,
 		"numberOfRequests": info.NumberOfRequests,
 	})
-
-	// Sync MaxRequests if changed
-	if info.NumberOfRequests != user.MaxRequests {
-		newAccountType := user.AccountType
-		if info.NumberOfRequests > 0 {
-			newAccountType = common.PremiumAccountType
-		}
-		// If requests dropped to 0, should we revert to free? Maybe, or keep as premium expired.
-		// Common logic suggests if maxRequests=0, it depends on account type.
-		// Let's assume if they bought requests, they are premium.
-
-		err = h.storage.UpdateUser(user.Username, "", user.IsAdmin, info.NumberOfRequests, string(newAccountType))
-		if err != nil {
-			// Log error but don't fail request
-			fmt.Printf("Failed to sync user limits: %v\n", err)
-		}
-	}
 }
 
 func (h *cryptoPaymentHandler) handleAdmin(w http.ResponseWriter, r *http.Request) {
@@ -282,17 +263,4 @@ func (h *cryptoPaymentHandler) handleAdmin(w http.ResponseWriter, r *http.Reques
 		"address":          info.Address,
 		"numberOfRequests": info.NumberOfRequests,
 	})
-
-	// Sync MaxRequests if changed
-	if info.NumberOfRequests != user.MaxRequests {
-		newAccountType := user.AccountType
-		if info.NumberOfRequests > 0 {
-			newAccountType = common.PremiumAccountType
-		}
-
-		err = h.storage.UpdateUser(user.Username, "", user.IsAdmin, info.NumberOfRequests, string(newAccountType))
-		if err != nil {
-			fmt.Printf("Failed to sync user limits: %v\n", err)
-		}
-	}
 }

@@ -5,9 +5,6 @@ import "github.com/golang-jwt/jwt/v5"
 // AccountType describes the account type
 type AccountType string
 
-// AutoAccountType defines the account type, usually stored in DB that can either become free or premium depending on some conditions
-const AutoAccountType AccountType = "auto"
-
 // FreeAccountType defines the free account type, usually throttled
 const FreeAccountType AccountType = "free"
 
@@ -30,7 +27,7 @@ type UsersDetails struct {
 	GlobalCounter          uint64
 	Username               string
 	HashedPassword         string
-	DBAccountType          AccountType
+	IsPremium              bool
 	ProcessedAccountType   AccountType
 	CryptoPaymentInitiated bool
 	IsUnlimited            bool

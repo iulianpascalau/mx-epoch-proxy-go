@@ -188,8 +188,16 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	countersCache, err := storage.NewCountersCache(time.Duration(cfg.CountersCacheTTLInSeconds) * time.Second)
+	if err != nil {
+		return err
+	}
+
 	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
-	sqliteWrapper, err := storage.NewSQLiteWrapper(sqlitePath)
+	sqliteWrapper, err := storage.NewSQLiteWrapper(
+		sqlitePath,
+		countersCache,
+	)
 	if err != nil {
 		return err
 	}
@@ -445,7 +453,7 @@ func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
 		envFileContents[envFileVarInitialAdminPass],
 		true,
 		0,
-		"premium",
+		true,
 		true,
 		"")
 	if err != nil {

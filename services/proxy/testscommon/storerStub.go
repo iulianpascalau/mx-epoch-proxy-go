@@ -5,8 +5,8 @@ import "github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 // StorerStub -
 type StorerStub struct {
 	RemoveUserHandler            func(username string) error
-	UpdateUserHandler            func(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
-	AddUserHandler               func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error
+	UpdateUserHandler            func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool) error
+	AddUserHandler               func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error
 	AddKeyHandler                func(username string, key string) error
 	RemoveKeyHandler             func(username string, key string) error
 	GetAllKeysHandler            func(username string) (map[string]common.AccessKeyDetails, error)
@@ -37,16 +37,16 @@ func (stub *StorerStub) RemoveUser(username string) error {
 	return nil
 }
 
-func (stub *StorerStub) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error {
+func (stub *StorerStub) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool) error {
 	if stub.UpdateUserHandler != nil {
-		return stub.UpdateUserHandler(username, password, isAdmin, maxRequests, accountType)
+		return stub.UpdateUserHandler(username, password, isAdmin, maxRequests, isPremium)
 	}
 	return nil
 }
 
-func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+func (stub *StorerStub) AddUser(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 	if stub.AddUserHandler != nil {
-		return stub.AddUserHandler(username, password, isAdmin, maxRequests, accountType, isActive, activationToken)
+		return stub.AddUserHandler(username, password, isAdmin, maxRequests, isPremium, isActive, activationToken)
 	}
 	return nil
 }

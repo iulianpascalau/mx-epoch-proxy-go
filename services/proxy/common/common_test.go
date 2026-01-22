@@ -82,7 +82,7 @@ func TestCronJob(t *testing.T) {
 	})
 }
 
-func TestProcessUserDetailss(t *testing.T) {
+func TestProcessUserDetails(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil account should not panic", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestProcessUserDetailss(t *testing.T) {
 	})
 	t.Run("premium - unlimited", func(t *testing.T) {
 		userDetails := &UsersDetails{
-			DBAccountType:   PremiumAccountType,
+			IsPremium:       true,
 			GlobalCounter:   100,
 			MaxRequests:     0,
 			CryptoPaymentID: 0,
