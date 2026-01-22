@@ -123,7 +123,8 @@ func (processor *requestsProcessor) ServeHTTP(writer http.ResponseWriter, reques
 		_ = response.Body.Close()
 	}()
 
-	processor.updatePerformanceMetricsAsync(duration)
+	label := common.ConvertTimeToInterval(duration)
+	processor.performanceMonitor.AddPerformanceMetricAsync(label)
 
 	// pass through the response header attributes
 	for key, value := range response.Header {
@@ -165,16 +166,6 @@ func parseStringMapsForLogger(data map[string][]string) string {
 	}
 
 	return result + "}"
-}
-
-func (processor *requestsProcessor) updatePerformanceMetricsAsync(duration time.Duration) {
-	go func() {
-		label := common.ConvertTimeToInterval(duration)
-		err := processor.performanceMonitor.AddPerformanceMetric(label)
-		if err != nil {
-			log.Error("failed to add performance metric", "error", err)
-		}
-	}()
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

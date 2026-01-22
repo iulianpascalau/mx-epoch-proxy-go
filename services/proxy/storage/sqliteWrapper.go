@@ -23,9 +23,9 @@ var log = logger.GetOrCreate("storage")
 
 // sqliteWrapper handles the connection to the SQLite database
 type sqliteWrapper struct {
-	db                *sql.DB
-	countersWaitGroup *sync.WaitGroup
-	counters          CountersCache
+	db                     *sql.DB
+	pendingWritesWaitGroup *sync.WaitGroup
+	counters               CountersCache
 }
 
 // NewSQLiteWrapper creates a new instance of SQLiteWrapper
@@ -66,9 +66,9 @@ func NewSQLiteWrapper(dbPath string, counters CountersCache) (*sqliteWrapper, er
 	}
 
 	wrapper := &sqliteWrapper{
-		db:                db,
-		counters:          counters,
-		countersWaitGroup: &sync.WaitGroup{},
+		db:                     db,
+		counters:               counters,
+		pendingWritesWaitGroup: &sync.WaitGroup{},
 	}
 	err = wrapper.initializeTables()
 	if err != nil {
@@ -348,7 +348,7 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 	common.ProcessUserDetails(userDetails)
 	wrapper.counters.Set(username, userDetails.GlobalCounter+1)
 
-	wrapper.countersWaitGroup.Add(2)
+	wrapper.pendingWritesWaitGroup.Add(2)
 	go wrapper.incrementCountersOnUsers(username)
 	go wrapper.incrementCountersOnKeys(key)
 
@@ -362,7 +362,7 @@ func (wrapper *sqliteWrapper) incrementCountersOnUsers(username string) {
 		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
 	}
 
-	wrapper.countersWaitGroup.Done()
+	wrapper.pendingWritesWaitGroup.Done()
 }
 
 func (wrapper *sqliteWrapper) incrementCountersOnKeys(key string) {
@@ -372,7 +372,7 @@ func (wrapper *sqliteWrapper) incrementCountersOnKeys(key string) {
 		log.Error("error updating the request counter (update in keys)", "key", common.AnonymizeKey(key), "error", err)
 	}
 
-	wrapper.countersWaitGroup.Done()
+	wrapper.pendingWritesWaitGroup.Done()
 }
 
 // CheckUserCredentials checks if the user with the given username and password exists and returns details
@@ -534,37 +534,50 @@ func (wrapper *sqliteWrapper) ActivateUser(token string) error {
 	return tx.Commit()
 }
 
-// AddPerformanceMetric increments the counter for the given label
-func (wrapper *sqliteWrapper) AddPerformanceMetric(label string) error {
-	tx, err := wrapper.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+// AddPerformanceMetricAsync increments the counter for the given label in an async manner
+func (wrapper *sqliteWrapper) AddPerformanceMetricAsync(label string) {
+	wrapper.pendingWritesWaitGroup.Add(1)
 
-	// Try update
-	query := "UPDATE performance SET counter = counter + 1 WHERE label = ?"
-	res, err := tx.Exec(query, label)
-	if err != nil {
-		return fmt.Errorf("failed to update performance metric: %w", err)
-	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
+	go func() {
+		defer wrapper.pendingWritesWaitGroup.Done()
 
-	if rows == 0 {
-		// Insert
-		query = "INSERT INTO performance (label, counter) VALUES (?, 1)"
-		_, err = tx.Exec(query, label)
+		tx, err := wrapper.db.Begin()
 		if err != nil {
-			return fmt.Errorf("failed to insert performance metric: %w", err)
+			log.Error("failed to begin transaction for performance metric", "error", err)
+			return
 		}
-	}
+		defer func() {
+			_ = tx.Rollback()
+		}()
 
-	return tx.Commit()
+		// Try update
+		query := "UPDATE performance SET counter = counter + 1 WHERE label = ?"
+		res, err := tx.Exec(query, label)
+		if err != nil {
+			log.Error("failed to update performance metric", "error", err)
+			return
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			log.Error("failed to get rows affected for performance metric", "error", err)
+			return
+		}
+
+		if rows == 0 {
+			// Insert
+			query = "INSERT INTO performance (label, counter) VALUES (?, 1)"
+			_, err = tx.Exec(query, label)
+			if err != nil {
+				log.Error("failed to insert performance metric", "error", err)
+				return
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			log.Error("failed to commit performance metric transaction", "error", err)
+		}
+	}()
 }
 
 // GetPerformanceMetrics returns the performance metrics
@@ -771,8 +784,8 @@ func (wrapper *sqliteWrapper) SetCryptoPaymentID(username string, paymentID uint
 
 // Close closes the database connection
 func (wrapper *sqliteWrapper) Close() error {
-	// allow all counter updates to finish before closing the db connection
-	wrapper.countersWaitGroup.Wait()
+	// allow all pending updates to finish before closing the db connection
+	wrapper.pendingWritesWaitGroup.Wait()
 
 	return wrapper.db.Close()
 }
