@@ -82,60 +82,135 @@ func TestCronJob(t *testing.T) {
 	})
 }
 
-func TestCreateAccountSettings(t *testing.T) {
+func TestProcessUserDetailss(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil account should not panic", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r != nil {
+				assert.Fail(t, fmt.Sprintf("Panic occurred: %v", r))
+			}
+		}()
+
+		ProcessUserDetails(nil)
+	})
 	t.Run("premium - unlimited", func(t *testing.T) {
-		settings := CreateAccountSettings(string(PremiumAccountType), 100, 0, 0)
-		assert.Equal(t, PremiumAccountType, settings.Type)
-		assert.Equal(t, uint64(0), settings.MaxRequests)
-		assert.Equal(t, uint64(100), settings.RequestCount)
-		assert.Equal(t, false, settings.CryptoPaymentInitiated)
-		assert.Equal(t, true, settings.IsUnlimited)
+		userDetails := &UsersDetails{
+			DBAccountType:   PremiumAccountType,
+			GlobalCounter:   100,
+			MaxRequests:     0,
+			CryptoPaymentID: 0,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, PremiumAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, true, userDetails.IsUnlimited)
+		assert.Equal(t, false, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(0), userDetails.MaxRequests)
+		assert.Equal(t, uint64(100), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(0), userDetails.CryptoPaymentID)
 	})
 
 	t.Run("premium - limited", func(t *testing.T) {
-		settings := CreateAccountSettings(string(PremiumAccountType), 100, 200, 1)
-		assert.Equal(t, PremiumAccountType, settings.Type)
-		assert.Equal(t, uint64(200), settings.MaxRequests)
-		assert.Equal(t, uint64(100), settings.RequestCount)
-		assert.Equal(t, true, settings.CryptoPaymentInitiated)
-		assert.Equal(t, false, settings.IsUnlimited)
+		userDetails := &UsersDetails{
+			GlobalCounter:   100,
+			MaxRequests:     200,
+			CryptoPaymentID: 1,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, PremiumAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, false, userDetails.IsUnlimited)
+		assert.Equal(t, true, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(200), userDetails.MaxRequests)
+		assert.Equal(t, uint64(100), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(1), userDetails.CryptoPaymentID)
 	})
 
 	t.Run("premium - limited and max reached", func(t *testing.T) {
-		settings := CreateAccountSettings(string(PremiumAccountType), 200, 200, 1)
-		assert.Equal(t, FreeAccountType, settings.Type)
-		assert.Equal(t, uint64(200), settings.MaxRequests)
-		assert.Equal(t, uint64(200), settings.RequestCount)
-		assert.Equal(t, true, settings.CryptoPaymentInitiated)
-		assert.Equal(t, false, settings.IsUnlimited)
+		userDetails := &UsersDetails{
+			GlobalCounter:   200,
+			MaxRequests:     200,
+			CryptoPaymentID: 1,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, FreeAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, false, userDetails.IsUnlimited)
+		assert.Equal(t, true, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(200), userDetails.MaxRequests)
+		assert.Equal(t, uint64(200), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(1), userDetails.CryptoPaymentID)
 	})
 
 	t.Run("free - no payment id", func(t *testing.T) {
-		settings := CreateAccountSettings(string(FreeAccountType), 0, 0, 0)
-		assert.Equal(t, FreeAccountType, settings.Type)
-		assert.Equal(t, uint64(0), settings.MaxRequests)
-		assert.Equal(t, uint64(0), settings.RequestCount)
-		assert.Equal(t, false, settings.CryptoPaymentInitiated)
-		assert.Equal(t, false, settings.IsUnlimited)
+		userDetails := &UsersDetails{
+			GlobalCounter:   0,
+			MaxRequests:     0,
+			CryptoPaymentID: 0,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, FreeAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, false, userDetails.IsUnlimited)
+		assert.Equal(t, false, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(0), userDetails.MaxRequests)
+		assert.Equal(t, uint64(0), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(0), userDetails.CryptoPaymentID)
 	})
 
 	t.Run("free - with payment ID but no payments", func(t *testing.T) {
-		settings := CreateAccountSettings(string(FreeAccountType), 0, 0, 1)
-		assert.Equal(t, FreeAccountType, settings.Type)
-		assert.Equal(t, uint64(0), settings.MaxRequests)
-		assert.Equal(t, uint64(0), settings.RequestCount)
-		assert.Equal(t, true, settings.CryptoPaymentInitiated)
-		assert.Equal(t, false, settings.IsUnlimited)
+		userDetails := &UsersDetails{
+			GlobalCounter:   0,
+			MaxRequests:     0,
+			CryptoPaymentID: 1,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, FreeAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, false, userDetails.IsUnlimited)
+		assert.Equal(t, true, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(0), userDetails.MaxRequests)
+		assert.Equal(t, uint64(0), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(1), userDetails.CryptoPaymentID)
 	})
 
 	t.Run("free - with payment ID and with payment", func(t *testing.T) {
-		settings := CreateAccountSettings(string(FreeAccountType), 0, 100, 1)
-		assert.Equal(t, PremiumAccountType, settings.Type)
-		assert.Equal(t, uint64(100), settings.MaxRequests)
-		assert.Equal(t, uint64(0), settings.RequestCount)
-		assert.Equal(t, true, settings.CryptoPaymentInitiated)
-		assert.Equal(t, false, settings.IsUnlimited)
+		userDetails := &UsersDetails{
+			GlobalCounter:   0,
+			MaxRequests:     100,
+			CryptoPaymentID: 1,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, PremiumAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, false, userDetails.IsUnlimited)
+		assert.Equal(t, true, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(100), userDetails.MaxRequests)
+		assert.Equal(t, uint64(0), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(1), userDetails.CryptoPaymentID)
+	})
+	t.Run("free - with payment ID and with payment and max requests reached", func(t *testing.T) {
+		userDetails := &UsersDetails{
+			GlobalCounter:   100,
+			MaxRequests:     100,
+			CryptoPaymentID: 1,
+		}
+
+		ProcessUserDetails(userDetails)
+		assert.Equal(t, FreeAccountType, userDetails.ProcessedAccountType)
+		assert.Equal(t, false, userDetails.IsUnlimited)
+		assert.Equal(t, true, userDetails.CryptoPaymentInitiated)
+
+		assert.Equal(t, uint64(100), userDetails.MaxRequests)
+		assert.Equal(t, uint64(100), userDetails.GlobalCounter)
+		assert.Equal(t, uint64(1), userDetails.CryptoPaymentID)
 	})
 }

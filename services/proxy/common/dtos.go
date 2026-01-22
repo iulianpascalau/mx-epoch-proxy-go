@@ -5,6 +5,9 @@ import "github.com/golang-jwt/jwt/v5"
 // AccountType describes the account type
 type AccountType string
 
+// AutoAccountType defines the account type, usually stored in DB that can either become free or premium depending on some conditions
+const AutoAccountType AccountType = "auto"
+
 // FreeAccountType defines the free account type, usually throttled
 const FreeAccountType AccountType = "free"
 
@@ -23,14 +26,17 @@ type AccessKeyDetails struct {
 
 // UsersDetails holds details about a user
 type UsersDetails struct {
-	MaxRequests     uint64
-	GlobalCounter   uint64
-	Username        string
-	HashedPassword  string
-	AccountType     AccountType
-	IsActive        bool
-	IsAdmin         bool
-	CryptoPaymentID uint64
+	MaxRequests            uint64
+	GlobalCounter          uint64
+	Username               string
+	HashedPassword         string
+	DBAccountType          AccountType
+	ProcessedAccountType   AccountType
+	CryptoPaymentInitiated bool
+	IsUnlimited            bool
+	IsActive               bool
+	IsAdmin                bool
+	CryptoPaymentID        uint64
 }
 
 // Claims struct holds the JWT claims
@@ -38,13 +44,4 @@ type Claims struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
-}
-
-// AccountSettings represents the settings for an account
-type AccountSettings struct {
-	Type                   AccountType
-	IsUnlimited            bool
-	RequestCount           uint64
-	MaxRequests            uint64
-	CryptoPaymentInitiated bool
 }
