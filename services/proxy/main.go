@@ -193,6 +193,14 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	ctxCronJobs, cancelCronJobs := context.WithCancel(context.Background())
+	defer cancelCronJobs()
+
+	common.CronJobStarter(ctxCronJobs, func() {
+		log.Debug("Sweeping the counters cache")
+		countersCache.Sweep()
+	}, cfg.CountersCacheTTLInSeconds*time.Second)
+
 	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
 	sqliteWrapper, err := storage.NewSQLiteWrapper(
 		sqlitePath,
@@ -217,7 +225,7 @@ func run(ctx *cli.Context) error {
 
 	keyCounter := common.NewKeyCounter()
 	limitPeriod := time.Duration(cfg.FreeAccount.ClearPeriodInSeconds) * time.Second
-	common.CronJobStarter(context.Background(), func() {
+	common.CronJobStarter(ctxCronJobs, func() {
 		log.Debug("Clearing the keys counters")
 		keyCounter.Clear()
 	}, limitPeriod)

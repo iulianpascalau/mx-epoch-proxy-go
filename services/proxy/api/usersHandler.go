@@ -79,7 +79,7 @@ func (handler *usersHandler) handlePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isPremium := strings.ToLower(req.AccountType) == strings.ToLower(string(common.PremiumAccountType))
+	isPremium := strings.EqualFold(req.AccountType, string(common.PremiumAccountType))
 	err = handler.keyAccessProvider.UpdateUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, isPremium)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -156,7 +156,7 @@ func (handler *usersHandler) handlePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	isPremium := strings.ToLower(req.AccountType) == strings.ToLower(string(common.PremiumAccountType))
+	isPremium := strings.EqualFold(req.AccountType, string(common.PremiumAccountType))
 	err = handler.keyAccessProvider.AddUser(req.Username, req.Password, req.IsAdmin, req.MaxRequests, isPremium, true, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
