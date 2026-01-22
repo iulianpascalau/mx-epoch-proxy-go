@@ -1,11 +1,9 @@
 package config
 
-import "time"
-
 // Config specify all config options this proxy will use
 type Config struct {
 	Port                      uint64
-	CountersCacheTTLInSeconds time.Duration
+	CountersCacheTTLInSeconds uint32
 	FreeAccount               FreeAccountConfig
 	Gateways                  []GatewayConfig
 	ClosedEndpoints           []string

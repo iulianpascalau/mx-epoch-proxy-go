@@ -199,7 +199,7 @@ func run(ctx *cli.Context) error {
 	common.CronJobStarter(ctxCronJobs, func() {
 		log.Debug("Sweeping the counters cache")
 		countersCache.Sweep()
-	}, cfg.CountersCacheTTLInSeconds*time.Second)
+	}, time.Duration(cfg.CountersCacheTTLInSeconds)*time.Second)
 
 	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
 	sqliteWrapper, err := storage.NewSQLiteWrapper(
