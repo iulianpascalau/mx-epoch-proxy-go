@@ -861,9 +861,9 @@ export const Dashboard = () => {
                                             <th className="py-3 px-4">Verified</th>
                                             <th className="py-3 px-4">Role</th>
                                             <th className="py-3 px-4">Account Type</th>
-                                            <th className="py-3 px-4">Limits (Req)</th>
-                                            <th className="py-3 px-4"></th>
+                                            <th className="py-3 px-4">Limits</th>
                                             <th className="py-3 px-4">Current Usage</th>
+                                            <th className="py-3 px-4"></th>
                                             <th className="py-3 px-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -889,7 +889,12 @@ export const Dashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
-                                                    {u.MaxRequests === 0 ? 'Unlimited' : u.MaxRequests}
+                                                    {u.MaxRequests}
+                                                </td>
+                                                <td className="py-3 px-4 text-slate-300">
+                                                    <div className="flex items-center gap-2">
+                                                        {u.GlobalCounter}
+                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <button
@@ -899,11 +904,6 @@ export const Dashboard = () => {
                                                         <Key size={12} />
                                                         Manage Keys
                                                     </button>
-                                                </td>
-                                                <td className="py-3 px-4 text-slate-300">
-                                                    <div className="flex items-center gap-2">
-                                                        {u.GlobalCounter}
-                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4 text-right flex justify-end gap-2">
                                                     <button

@@ -425,6 +425,7 @@ func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDeta
 		details.CryptoPaymentID = uint64(cryptoPaymentID.Int64)
 	}
 	details.GlobalCounter = max(details.GlobalCounter, wrapper.counters.Get(details.Username))
+	common.ProcessUserDetails(&details)
 
 	return &details, nil
 }
@@ -500,6 +501,7 @@ func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, err
 		}
 
 		details.GlobalCounter = max(details.GlobalCounter, wrapper.counters.Get(details.Username))
+		common.ProcessUserDetails(&details)
 
 		result[strings.ToLower(details.Username)] = details
 	}

@@ -76,3 +76,33 @@ func TestCountersCache_IsInterfaceNil(t *testing.T) {
 	cc, _ = NewCountersCache(time.Second)
 	assert.False(t, cc.IsInterfaceNil())
 }
+
+func TestCountersCache_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
+	cc, _ := NewCountersCache(time.Millisecond)
+
+	// Start goroutines for Set
+	go func() {
+		for i := 0; i < 1000; i++ {
+			cc.Set("key", uint64(i))
+		}
+	}()
+
+	// Start goroutines for Get
+	go func() {
+		for i := 0; i < 1000; i++ {
+			cc.Get("key")
+		}
+	}()
+
+	// Start goroutines for Sweep
+	go func() {
+		for i := 0; i < 1000; i++ {
+			cc.Sweep()
+		}
+	}()
+
+	// Allow some time for goroutines to run
+	time.Sleep(time.Millisecond * 100)
+}

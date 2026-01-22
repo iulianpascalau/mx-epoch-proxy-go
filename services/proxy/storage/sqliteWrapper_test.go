@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -606,6 +607,25 @@ func TestSQLiteWrapper_UpdateUser(t *testing.T) {
 		err = wrapper.UpdateUser(username, longPass, false, 2000, false)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "password is too long")
+	})
+
+	t.Run("should update user to premium with zero max requests", func(t *testing.T) {
+		regularUser := "reg_user_test"
+		err = wrapper.AddUser(regularUser, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		// Update to Premium with 0 max requests
+		err = wrapper.UpdateUser(regularUser, "", false, 0, true)
+		require.NoError(t, err)
+
+		// Verify with GetUser
+		details, err := wrapper.GetUser(regularUser)
+		require.NoError(t, err)
+
+		assert.True(t, details.IsPremium, "IsPremium should be true after update")
+		assert.Equal(t, uint64(0), details.MaxRequests, "MaxRequests should be 0")
+		assert.Equal(t, common.PremiumAccountType, details.ProcessedAccountType, "AccountType should be premium after update")
+		assert.True(t, details.IsUnlimited, "Should be unlimited")
 	})
 }
 
