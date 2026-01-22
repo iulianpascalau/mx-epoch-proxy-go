@@ -78,12 +78,6 @@ VERSION:
 		Usage: "This flag specifies the `directory` where the node will store databases and logs.",
 		Value: "",
 	}
-	// apiPort defines the port for the API web server
-	apiPort = cli.IntFlag{
-		Name:  "api-port",
-		Usage: "The port used to start the API web server.",
-		Value: 8080,
-	}
 )
 
 func main() {
@@ -96,7 +90,6 @@ func main() {
 		logLevel,
 		logSaveFile,
 		workingDirectory,
-		apiPort,
 	}
 	app.Authors = []cli.Author{
 		{
@@ -219,7 +212,7 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	httpServer := api.NewHTTPServer(apiHandler, ctx.Int(apiPort.Name), cfg.ServiceApiKey)
+	httpServer := api.NewHTTPServer(apiHandler, int(cfg.Port), cfg.ServiceApiKey)
 	err = httpServer.Start()
 	defer func() {
 		_ = httpServer.Close()
