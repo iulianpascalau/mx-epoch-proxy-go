@@ -71,7 +71,7 @@ func (cqh *contractQueryHandler) IsContractPaused(ctx context.Context) (bool, er
 		return true, nil
 	}
 
-	if res.Data.ReturnData == nil || len(res.Data.ReturnData) == 0 || len(res.Data.ReturnData[0]) == 0 {
+	if len(res.Data.ReturnData) == 0 || len(res.Data.ReturnData[0]) == 0 {
 		isPaused = false
 	} else {
 		isPaused = res.Data.ReturnData[0][0] == 1

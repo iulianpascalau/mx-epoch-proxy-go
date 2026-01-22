@@ -1,13 +1,16 @@
 package config
 
+import "time"
+
 // Config specify all config options this proxy will use
 type Config struct {
-	Port            uint64
-	FreeAccount     FreeAccountConfig
-	Gateways        []GatewayConfig
-	ClosedEndpoints []string
-	AppDomains      AppDomainsConfig
-	CryptoPayment   CryptoPaymentConfig
+	Port                      uint64
+	CountersCacheTTLInSeconds time.Duration
+	FreeAccount               FreeAccountConfig
+	Gateways                  []GatewayConfig
+	ClosedEndpoints           []string
+	AppDomains                AppDomainsConfig
+	CryptoPayment             CryptoPaymentConfig
 }
 
 // GatewayConfig defines a gateway and its set epochs

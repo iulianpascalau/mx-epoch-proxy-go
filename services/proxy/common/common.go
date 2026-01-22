@@ -50,38 +50,36 @@ func CronJobStarter(ctx context.Context, handler func(), timeToCall time.Duratio
 	}()
 }
 
-// CreateAccountSettings implements a high-level logic to decide the type of a certain account
-func CreateAccountSettings(accountType string, requestCount uint64, maxRequests uint64, cryptoPaymentId int) AccountSettings {
-	settings := AccountSettings{
-		RequestCount: requestCount,
-		MaxRequests:  maxRequests,
+// ProcessUserDetails implements a high-level logic to set 3 fields on the provided user details object: the
+// ProcessedAccountType, CryptoPaymentInitiated and IsUnlimited
+func ProcessUserDetails(userDetails *UsersDetails) {
+	if userDetails == nil {
+		return
 	}
 
-	if maxRequests == 0 && accountType == string(PremiumAccountType) {
+	if userDetails.IsPremium {
 		// the account is premium (no heavy throttling) with unlimited request
-		settings.IsUnlimited = true
-		settings.Type = PremiumAccountType
-		settings.CryptoPaymentInitiated = false
+		userDetails.IsUnlimited = true
+		userDetails.ProcessedAccountType = PremiumAccountType
+		userDetails.CryptoPaymentInitiated = false
 
-		return settings
+		return
 	}
 
-	settings.CryptoPaymentInitiated = cryptoPaymentId > 0
+	userDetails.CryptoPaymentInitiated = userDetails.CryptoPaymentID > 0
 
-	if maxRequests > 0 && requestCount < maxRequests {
+	if userDetails.MaxRequests > 0 && userDetails.GlobalCounter < userDetails.MaxRequests {
 		// the account is premium (no heavy throttling) with credits still left
-		settings.IsUnlimited = false
-		settings.Type = PremiumAccountType
+		userDetails.IsUnlimited = false
+		userDetails.ProcessedAccountType = PremiumAccountType
 
-		return settings
+		return
 	}
 
 	// the account should be treated as free because the user depleted it's purchased credits but requests should still work although heavily throttled
 	// or
 	// the account was declared free and no purchase completed
 
-	settings.IsUnlimited = false
-	settings.Type = FreeAccountType
-
-	return settings
+	userDetails.IsUnlimited = false
+	userDetails.ProcessedAccountType = FreeAccountType
 }

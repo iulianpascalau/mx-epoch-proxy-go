@@ -188,8 +188,24 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	countersCache, err := storage.NewCountersCache(time.Duration(cfg.CountersCacheTTLInSeconds) * time.Second)
+	if err != nil {
+		return err
+	}
+
+	ctxCronJobs, cancelCronJobs := context.WithCancel(context.Background())
+	defer cancelCronJobs()
+
+	common.CronJobStarter(ctxCronJobs, func() {
+		log.Debug("Sweeping the counters cache")
+		countersCache.Sweep()
+	}, cfg.CountersCacheTTLInSeconds*time.Second)
+
 	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
-	sqliteWrapper, err := storage.NewSQLiteWrapper(sqlitePath)
+	sqliteWrapper, err := storage.NewSQLiteWrapper(
+		sqlitePath,
+		countersCache,
+	)
 	if err != nil {
 		return err
 	}
@@ -209,7 +225,7 @@ func run(ctx *cli.Context) error {
 
 	keyCounter := common.NewKeyCounter()
 	limitPeriod := time.Duration(cfg.FreeAccount.ClearPeriodInSeconds) * time.Second
-	common.CronJobStarter(context.Background(), func() {
+	common.CronJobStarter(ctxCronJobs, func() {
 		log.Debug("Clearing the keys counters")
 		keyCounter.Clear()
 	}, limitPeriod)
@@ -445,7 +461,7 @@ func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
 		envFileContents[envFileVarInitialAdminPass],
 		true,
 		0,
-		"premium",
+		true,
 		true,
 		"")
 	if err != nil {

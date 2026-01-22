@@ -34,6 +34,6 @@ type KeyCounter interface {
 
 // PerformanceMonitor is able to store performance metrics
 type PerformanceMonitor interface {
-	AddPerformanceMetric(label string) error
+	AddPerformanceMetricAsync(label string)
 	IsInterfaceNil() bool
 }
