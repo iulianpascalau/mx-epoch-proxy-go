@@ -21,6 +21,7 @@ interface UserDetails {
     IsAdmin: boolean;
     AccountType: string;
     IsActive: boolean;
+    IsPremium: boolean;
     PaymentID?: number; // Added for crypto payment
 }
 
@@ -860,6 +861,7 @@ export const Dashboard = () => {
                                             </th>
                                             <th className="py-3 px-4">Verified</th>
                                             <th className="py-3 px-4">Role</th>
+                                            <th className="py-3 px-4">Forced to Premium</th>
                                             <th className="py-3 px-4">Account Type</th>
                                             <th className="py-3 px-4">Limits</th>
                                             <th className="py-3 px-4">Current Usage</th>
@@ -881,6 +883,11 @@ export const Dashboard = () => {
                                                 <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${u.IsAdmin ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
                                                         {u.IsAdmin ? 'ADMIN' : 'USER'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${u.IsPremium ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-500/20 text-slate-300'}`}>
+                                                        {u.IsPremium ? 'YES' : 'NO'}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">

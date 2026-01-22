@@ -619,13 +619,39 @@ func TestSQLiteWrapper_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify with GetUser
-		details, err := wrapper.GetUser(regularUser)
-		require.NoError(t, err)
+		details, errGet := wrapper.GetUser(regularUser)
+		require.NoError(t, errGet)
 
 		assert.True(t, details.IsPremium, "IsPremium should be true after update")
 		assert.Equal(t, uint64(0), details.MaxRequests, "MaxRequests should be 0")
 		assert.Equal(t, common.PremiumAccountType, details.ProcessedAccountType, "AccountType should be premium after update")
 		assert.True(t, details.IsUnlimited, "Should be unlimited")
+	})
+
+	t.Run("should update user to free with no more requests available", func(t *testing.T) {
+		regularUser := "reg_user_test1"
+		err = wrapper.AddUser(regularUser, "pass", false, 2, false, true, "")
+		require.NoError(t, err)
+
+		key := regularUser + "_key12345678"
+		err = wrapper.AddKey(regularUser, key)
+		require.NoError(t, err)
+
+		// create 2 requests:
+		_, tier, errCheck := wrapper.IsKeyAllowed(key)
+		assert.Equal(t, common.PremiumAccountType, tier)
+		assert.NoError(t, errCheck)
+
+		_, tier, errCheck = wrapper.IsKeyAllowed(key)
+		assert.Equal(t, common.PremiumAccountType, tier)
+		assert.NoError(t, errCheck)
+
+		// Verify with GetUser
+		details, errGet := wrapper.GetUser(regularUser)
+		require.NoError(t, errGet)
+		assert.Equal(t, uint64(2), details.MaxRequests)
+		assert.Equal(t, uint64(2), details.GlobalCounter)
+		assert.Equal(t, common.FreeAccountType, details.ProcessedAccountType)
 	})
 }
 
