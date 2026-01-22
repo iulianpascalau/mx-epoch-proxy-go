@@ -21,6 +21,7 @@ interface UserDetails {
     IsAdmin: boolean;
     AccountType: string;
     IsActive: boolean;
+    IsPremium: boolean;
     PaymentID?: number; // Added for crypto payment
 }
 
@@ -100,7 +101,7 @@ export const Dashboard = () => {
 
     // Crypto Payment State
     const [cryptoState, setCryptoState] = useState<CryptoPaymentState>({
-        isServiceAvailable: true,
+        isServiceAvailable: false,
         isPaused: false,
         requestsPerEGLD: 10000,
         walletURL: 'https://devnet-wallet.multiversx.com',
@@ -113,43 +114,77 @@ export const Dashboard = () => {
         error: null
     });
 
-    // Mock Crypto API
-    const fetchCryptoData = async () => {
-        setCryptoState(prev => ({ ...prev, isLoading: true, error: null }));
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+    // Real Crypto API
+    const fetchCryptoData = async (isBackground = false) => {
+        if (!isBackground) {
+            setCryptoState(prev => ({ ...prev, isLoading: true, error: null }));
+        }
+        const token = getAccessKey();
+        if (!token) return;
 
-        // Mock Configuration
-        const mockConfig = {
-            isAvailable: true,
-            isPaused: false, // Set to true to test paused state
-            requestsPerEGLD: 500000,
-            walletURL: "https://devnet-wallet.multiversx.com",
-            explorerURL: "https://devnet-explorer.multiversx.com",
-            contractAddress: "erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw"
-        };
+        try {
+            // 1. Fetch Config
+            const configRes = await axios.get('/api/crypto-payment/config', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-        // Mock Account (dependent on user state, simplified for demo)
-        // In reality we would check if user has PaymentID
-        const mockAccount = {
-            paymentId: user?.is_admin ? 12345 : null, // Admin gets dummy payment ID for demo
-            depositAddress: user?.is_admin ? "erd1spyavw0956vq68xj8y4tenjpq2wd5a9p2c6j8gsz7ztyrnpxrruq0gwzgd" : null,
-            numberOfRequests: user?.is_admin ? 8500 : 0
-        };
+            const config = configRes.data;
+            const newState = {
+                isServiceAvailable: config.isAvailable,
+                isPaused: config.isPaused,
+                requestsPerEGLD: config.requestsPerEGLD,
+                walletURL: config.walletURL,
+                explorerURL: config.explorerURL,
+                contractAddress: config.contractAddress,
+                isLoading: false,
+                error: null
+            };
 
-        setCryptoState(prev => ({
-            ...prev,
-            isServiceAvailable: mockConfig.isAvailable,
-            isPaused: mockConfig.isPaused,
-            requestsPerEGLD: mockConfig.requestsPerEGLD,
-            walletURL: mockConfig.walletURL,
-            explorerURL: mockConfig.explorerURL,
-            contractAddress: mockConfig.contractAddress,
-            paymentId: mockAccount.paymentId,
-            depositAddress: mockAccount.depositAddress,
-            numberOfRequests: mockAccount.numberOfRequests,
-            isLoading: false
-        }));
+            setCryptoState(prev => ({ ...prev, ...newState }));
+
+            // 2. Fetch Account (if service is available)
+            if (config.isAvailable) {
+                try {
+                    const accountRes = await axios.get('/api/crypto-payment/account', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (accountRes.data) {
+                        setCryptoState(prev => ({
+                            ...prev,
+                            paymentId: accountRes.data.paymentId,
+                            depositAddress: accountRes.data.address,
+                            numberOfRequests: accountRes.data.numberOfRequests
+                        }));
+                    }
+                } catch (accErr: any) {
+                    // 404 means no account yet, which is fine
+                    if (accErr.response?.status !== 404) {
+                        console.error("Failed to fetch crypto account", accErr);
+                    } else {
+                        // Reset account specific fields if 404 (user might have deleted account or just has none)
+                        setCryptoState(prev => ({
+                            ...prev,
+                            paymentId: null,
+                            depositAddress: null,
+                            numberOfRequests: 0
+                        }));
+                    }
+                }
+            }
+
+        } catch (err: any) {
+            console.error('Failed to fetch crypto config: ', err);
+            // If config fails (e.g. 503), the service is unavailable
+            setCryptoState(prev => ({
+                ...prev,
+                isServiceAvailable: false,
+                isPaused: false, // Ensure paused state is cleared if service is down
+                isLoading: false,
+                requestsPerEGLD: 0, // Reset rate
+                error: err.response?.data?.error || "Crypto service unavailable"
+            }));
+        }
     };
 
     const handleRequestAddress = async () => {
@@ -189,7 +224,14 @@ export const Dashboard = () => {
 
     useEffect(() => {
         if (user) {
-            fetchCryptoData();
+            fetchCryptoData(); // Initial load
+
+            // Poll every 15 seconds to keep status updated
+            const interval = setInterval(() => {
+                fetchCryptoData(true); // Background refresh
+            }, 15000);
+
+            return () => clearInterval(interval);
         }
     }, [user]);
 
@@ -543,19 +585,14 @@ export const Dashboard = () => {
                                 </h2>
                                 {/* Service Status Indicator */}
                                 <div className="flex items-center gap-2 text-sm bg-black/20 px-3 py-1 rounded-full">
-                                    <div className={`w-2 h-2 rounded-full ${!cryptoState.isServiceAvailable ? 'bg-red-500' : cryptoState.isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                                    <div className={`w-2 h-2 rounded-full ${cryptoState.isLoading ? 'bg-slate-400 animate-pulse' : !cryptoState.isServiceAvailable ? 'bg-red-500' : cryptoState.isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
                                     <span className="text-slate-400">
-                                        {!cryptoState.isServiceAvailable ? 'Crypto Service Unavailable' : cryptoState.isPaused ? 'Payments Paused' : 'Crypto Service Online'}
+                                        {cryptoState.isLoading ? 'Checking Service...' : !cryptoState.isServiceAvailable ? 'Crypto Service Unavailable' : cryptoState.isPaused ? 'Payments Paused' : 'Crypto Service Online'}
                                     </span>
                                 </div>
                             </div>
 
-                            {cryptoState.error && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-lg mb-6 flex items-center gap-3">
-                                    <AlertTriangle size={20} />
-                                    {cryptoState.error}
-                                </div>
-                            )}
+                            {/* Error pane removed */}
 
                             {/* State: Loading */}
                             {cryptoState.isLoading && !cryptoState.depositAddress && (
@@ -576,11 +613,13 @@ export const Dashboard = () => {
                                                 <h3 className="text-lg font-medium text-white mb-2">Unlock Unlimited Requests</h3>
                                                 <p className="text-slate-400 mb-4 text-sm leading-relaxed max-w-2xl">
                                                     Upgrade your account to Premium by making a secure crypto payment.
-                                                    You are paying directly to the smart contract using eGLD.
+                                                    You are paying directly to the smart contract using EGLD.
                                                     Zero gas fees for deposit transaction relay.
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mb-6">
-                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Rate: {cryptoState.requestsPerEGLD.toLocaleString()} req / 1 eGLD</span>
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
+                                                        Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
+                                                    </span>
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Instant Activation</span>
                                                 </div>
                                                 <button
@@ -632,7 +671,7 @@ export const Dashboard = () => {
                                                     </div>
                                                     <div>
                                                         <label className="text-xs text-slate-500 block mb-1">Current Rate</label>
-                                                        <div className="text-slate-200">{cryptoState.requestsPerEGLD.toLocaleString()} req/eGLD</div>
+                                                        <div className="text-slate-200">{cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req/EGLD</div>
                                                     </div>
                                                 </div>
 
@@ -860,10 +899,11 @@ export const Dashboard = () => {
                                             </th>
                                             <th className="py-3 px-4">Verified</th>
                                             <th className="py-3 px-4">Role</th>
+                                            <th className="py-3 px-4">Forced to Premium</th>
                                             <th className="py-3 px-4">Account Type</th>
-                                            <th className="py-3 px-4">Limits (Req)</th>
-                                            <th className="py-3 px-4"></th>
+                                            <th className="py-3 px-4">Limits</th>
                                             <th className="py-3 px-4">Current Usage</th>
+                                            <th className="py-3 px-4"></th>
                                             <th className="py-3 px-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -884,12 +924,22 @@ export const Dashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${u.IsPremium ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-500/20 text-slate-300'}`}>
+                                                        {u.IsPremium ? 'YES' : 'NO'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${u.AccountType === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-500/20 text-slate-300'}`}>
                                                         {(u.AccountType || 'free').toUpperCase()}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
-                                                    {u.MaxRequests === 0 ? 'Unlimited' : u.MaxRequests}
+                                                    {u.MaxRequests}
+                                                </td>
+                                                <td className="py-3 px-4 text-slate-300">
+                                                    <div className="flex items-center gap-2">
+                                                        {u.GlobalCounter}
+                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <button
@@ -899,11 +949,6 @@ export const Dashboard = () => {
                                                         <Key size={12} />
                                                         Manage Keys
                                                     </button>
-                                                </td>
-                                                <td className="py-3 px-4 text-slate-300">
-                                                    <div className="flex items-center gap-2">
-                                                        {u.GlobalCounter}
-                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4 text-right flex justify-end gap-2">
                                                     <button

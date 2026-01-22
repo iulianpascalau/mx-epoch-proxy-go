@@ -23,17 +23,17 @@ type AccessKeyDetails struct {
 
 // UsersDetails holds details about a user
 type UsersDetails struct {
-	MaxRequests            uint64
-	GlobalCounter          uint64
-	Username               string
-	HashedPassword         string
-	IsPremium              bool
-	ProcessedAccountType   AccountType
-	CryptoPaymentInitiated bool
-	IsUnlimited            bool
-	IsActive               bool
-	IsAdmin                bool
-	CryptoPaymentID        uint64
+	MaxRequests            uint64      `json:"MaxRequests"`
+	GlobalCounter          uint64      `json:"GlobalCounter"`
+	Username               string      `json:"Username"`
+	HashedPassword         string      `json:"HashedPassword"`
+	IsPremium              bool        `json:"IsPremium"`
+	ProcessedAccountType   AccountType `json:"AccountType"`
+	CryptoPaymentInitiated bool        `json:"CryptoPaymentInitiated"`
+	IsUnlimited            bool        `json:"IsUnlimited"`
+	IsActive               bool        `json:"IsActive"`
+	IsAdmin                bool        `json:"IsAdmin"`
+	CryptoPaymentID        uint64      `json:"PaymentID"`
 }
 
 // Claims struct holds the JWT claims

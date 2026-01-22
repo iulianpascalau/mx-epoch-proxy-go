@@ -62,6 +62,9 @@ func (cc *countersCache) Remove(key string) {
 
 // Sweep removes all expired items from the cache
 func (cc *countersCache) Sweep() {
+	cc.mut.Lock()
+	defer cc.mut.Unlock()
+
 	for key, value := range cc.data {
 		if time.Since(value.timestamp) > cc.ttl {
 			delete(cc.data, key)
