@@ -21,6 +21,14 @@ type StorerStub struct {
 	RequestEmailChangeHandler    func(username string, newEmail string, token string) error
 	ConfirmEmailChangeHandler    func(token string) (string, error)
 	SetCryptoPaymentIDHandler    func(username string, paymentID uint64) error
+	UpdateMaxRequestsHandler     func(username string, maxRequests uint64) error
+}
+
+func (stub *StorerStub) UpdateMaxRequests(username string, maxRequests uint64) error {
+	if stub.UpdateMaxRequestsHandler != nil {
+		return stub.UpdateMaxRequestsHandler(username, maxRequests)
+	}
+	return nil
 }
 
 func (stub *StorerStub) ActivateUser(token string) error {

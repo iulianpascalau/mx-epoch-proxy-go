@@ -13,6 +13,7 @@ func TestConfig(t *testing.T) {
 	testString := `
 Port = 8080
 CountersCacheTTLInSeconds = 5
+UpdateContractDBInSeconds = 60
 
 # Gateways defines the list of gateways that will be used by this proxy
 Gateways = [
@@ -48,6 +49,7 @@ ClosedEndpoints = [
 	expectedCfg := Config{
 		Port:                      8080,
 		CountersCacheTTLInSeconds: 5,
+		UpdateContractDBInSeconds: 60,
 		Gateways: []GatewayConfig{
 			{
 				URL:        "http://192.168.167.22:8080",

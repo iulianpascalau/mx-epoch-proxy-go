@@ -331,6 +331,18 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	if cfg.UpdateContractDBInSeconds == 0 {
+		return fmt.Errorf("can not start as the config contains a 0 value for UpdateContractDBInSeconds")
+	}
+	requestsSynchronizer, err := process.NewRequestsSynchronizer(sqliteWrapper, cryptoPaymentClient)
+	if err != nil {
+		return err
+	}
+	common.CronJobStarter(ctxCronJobs, func() {
+		log.Debug("Synchronizing user max requests")
+		requestsSynchronizer.Process()
+	}, time.Duration(cfg.UpdateContractDBInSeconds)*time.Second)
+
 	mutexManager := process.NewUserMutexManager()
 	cryptoPaymentHandler, err := api.NewCryptoPaymentHandler(
 		cryptoPaymentClient,

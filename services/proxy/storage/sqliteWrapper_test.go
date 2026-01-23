@@ -959,3 +959,29 @@ func TestSqliteWrapper_RequestAndConfirmEmailChange(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid or expired token")
 	})
 }
+
+func TestSqliteWrapper_UpdateMaxRequests(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should update max requests", func(t *testing.T) {
+		username := "user_max_req"
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		err = wrapper.UpdateMaxRequests(username, 200)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(200), user.MaxRequests)
+	})
+
+	t.Run("should error if user not found", func(t *testing.T) {
+		err := wrapper.UpdateMaxRequests("non_existent", 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
+	})
+}

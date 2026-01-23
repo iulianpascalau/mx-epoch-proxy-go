@@ -792,6 +792,33 @@ func (wrapper *sqliteWrapper) Close() error {
 	return wrapper.db.Close()
 }
 
+// UpdateMaxRequests updates the user's max requests
+func (wrapper *sqliteWrapper) UpdateMaxRequests(username string, maxRequests uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET max_requests = ? WHERE username = ?`
+	result, err := tx.Exec(query, maxRequests, username)
+	if err != nil {
+		return fmt.Errorf("failed to update max requests: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
+}
+
 // IsInterfaceNil returns true if the value under the interface is nil
 func (wrapper *sqliteWrapper) IsInterfaceNil() bool {
 	return wrapper == nil

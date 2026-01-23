@@ -4,6 +4,7 @@ package config
 type Config struct {
 	Port                      uint64
 	CountersCacheTTLInSeconds uint32
+	UpdateContractDBInSeconds uint32
 	FreeAccount               FreeAccountConfig
 	Gateways                  []GatewayConfig
 	ClosedEndpoints           []string
