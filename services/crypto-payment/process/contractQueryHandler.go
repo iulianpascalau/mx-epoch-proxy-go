@@ -128,7 +128,7 @@ func (cqh *contractQueryHandler) GetRequests(ctx context.Context, id uint64) (ui
 	res, err := cqh.blockchainDataProvider.ExecuteVMQuery(ctx, &data.VmValueRequest{
 		Address:    cqh.contractBech32Address,
 		FuncName:   "getRequests",
-		Args:       []string{fmt.Sprintf("%x", id)}, // hex encoded id
+		Args:       []string{ensureEvenHex(fmt.Sprintf("%x", id))}, // hex encoded id
 		CallValue:  "0",
 		CallerAddr: cqh.contractBech32Address,
 	})
@@ -142,4 +142,11 @@ func (cqh *contractQueryHandler) GetRequests(ctx context.Context, id uint64) (ui
 // IsInterfaceNil returns true if the value under the interface is nil
 func (cqh *contractQueryHandler) IsInterfaceNil() bool {
 	return cqh == nil
+}
+
+func ensureEvenHex(hex string) string {
+	if len(hex)%2 != 0 {
+		return "0" + hex
+	}
+	return hex
 }
