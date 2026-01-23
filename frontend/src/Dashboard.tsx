@@ -189,21 +189,36 @@ export const Dashboard = () => {
 
     const handleRequestAddress = async () => {
         if (cryptoState.isPaused) return;
-        setCryptoState(prev => ({ ...prev, isLoading: true }));
+        setCryptoState(prev => ({ ...prev, isLoading: true, error: null }));
+        const token = getAccessKey();
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            await axios.post('/api/crypto-payment/create-address', {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-        const newPaymentId = Math.floor(Math.random() * 10000) + 1;
-        const newAddress = "erd1mocknewaddress" + Math.random().toString(36).substring(7);
+            // Fetch account details immediately to get the address
+            const accountRes = await axios.get('/api/crypto-payment/account', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-        setCryptoState(prev => ({
-            ...prev,
-            paymentId: newPaymentId,
-            depositAddress: newAddress,
-            numberOfRequests: 0,
-            isLoading: false
-        }));
+            if (accountRes.data) {
+                setCryptoState(prev => ({
+                    ...prev,
+                    paymentId: accountRes.data.paymentId,
+                    depositAddress: accountRes.data.address,
+                    numberOfRequests: accountRes.data.numberOfRequests,
+                    isLoading: false
+                }));
+            }
+        } catch (err: any) {
+            console.error('Failed to create address: ', err);
+            setCryptoState(prev => ({
+                ...prev,
+                isLoading: false,
+                error: err.response?.data?.error || "Failed to request payment address"
+            }));
+        }
     };
 
     const handleRefreshBalance = async () => {

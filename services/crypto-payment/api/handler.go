@@ -50,7 +50,7 @@ func (h *Handler) CreateAddress(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"id": id})
+	c.JSON(http.StatusOK, gin.H{"paymentID": id})
 }
 
 // GetAccount returns the account details including address and number of requests
