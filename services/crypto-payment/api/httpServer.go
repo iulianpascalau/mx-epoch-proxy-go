@@ -19,7 +19,7 @@ type httpServer struct {
 }
 
 // NewHTTPServer creates a new instance of httpServer
-func NewHTTPServer(handler *Handler, port int, serviceApiKey string) *httpServer {
+func NewHTTPServer(handler APIHandler, port int, serviceApiKey string) *httpServer {
 	router := gin.Default()
 
 	// Public endpoints
@@ -61,6 +61,11 @@ func (s *httpServer) Start() error {
 	}()
 
 	return nil
+}
+
+// GetAddress returns the address of the HTTP server
+func (s *httpServer) GetAddress() string {
+	return s.server.Addr
 }
 
 // Close gracefully shuts down the HTTP server

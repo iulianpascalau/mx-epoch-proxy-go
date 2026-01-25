@@ -806,14 +806,6 @@ func (wrapper *sqliteWrapper) SetCryptoPaymentID(username string, paymentID uint
 	return tx.Commit()
 }
 
-// Close closes the database connection
-func (wrapper *sqliteWrapper) Close() error {
-	// allow all pending updates to finish before closing the db connection
-	wrapper.pendingWritesWaitGroup.Wait()
-
-	return wrapper.db.Close()
-}
-
 // UpdateMaxRequests updates the user's max requests
 func (wrapper *sqliteWrapper) UpdateMaxRequests(username string, maxRequests uint64) error {
 	tx, err := wrapper.db.Begin()
@@ -876,6 +868,14 @@ func (wrapper *sqliteWrapper) UpdateUserMaxRequestsFromContract(username string,
 	}
 
 	return tx.Commit()
+}
+
+// Close closes the database connection
+func (wrapper *sqliteWrapper) Close() error {
+	// allow all pending updates to finish before closing the db connection
+	wrapper.pendingWritesWaitGroup.Wait()
+
+	return wrapper.db.Close()
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

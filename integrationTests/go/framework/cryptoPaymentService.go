@@ -6,11 +6,9 @@ import (
 	"math/big"
 	"path"
 	"testing"
-	"time"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/crypto"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/storage"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/config"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/factory"
 	"github.com/multiversx/mx-sdk-go/interactors"
 	"github.com/stretchr/testify/require"
 )
@@ -26,12 +24,8 @@ type CryptoPaymentService struct {
 	Keys           *KeysStore
 	ChainSimulator *chainSimulatorWrapper
 
-	ContractAddress      *MvxAddress
-	SQLiteWrapper        SQLiteWrapper
-	BalanceProcessor     BalanceProcessor
-	RelayedTxProcessor   process.BalanceOperator
-	ContractQueryHandler process.ContractHandler
-	Cacher               process.Cacher
+	ContractAddress *MvxAddress
+	Components      CryptoPaymentComponentsHandler
 }
 
 // NewCryptoPaymentService creates a new CryptoPaymentService instance
@@ -43,12 +37,12 @@ func NewCryptoPaymentService(tb testing.TB) *CryptoPaymentService {
 	}
 	chainSimulator := CreateChainSimulatorWrapper(args)
 	chainSimulator.GenerateBlocksUntilEpochReached(context.Background(), 1)
-	config, err := chainSimulator.Proxy().GetNetworkConfig(context.Background())
+	cfg, err := chainSimulator.Proxy().GetNetworkConfig(context.Background())
 	require.Nil(tb, err)
 
 	return &CryptoPaymentService{
 		TB:             tb,
-		Keys:           NewKeysStore(tb, config.NumShardsWithoutMeta),
+		Keys:           NewKeysStore(tb, cfg.NumShardsWithoutMeta),
 		ChainSimulator: chainSimulator,
 	}
 }
@@ -75,12 +69,7 @@ func (crs *CryptoPaymentService) Setup(ctx context.Context) {
 
 // TearDown cleans up the test environment
 func (crs *CryptoPaymentService) TearDown() {
-	if crs.SQLiteWrapper != nil {
-		_ = crs.SQLiteWrapper.Close()
-	}
-	if crs.Cacher != nil {
-		crs.Cacher.Close()
-	}
+	crs.Components.Close()
 }
 
 // CreateService will assemble all the service processing components
@@ -91,74 +80,63 @@ func (crs *CryptoPaymentService) CreateService() {
 
 	log.Info("generated mnemonic", "mnemonic", mnemonic)
 
-	multipleAddressHandler, err := crypto.NewMultipleKeysHandler(interactors.NewWallet(), string(mnemonic))
-	require.Nil(crs, err)
+	cfg := config.Config{
+		Port:                            0,
+		WalletURL:                       "https://wallet",
+		ExplorerURL:                     "https://explorer",
+		ProxyURL:                        "",
+		ContractAddress:                 crs.ContractAddress.Bech32(),
+		CallSCGasLimit:                  callGasLimit,
+		SCSettingsCacheInMillis:         1,
+		MinimumBalanceToProcess:         minimumBalanceToCall,
+		TimeToProcessAddressesInSeconds: 0,
+		ServiceApiKey:                   "service-api-key",
+	}
 
 	dbPath := path.Join(crs.TempDir(), "test.db")
-	crs.SQLiteWrapper, err = storage.NewSQLiteWrapper(dbPath, multipleAddressHandler)
-	require.Nil(crs, err)
 
-	relayersHandlers := make([]process.SingleKeyHandler, 0, 100)
+	relayersKeys := make([][]byte, 0, len(crs.Keys.RelayersKeys))
 	for _, relayerKey := range crs.Keys.RelayersKeys {
-		relayerHandler, errCreate := crypto.NewSingleKeyHandler(relayerKey.MvxSk)
-		require.Nil(crs, errCreate)
-		relayersHandlers = append(relayersHandlers, relayerHandler)
+		relayersKeys = append(relayersKeys, relayerKey.MvxSk)
 	}
+
+	crs.Components, err = factory.NewComponentsHandler(
+		string(mnemonic),
+		dbPath,
+		crs.ChainSimulator.Proxy(),
+		cfg,
+		relayersKeys,
+	)
+	require.Nil(crs, err)
 
 	// Add users to DB
 	var bech32Address string
 
-	crs.Keys.UserAKeys.ID, err = crs.SQLiteWrapper.Add()
+	sqliteWrapper := crs.Components.GetSQLiteWrapper()
+	crs.Keys.UserAKeys.ID, err = sqliteWrapper.Add()
 	require.Nil(crs, err)
-	entryA, err := crs.SQLiteWrapper.Get(crs.Keys.UserAKeys.ID)
+	entryA, err := sqliteWrapper.Get(crs.Keys.UserAKeys.ID)
 	require.Nil(crs, err)
 	bech32Address = entryA.Address
 	crs.Keys.UserAKeys.PayAddress = NewMvxAddressFromBech32(crs, bech32Address)
 	log.Info("registered user A", "UserA address", crs.Keys.UserAKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserAKeys.ID)
 
-	crs.Keys.UserBKeys.ID, err = crs.SQLiteWrapper.Add()
+	crs.Keys.UserBKeys.ID, err = sqliteWrapper.Add()
 	require.Nil(crs, err)
-	entryB, err := crs.SQLiteWrapper.Get(crs.Keys.UserBKeys.ID)
+	entryB, err := sqliteWrapper.Get(crs.Keys.UserBKeys.ID)
 	require.Nil(crs, err)
 	bech32Address = entryB.Address
 	crs.Keys.UserBKeys.PayAddress = NewMvxAddressFromBech32(crs, bech32Address)
 	log.Info("registered user B", "UserB address", crs.Keys.UserBKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserBKeys.ID)
 
-	crs.Keys.UserCKeys.ID, err = crs.SQLiteWrapper.Add()
+	crs.Keys.UserCKeys.ID, err = sqliteWrapper.Add()
 	require.Nil(crs, err)
-	entryC, err := crs.SQLiteWrapper.Get(crs.Keys.UserCKeys.ID)
+	entryC, err := sqliteWrapper.Get(crs.Keys.UserCKeys.ID)
 	require.Nil(crs, err)
 	bech32Address = entryC.Address
 	crs.Keys.UserCKeys.PayAddress = NewMvxAddressFromBech32(crs, bech32Address)
 	log.Info("registered user C", "UserC address", crs.Keys.UserCKeys.MvxAddress.Bech32(),
 		"payment address", bech32Address, "contract ID", crs.Keys.UserCKeys.ID)
-
-	crs.RelayedTxProcessor, err = process.NewRelayedTxProcessor(
-		crs.ChainSimulator.Proxy(),
-		multipleAddressHandler,
-		relayersHandlers,
-		callGasLimit,
-		crs.ContractAddress.Bech32(),
-	)
-	require.Nil(crs, err)
-
-	crs.Cacher = storage.NewTimeCacher(time.Millisecond)
-
-	crs.ContractQueryHandler, err = process.NewContractQueryHandler(
-		crs.ChainSimulator.Proxy(),
-		crs.ContractAddress.Bech32(),
-		crs.Cacher,
-	)
-	require.Nil(crs, err)
-
-	crs.BalanceProcessor, err = process.NewBalanceProcessor(
-		crs.SQLiteWrapper,
-		crs.ChainSimulator.Proxy(),
-		crs.RelayedTxProcessor,
-		crs.ContractQueryHandler,
-		minimumBalanceToCall,
-	)
-	require.Nil(crs, err)
 }

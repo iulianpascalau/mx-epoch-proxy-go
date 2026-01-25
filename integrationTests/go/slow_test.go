@@ -16,8 +16,8 @@ const functionGetRequests = "getRequests"
 var log = logger.GetOrCreate("integrationTests")
 
 func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
-	if !IsSlowTestTag {
-		t.Skip("Skipping slow test")
+	if !framework.IsChainSimulatorIsRunning() {
+		t.Skip("No chain simulator instance running found. Skipping slow test")
 	}
 	cryptoService := framework.NewCryptoPaymentService(t)
 
@@ -28,6 +28,7 @@ func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
 	defer cryptoService.TearDown()
 
 	cryptoService.CreateService()
+	balanceProcessor := cryptoService.Components.GetBalanceProcessor()
 
 	log.Info("======== 1. All users initiate some payments")
 	txHash1 := cryptoService.ChainSimulator.SendTxWithoutGenerateBlocks(
@@ -85,7 +86,7 @@ func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
 	log.Info("Done ✓")
 
 	log.Info("======== 6. The balance processor checks & process all addresses")
-	err := cryptoService.BalanceProcessor.ProcessAll(ctx)
+	err := balanceProcessor.ProcessAll(ctx)
 	require.Nil(t, err)
 
 	log.Info("======== 7. Generate blocks until the payments are completed")
@@ -148,7 +149,7 @@ func TestCallingSCWhenBalanceIsAvailableInSync(t *testing.T) {
 	log.Info("Done ✓")
 
 	log.Info("======== 13. The balance processor checks & process all addresses")
-	err = cryptoService.BalanceProcessor.ProcessAll(ctx)
+	err = balanceProcessor.ProcessAll(ctx)
 	require.Nil(t, err)
 
 	log.Info("======== 14. Generate blocks until the payments are completed")

@@ -8,7 +8,7 @@ type Config struct {
 	ProxyURL                        string
 	ContractAddress                 string
 	CallSCGasLimit                  uint64
-	SCSettingsCacheInSeconds        uint32
+	SCSettingsCacheInMillis         uint32
 	MinimumBalanceToProcess         float64
 	TimeToProcessAddressesInSeconds uint32
 	ServiceApiKey                   string

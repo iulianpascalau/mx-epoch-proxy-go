@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Storage defines the operations required from the storage layer
@@ -20,4 +22,11 @@ type ConfigProvider interface {
 type AccountHandler interface {
 	GetAccount(ctx context.Context, id uint64) (string, uint64, error)
 	IsInterfaceNil() bool
+}
+
+// APIHandler defines the operations supported by the API
+type APIHandler interface {
+	GetConfig(c *gin.Context)
+	CreateAddress(c *gin.Context)
+	GetAccount(c *gin.Context)
 }

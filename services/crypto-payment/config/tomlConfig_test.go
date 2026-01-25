@@ -26,7 +26,7 @@ ContractAddress = "erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96z
 
 CallSCGasLimit = 40000000
 
-SCSettingsCacheInSeconds = 60
+SCSettingsCacheInMillis = 60000
 
 MinimumBalanceToProcess = 0.01
 
@@ -40,7 +40,7 @@ TimeToProcessAddressesInSeconds = 60
 		ProxyURL:                        "https://devnet-gateway.multiversx.com",
 		ContractAddress:                 "erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw",
 		CallSCGasLimit:                  40000000,
-		SCSettingsCacheInSeconds:        60,
+		SCSettingsCacheInMillis:         60000,
 		MinimumBalanceToProcess:         0.01,
 		TimeToProcessAddressesInSeconds: 60,
 	}

@@ -42,3 +42,9 @@ type CryptoPaymentConfig struct {
 	ConfigCacheDurationInSeconds uint64
 	Enabled                      bool
 }
+
+// EmailsConfig holds the configuration for the emails formats
+type EmailsConfig struct {
+	RegistrationEmailBytes []byte
+	ChangeEmailBytes       []byte
+}
