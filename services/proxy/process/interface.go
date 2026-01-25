@@ -47,6 +47,6 @@ type CryptoDataFetcher interface {
 // UsersSyncerStore defines the operations supported by the storage for synchronizing users
 type UsersSyncerStore interface {
 	GetAllUsers() (map[string]common.UsersDetails, error)
-	UpdateMaxRequests(username string, maxRequests uint64) error
+	UpdateUserMaxRequestsFromContract(username string, contractMaxRequests uint64) error
 	IsInterfaceNil() bool
 }

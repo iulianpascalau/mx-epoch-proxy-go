@@ -172,7 +172,7 @@ func run(ctx *cli.Context) error {
 		SameScState:         false,
 		ShouldBeSynced:      false,
 		FinalityCheck:       true,
-		AllowedDeltaToFinal: 1,
+		AllowedDeltaToFinal: 7,
 		CacheExpirationTime: time.Second * 600,
 		EntityType:          sdkCore.Proxy,
 	}

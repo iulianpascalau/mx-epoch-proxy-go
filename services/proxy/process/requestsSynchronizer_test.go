@@ -111,10 +111,11 @@ func TestRequestsSynchronizer_Process(t *testing.T) {
 						Username:        "user1",
 						CryptoPaymentID: 1,
 						MaxRequests:     100,
+						SCMaxRequests:   100,
 					},
 				}, nil
 			},
-			UpdateMaxRequestsHandler: func(username string, maxRequests uint64) error {
+			UpdateUserMaxRequestsFromContractHandler: func(username string, contractMaxRequests uint64) error {
 				return errors.New("should not be called")
 			},
 		}
@@ -141,14 +142,15 @@ func TestRequestsSynchronizer_Process(t *testing.T) {
 					"user1": {
 						Username:        "user1",
 						CryptoPaymentID: 1,
-						MaxRequests:     50,
+						MaxRequests:     500,
+						SCMaxRequests:   50,
 					},
 				}, nil
 			},
-			UpdateMaxRequestsHandler: func(username string, maxRequests uint64) error {
+			UpdateUserMaxRequestsFromContractHandler: func(username string, contractMaxRequests uint64) error {
 				wasCalled = true
 				require.Equal(t, "user1", username)
-				require.Equal(t, uint64(100), maxRequests)
+				require.Equal(t, uint64(100), contractMaxRequests)
 				return nil
 			},
 		}
@@ -177,10 +179,11 @@ func TestRequestsSynchronizer_Process(t *testing.T) {
 						Username:        "user1",
 						CryptoPaymentID: 1,
 						MaxRequests:     50,
+						SCMaxRequests:   50,
 					},
 				}, nil
 			},
-			UpdateMaxRequestsHandler: func(username string, maxRequests uint64) error {
+			UpdateUserMaxRequestsFromContractHandler: func(username string, contractMaxRequests uint64) error {
 				return errors.New("update error")
 			},
 		}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink, Zap, AlertTriangle, CreditCard, RefreshCw, Wallet } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink, Zap, AlertTriangle, CreditCard, Wallet } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -23,6 +23,7 @@ interface UserDetails {
     IsActive: boolean;
     IsPremium: boolean;
     PaymentID?: number; // Added for crypto payment
+    SCMaxRequests?: number; // Added for crypto payment stats
 }
 
 interface CryptoPaymentState {
@@ -61,6 +62,12 @@ const copyToClipboard = async (text: string) => {
         console.error('Failed to copy: ', err);
         alert('Failed to copy to clipboard');
     }
+};
+
+const ensureProtocol = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `https://${url}`;
 };
 
 export const Dashboard = () => {
@@ -133,8 +140,8 @@ export const Dashboard = () => {
                 isServiceAvailable: config.isAvailable,
                 isPaused: config.isPaused,
                 requestsPerEGLD: config.requestsPerEGLD,
-                walletURL: config.walletURL,
-                explorerURL: config.explorerURL,
+                walletURL: ensureProtocol(config.walletURL),
+                explorerURL: ensureProtocol(config.explorerURL),
                 contractAddress: config.contractAddress,
                 isLoading: false,
                 error: null
@@ -223,21 +230,7 @@ export const Dashboard = () => {
         }
     };
 
-    const handleRefreshBalance = async () => {
-        setCryptoState(prev => ({ ...prev, isLoading: true }));
-        await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Simulate balance increase if address exists
-        if (cryptoState.paymentId) {
-            setCryptoState(prev => ({
-                ...prev,
-                numberOfRequests: prev.numberOfRequests + 100, // Simulate incoming payment
-                isLoading: false
-            }));
-        } else {
-            setCryptoState(prev => ({ ...prev, isLoading: false }));
-        }
-    };
 
     useEffect(() => {
         if (user) {
@@ -728,12 +721,19 @@ export const Dashboard = () => {
                                                 <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Requests Balance</h3>
 
                                                 <div className="mb-2">
-                                                    <span className="text-3xl font-bold text-white">{cryptoState.numberOfRequests.toLocaleString()}</span>
+                                                    <span className="text-3xl font-bold text-white">
+                                                        {Math.max(0, users[user.username.toLowerCase()].MaxRequests - users[user.username.toLowerCase()].GlobalCounter).toLocaleString()}
+                                                    </span>
                                                     <span className="text-slate-500 text-sm ml-2">available credits</span>
                                                 </div>
                                                 <div className="text-xs text-slate-400 mb-2">
                                                     Used: {users[user.username.toLowerCase()]?.GlobalCounter.toLocaleString()} requests
                                                 </div>
+                                                {users[user.username.toLowerCase()]?.SCMaxRequests ? (
+                                                    <div className="text-xs text-emerald-400/80 mb-2">
+                                                        Bought: {users[user.username.toLowerCase()].SCMaxRequests?.toLocaleString()} requests
+                                                    </div>
+                                                ) : null}
 
                                                 {/* Visual Bar */}
                                                 <div className="relative pt-1">
@@ -772,15 +772,7 @@ export const Dashboard = () => {
                                                 )}
                                             </div>
 
-                                            <div className="mt-6 pt-4 border-t border-white/5">
-                                                <button
-                                                    onClick={handleRefreshBalance}
-                                                    className="w-full bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded text-xs flex items-center justify-center gap-2 transition-colors"
-                                                >
-                                                    <RefreshCw size={14} className={cryptoState.isLoading ? "animate-spin" : ""} />
-                                                    Refresh Contract Balance
-                                                </button>
-                                            </div>
+
                                         </div>
                                     </div>
 

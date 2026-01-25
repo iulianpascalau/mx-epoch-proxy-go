@@ -46,11 +46,11 @@ func (rs *requestsSynchronizer) Process() {
 			continue
 		}
 
-		// The DB should be updated if the contract's value exceeds what we have in the DB
-		if accountInfo.NumberOfRequests > user.MaxRequests {
-			log.Info("updating user max requests from contract", "user", user.Username, "old", user.MaxRequests, "new", accountInfo.NumberOfRequests)
+		// The DB should be updated if the contract's value exceeds what we have in the DB for the contract
+		if accountInfo.NumberOfRequests > user.SCMaxRequests {
+			log.Info("updating user max requests from contract", "user", user.Username, "old_sc", user.SCMaxRequests, "new_sc", accountInfo.NumberOfRequests)
 
-			errUpdate := rs.store.UpdateMaxRequests(user.Username, accountInfo.NumberOfRequests)
+			errUpdate := rs.store.UpdateUserMaxRequestsFromContract(user.Username, accountInfo.NumberOfRequests)
 			if errUpdate != nil {
 				log.Error("failed to update user max requests", "user", user.Username, "error", errUpdate)
 			}

@@ -34,6 +34,7 @@ type UsersDetails struct {
 	IsActive               bool        `json:"IsActive"`
 	IsAdmin                bool        `json:"IsAdmin"`
 	CryptoPaymentID        uint64      `json:"PaymentID"`
+	SCMaxRequests          uint64      `json:"SCMaxRequests"`
 }
 
 // Claims struct holds the JWT claims
