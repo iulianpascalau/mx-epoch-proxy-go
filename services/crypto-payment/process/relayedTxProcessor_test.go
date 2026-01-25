@@ -172,8 +172,7 @@ func TestRelayedTxProcessor_Process(t *testing.T) {
 				return nil, nil
 			},
 			GetBech32AddressHandler: func() string {
-				assert.Fail(t, "should not be called")
-				return ""
+				return relayerAddr
 			},
 			GetAddressHandler: func() core.AddressHandler {
 				return data.NewAddressFromBytes(bytes.Repeat([]byte{0}, 32))
@@ -448,8 +447,7 @@ func TestRelayedTxProcessor_Process(t *testing.T) {
 					return nil, expectedErr
 				},
 				GetBech32AddressHandler: func() string {
-					assert.Fail(t, "should not be called")
-					return ""
+					return relayerAddr
 				},
 				GetAddressHandler: func() core.AddressHandler {
 					return data.NewAddressFromBytes(bytes.Repeat([]byte{1}, 32))

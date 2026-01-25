@@ -1,5 +1,6 @@
 Port = 8080
 CountersCacheTTLInSeconds = 5
+UpdateContractDBInSeconds = 60
 
 # Gateways defines the list of gateways that will be used by this proxy
 Gateways = [

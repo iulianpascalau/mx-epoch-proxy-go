@@ -4,23 +4,39 @@ import "github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 
 // StorerStub -
 type StorerStub struct {
-	RemoveUserHandler            func(username string) error
-	UpdateUserHandler            func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool) error
-	AddUserHandler               func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error
-	AddKeyHandler                func(username string, key string) error
-	RemoveKeyHandler             func(username string, key string) error
-	GetAllKeysHandler            func(username string) (map[string]common.AccessKeyDetails, error)
-	GetAllUsersHandler           func() (map[string]common.UsersDetails, error)
-	IsKeyAllowedHandler          func(key string) (string, common.AccountType, error)
-	CloseHandler                 func() error
-	CheckUserCredentialsHandler  func(username string, password string) (*common.UsersDetails, error)
-	GetUserHandler               func(username string) (*common.UsersDetails, error)
-	ActivateUserHandler          func(token string) error
-	GetPerformanceMetricsHandler func() (map[string]uint64, error)
-	UpdatePasswordHandler        func(username string, password string) error
-	RequestEmailChangeHandler    func(username string, newEmail string, token string) error
-	ConfirmEmailChangeHandler    func(token string) (string, error)
-	SetCryptoPaymentIDHandler    func(username string, paymentID uint64) error
+	RemoveUserHandler                        func(username string) error
+	UpdateUserHandler                        func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool) error
+	AddUserHandler                           func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error
+	AddKeyHandler                            func(username string, key string) error
+	RemoveKeyHandler                         func(username string, key string) error
+	GetAllKeysHandler                        func(username string) (map[string]common.AccessKeyDetails, error)
+	GetAllUsersHandler                       func() (map[string]common.UsersDetails, error)
+	IsKeyAllowedHandler                      func(key string) (string, common.AccountType, error)
+	CloseHandler                             func() error
+	CheckUserCredentialsHandler              func(username string, password string) (*common.UsersDetails, error)
+	GetUserHandler                           func(username string) (*common.UsersDetails, error)
+	ActivateUserHandler                      func(token string) error
+	GetPerformanceMetricsHandler             func() (map[string]uint64, error)
+	UpdatePasswordHandler                    func(username string, password string) error
+	RequestEmailChangeHandler                func(username string, newEmail string, token string) error
+	ConfirmEmailChangeHandler                func(token string) (string, error)
+	SetCryptoPaymentIDHandler                func(username string, paymentID uint64) error
+	UpdateMaxRequestsHandler                 func(username string, maxRequests uint64) error
+	UpdateUserMaxRequestsFromContractHandler func(username string, contractMaxRequests uint64) error
+}
+
+func (stub *StorerStub) UpdateUserMaxRequestsFromContract(username string, contractMaxRequests uint64) error {
+	if stub.UpdateUserMaxRequestsFromContractHandler != nil {
+		return stub.UpdateUserMaxRequestsFromContractHandler(username, contractMaxRequests)
+	}
+	return nil
+}
+
+func (stub *StorerStub) UpdateMaxRequests(username string, maxRequests uint64) error {
+	if stub.UpdateMaxRequestsHandler != nil {
+		return stub.UpdateMaxRequestsHandler(username, maxRequests)
+	}
+	return nil
 }
 
 func (stub *StorerStub) ActivateUser(token string) error {

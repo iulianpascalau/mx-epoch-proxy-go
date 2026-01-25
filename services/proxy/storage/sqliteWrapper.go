@@ -97,7 +97,8 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		activation_token TEXT DEFAULT '',
 		pending_email TEXT DEFAULT '',
 		change_email_token TEXT DEFAULT '',
-		crypto_payment_id INTEGER DEFAULT NULL
+		crypto_payment_id INTEGER DEFAULT NULL,
+		sc_max_requests INTEGER DEFAULT 0
 	);`
 	_, err := wrapper.db.Exec(usersTable)
 	if err != nil {
@@ -111,6 +112,7 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN pending_email TEXT DEFAULT '';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN change_email_token TEXT DEFAULT '';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN crypto_payment_id INTEGER DEFAULT NULL;")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN sc_max_requests INTEGER DEFAULT 0;")
 
 	keysTable := `
 	CREATE TABLE IF NOT EXISTS access_keys (
@@ -356,10 +358,30 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 }
 
 func (wrapper *sqliteWrapper) incrementCountersOnUsers(username string) {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		log.Error("error creating transaction (update in users)", "username", username, "error", err)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
 	query := `UPDATE users SET request_count = request_count + 1 WHERE username = ?`
-	_, err := wrapper.db.Exec(query, username)
+	_, err = tx.Exec(query, username)
 	if err != nil {
 		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
+	}
+
+	query = `UPDATE users SET max_requests = request_count WHERE username = ? and max_requests < request_count`
+	_, err = tx.Exec(query, username)
+	if err != nil {
+		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Error("error commiting transaction (update in users)", "username", username, "error", err)
 	}
 
 	wrapper.pendingWritesWaitGroup.Done()
@@ -410,10 +432,10 @@ func (wrapper *sqliteWrapper) GetUser(username string) (*common.UsersDetails, er
 }
 
 func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDetails, error) {
-	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, is_premium, is_active, crypto_payment_id FROM users WHERE username = ?`
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, is_premium, is_active, crypto_payment_id, sc_max_requests FROM users WHERE username = ?`
 	var details common.UsersDetails
 	var cryptoPaymentID sql.NullInt64
-	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.IsPremium, &details.IsActive, &cryptoPaymentID)
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.IsPremium, &details.IsActive, &cryptoPaymentID, &details.SCMaxRequests)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
@@ -477,7 +499,7 @@ func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.Acc
 // GetAllUsers returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, error) {
 	query := `
-		SELECT max_requests, request_count, username, hashed_password, is_admin, is_premium, is_active, crypto_payment_id
+		SELECT max_requests, request_count, username, hashed_password, is_admin, is_premium, is_active, crypto_payment_id, sc_max_requests
 		FROM users
 	`
 	rows, err := wrapper.db.Query(query)
@@ -492,7 +514,7 @@ func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, err
 	for rows.Next() {
 		var details common.UsersDetails
 		var cryptoPaymentID sql.NullInt64
-		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.IsPremium, &details.IsActive, &cryptoPaymentID)
+		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.IsPremium, &details.IsActive, &cryptoPaymentID, &details.SCMaxRequests)
 		if err != nil {
 			return nil, err
 		}
@@ -790,6 +812,70 @@ func (wrapper *sqliteWrapper) Close() error {
 	wrapper.pendingWritesWaitGroup.Wait()
 
 	return wrapper.db.Close()
+}
+
+// UpdateMaxRequests updates the user's max requests
+func (wrapper *sqliteWrapper) UpdateMaxRequests(username string, maxRequests uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET max_requests = ? WHERE username = ?`
+	result, err := tx.Exec(query, maxRequests, username)
+	if err != nil {
+		return fmt.Errorf("failed to update max requests: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
+}
+
+// UpdateUserMaxRequestsFromContract updates the user's max requests based on the contract's value
+func (wrapper *sqliteWrapper) UpdateUserMaxRequestsFromContract(username string, contractMaxRequests uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	var dbSCMaxRequests uint64
+	var dbMaxRequests uint64
+	query := `SELECT sc_max_requests, max_requests FROM users WHERE username = ?`
+	err = tx.QueryRow(query, username).Scan(&dbSCMaxRequests, &dbMaxRequests)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user not found")
+		}
+		return fmt.Errorf("failed to get user details: %w", err)
+	}
+
+	if contractMaxRequests <= dbSCMaxRequests {
+		return tx.Commit()
+	}
+
+	diff := contractMaxRequests - dbSCMaxRequests
+	newMaxRequests := dbMaxRequests + diff
+
+	updateQuery := `UPDATE users SET max_requests = ?, sc_max_requests = ? WHERE username = ?`
+	_, err = tx.Exec(updateQuery, newMaxRequests, contractMaxRequests, username)
+	if err != nil {
+		return fmt.Errorf("failed to update user max requests: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

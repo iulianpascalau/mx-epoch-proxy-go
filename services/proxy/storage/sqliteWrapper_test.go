@@ -348,6 +348,22 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(2), globalCounter)
 		assert.Equal(t, uint64(2), keyCounter)
+
+		// Third request - still ok
+		_, _, err = wrapper.IsKeyAllowed("keY2")
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(3), wrapper.GetCacheCounterForUser("admin2")) // the counter should be up to date already
+		time.Sleep(time.Second * 2)                                          // allow async counters write
+
+		// Verify count
+		err = wrapper.db.QueryRow(`SELECT u.request_count global_counter, k.request_count as key_counter 
+	FROM users u 
+    JOIN access_keys k ON u.username = k.username 
+	WHERE k.key = ?`, "key2").Scan(&globalCounter, &keyCounter)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(3), globalCounter)
+		assert.Equal(t, uint64(3), keyCounter)
 	})
 
 	t.Run("should allow unlimited requests if max_requests is 0", func(t *testing.T) {
@@ -957,5 +973,106 @@ func TestSqliteWrapper_RequestAndConfirmEmailChange(t *testing.T) {
 		_, err := wrapper.ConfirmEmailChange("invalid_token")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid or expired token")
+	})
+}
+
+func TestSqliteWrapper_UpdateMaxRequests(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should update max requests", func(t *testing.T) {
+		username := "user_max_req"
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		err = wrapper.UpdateMaxRequests(username, 200)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(200), user.MaxRequests)
+	})
+
+	t.Run("should error if user not found", func(t *testing.T) {
+		err := wrapper.UpdateMaxRequests("non_existent", 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
+	})
+}
+
+func TestSQLiteWrapper_UpdateUserMaxRequestsFromContract(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should update max requests logic correctly", func(t *testing.T) {
+		username := "user_contract_update"
+		// Initial: MaxRequests=100, SCMaxRequests=0 (default)
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		// 1. First top up (Contract goes from 0 -> 200)
+		// Diff = 200 - 0 = 200
+		// New MaxRequests = 100 + 200 = 300
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 200)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(300), user.MaxRequests)
+		assert.Equal(t, uint64(200), user.SCMaxRequests)
+
+		// 2. No top up (Contract stays at 200)
+		// Should do nothing
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 200)
+		assert.NoError(t, err)
+
+		user, err = wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(300), user.MaxRequests)
+		assert.Equal(t, uint64(200), user.SCMaxRequests)
+
+		// 3. Second top up (Contract goes from 200 -> 300)
+		// Diff = 300 - 200 = 100
+		// New MaxRequests = 300 + 100 = 400
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 300)
+		assert.NoError(t, err)
+
+		user, err = wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(400), user.MaxRequests)
+		assert.Equal(t, uint64(300), user.SCMaxRequests)
+	})
+
+	t.Run("should not update if contract value assumes reset or lower", func(t *testing.T) {
+		username := "user_contract_lower"
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		// Set initial SC state to 200 via direct update to simulate prior state
+		// We'll just assume we did a top up first
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 200)
+		require.NoError(t, err)
+
+		// Current: Max=300, SC=200
+
+		// Contract reports 150 (maybe a bug or reset on contract side?)
+		// Our logic says: if contract <= dbSC, do nothing.
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 150)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(300), user.MaxRequests)   // Unchanged
+		assert.Equal(t, uint64(200), user.SCMaxRequests) // Unchanged
+	})
+
+	t.Run("should error if user not found", func(t *testing.T) {
+		err := wrapper.UpdateUserMaxRequestsFromContract("non_existent", 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
 	})
 }

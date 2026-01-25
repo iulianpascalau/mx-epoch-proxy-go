@@ -92,6 +92,7 @@ func (h *cryptoPaymentHandler) handleConfig(w http.ResponseWriter, r *http.Reque
 
 	cfg, err := h.client.GetConfig()
 	if err != nil {
+		log.Warn("failed to fetch crypto payment config", "error", err)
 		// Return 503 as per spec if service unreachable/error
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -151,6 +152,7 @@ func (h *cryptoPaymentHandler) handleCreateAddress(w http.ResponseWriter, r *htt
 	// Call service
 	resp, err := h.client.CreateAddress()
 	if err != nil {
+		log.Warn("failed to create address", "error", err)
 		http.Error(w, "Crypto payment service unavailable: "+err.Error(), http.StatusServiceUnavailable)
 		return
 	}
@@ -194,6 +196,7 @@ func (h *cryptoPaymentHandler) handleGetAccount(w http.ResponseWriter, r *http.R
 
 	info, err := h.client.GetAccount(user.CryptoPaymentID)
 	if err != nil {
+		log.Warn("failed to get account info", "paymentID", user.CryptoPaymentID, "error", err)
 		http.Error(w, "Failed to get account info: "+err.Error(), http.StatusServiceUnavailable)
 		return
 	}
@@ -252,6 +255,7 @@ func (h *cryptoPaymentHandler) handleAdmin(w http.ResponseWriter, r *http.Reques
 
 	info, err := h.client.GetAccount(user.CryptoPaymentID)
 	if err != nil {
+		log.Warn("admin failed to get account info", "paymentID", user.CryptoPaymentID, "targetUser", user.Username, "error", err)
 		http.Error(w, "Failed to get account info: "+err.Error(), http.StatusServiceUnavailable)
 		return
 	}

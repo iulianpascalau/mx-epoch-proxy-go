@@ -37,3 +37,16 @@ type PerformanceMonitor interface {
 	AddPerformanceMetricAsync(label string)
 	IsInterfaceNil() bool
 }
+
+// CryptoDataFetcher handles communication with the crypto-payment service
+type CryptoDataFetcher interface {
+	GetAccount(paymentID uint64) (*common.AccountInfo, error)
+	IsInterfaceNil() bool
+}
+
+// UsersSyncerStore defines the operations supported by the storage for synchronizing users
+type UsersSyncerStore interface {
+	GetAllUsers() (map[string]common.UsersDetails, error)
+	UpdateUserMaxRequestsFromContract(username string, contractMaxRequests uint64) error
+	IsInterfaceNil() bool
+}

@@ -148,7 +148,16 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, sen
 		return fmt.Errorf("failed to apply nonce and gas price: %w", err)
 	}
 
-	// 3. Sign the frontend transaction with the key at the provided index
+	// 3. select the correct relayer (same shard with the sender)
+	relayerKey, err := processor.selectRelayer(networkConfig, sender)
+	if err != nil {
+		return fmt.Errorf("failed to select a valid: %w", err)
+	}
+
+	// 4. add the relayer's address
+	tx.RelayerAddr = relayerKey.GetBech32Address()
+
+	// 5. Sign the frontend transaction with the key at the provided index
 	unsignedtTxBytes, err := generateTransactionBytesToSign(tx)
 	if err != nil {
 		return fmt.Errorf("failed to generate unsigned tx bytes: %w", err)
@@ -160,21 +169,14 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, sen
 	}
 	tx.Signature = hex.EncodeToString(userSig)
 
-	// 4. select the correct relayer (same shard with the sender)
-	relayerKey, err := processor.selectRelayer(networkConfig, sender)
-	if err != nil {
-		return fmt.Errorf("failed to select a valid: %w", err)
-	}
-
-	// 5. Sign the frontend transaction with the singleKeyHandler and populate relayer specific fields
+	// 6. Sign the frontend transaction with the singleKeyHandler and populate relayer specific fields
 	relayerSig, err := relayerKey.Sign(unsignedtTxBytes)
 	if err != nil {
 		return fmt.Errorf("failed to sign the transaction with relayer key: %w", err)
 	}
 	tx.RelayerSignature = hex.EncodeToString(relayerSig)
-	tx.RelayerAddr = relayerKey.GetBech32Address()
 
-	// 6. Send transaction
+	// 7. Send transaction
 	hash, err := processor.nonceTxHandler.SendTransaction(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to send transaction: %w", err)

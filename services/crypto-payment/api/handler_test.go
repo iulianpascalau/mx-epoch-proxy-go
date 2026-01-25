@@ -134,7 +134,7 @@ func TestHandler_CreateAddress(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		require.Equal(t, float64(expectedID), response["id"]) // json unmarshal numbers as float64
+		require.Equal(t, float64(expectedID), response["paymentID"]) // json unmarshal numbers as float64
 		require.Nil(t, response["address"])
 		require.Equal(t, 1, storage.addCalled)
 	})
