@@ -356,10 +356,30 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 }
 
 func (wrapper *sqliteWrapper) incrementCountersOnUsers(username string) {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		log.Error("error creating transaction (update in users)", "username", username, "error", err)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
 	query := `UPDATE users SET request_count = request_count + 1 WHERE username = ?`
-	_, err := wrapper.db.Exec(query, username)
+	_, err = tx.Exec(query, username)
 	if err != nil {
 		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
+	}
+
+	query = `UPDATE users SET max_requests = request_count WHERE username = ? and max_requests < request_count`
+	_, err = tx.Exec(query, username)
+	if err != nil {
+		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Error("error commiting transaction (update in users)", "username", username, "error", err)
 	}
 
 	wrapper.pendingWritesWaitGroup.Done()

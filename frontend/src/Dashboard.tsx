@@ -210,6 +210,8 @@ export const Dashboard = () => {
                     numberOfRequests: accountRes.data.numberOfRequests,
                     isLoading: false
                 }));
+                // Also refresh the main user data to ensure all views are in sync
+                fetchData(user?.is_admin || false);
             }
         } catch (err: any) {
             console.error('Failed to create address: ', err);
@@ -244,7 +246,8 @@ export const Dashboard = () => {
             // Poll every 15 seconds to keep status updated
             const interval = setInterval(() => {
                 fetchCryptoData(true); // Background refresh
-            }, 15000);
+                fetchData(user.is_admin, true); // Background refresh of DB data
+            }, 10000);
 
             return () => clearInterval(interval);
         }
@@ -304,8 +307,8 @@ export const Dashboard = () => {
         };
     }, [navigate]);
 
-    const fetchData = async (isAdmin: boolean) => {
-        setLoading(true);
+    const fetchData = async (isAdmin: boolean, isBackground = false) => {
+        if (!isBackground) setLoading(true);
         const token = getAccessKey();
         const userInfo = getUserInfo();
         try {
@@ -343,7 +346,7 @@ export const Dashboard = () => {
             }
             console.error(e);
         } finally {
-            setLoading(false);
+            if (!isBackground) setLoading(false);
         }
     };
 
@@ -570,7 +573,7 @@ export const Dashboard = () => {
                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                                     <div className="text-slate-400 text-sm mb-1">Max Requests</div>
                                     <div className="text-2xl font-bold text-slate-200">
-                                        {users[user.username.toLowerCase()].MaxRequests === 0 ? 'Unlimited' : users[user.username.toLowerCase()].MaxRequests}
+                                        {users[user.username.toLowerCase()].IsPremium ? 'Unlimited' : users[user.username.toLowerCase()].MaxRequests}
                                     </div>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
@@ -661,7 +664,7 @@ export const Dashboard = () => {
                             )}
 
                             {/* State: Has Payment ID / Premium User */}
-                            {(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && (
+                            {!!(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && (
                                 <div className="space-y-6 relative z-10">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Left: Payment Info */}
@@ -727,6 +730,9 @@ export const Dashboard = () => {
                                                 <div className="mb-2">
                                                     <span className="text-3xl font-bold text-white">{cryptoState.numberOfRequests.toLocaleString()}</span>
                                                     <span className="text-slate-500 text-sm ml-2">available credits</span>
+                                                </div>
+                                                <div className="text-xs text-slate-400 mb-2">
+                                                    Used: {users[user.username.toLowerCase()]?.GlobalCounter.toLocaleString()} requests
                                                 </div>
 
                                                 {/* Visual Bar */}
