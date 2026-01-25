@@ -33,7 +33,6 @@ type componentsHandler struct {
 	relayersHandlers    []process.SingleKeyHandler
 	balanceOperator     process.BalanceOperator
 	balanceProcessor    BalanceProcessor
-	closeChan           chan struct{}
 }
 
 // NewComponentsHandler creates a new instance of the components handler holding all high-level components
