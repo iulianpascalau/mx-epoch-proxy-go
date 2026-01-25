@@ -457,3 +457,26 @@ func (instance *chainSimulatorWrapper) GetESDTSupplyValues(ctx context.Context, 
 
 	return resultStruct.Data
 }
+
+// IsChainSimulatorIsRunning returns true if the chain simulator is running at the defined adrress
+func IsChainSimulatorIsRunning() bool {
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            proxyURL,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       false,
+		AllowedDeltaToFinal: 7,
+		CacheExpirationTime: time.Second,
+		EntityType:          sdkCore.Proxy,
+	}
+	proxyInstance, err := blockchain.NewProxy(argsProxy)
+	if err != nil {
+		return false
+	}
+
+	ctx, done := context.WithTimeout(context.Background(), maxAllowedTimeout)
+	_, err = proxyInstance.GetNetworkConfig(ctx)
+	done()
+
+	return err == nil
+}

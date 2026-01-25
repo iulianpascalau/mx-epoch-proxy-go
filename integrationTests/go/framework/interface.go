@@ -3,7 +3,8 @@ package framework
 import (
 	"context"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/common"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/factory"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
 	"github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/core"
@@ -31,17 +32,11 @@ type Proxy interface {
 	IsInterfaceNil() bool
 }
 
-// SQLiteWrapper defines the behavior of a SQLite database wrapper
-type SQLiteWrapper interface {
-	Get(id uint64) (*common.BalanceEntry, error)
-	Add() (uint64, error)
-	GetAll() ([]*common.BalanceEntry, error)
-	Close() error
-	IsInterfaceNil() bool
-}
-
-// BalanceProcessor defines the operations supported by a component able to process balance changes
-type BalanceProcessor interface {
-	ProcessAll(ctx context.Context) error
-	IsInterfaceNil() bool
+// CryptoPaymentComponentsHandler defines the operations supported by a component able to manage multiple components
+type CryptoPaymentComponentsHandler interface {
+	StartCronJobs(ctx context.Context)
+	GetSQLiteWrapper() factory.SQLiteWrapper
+	GetBalanceProcessor() factory.BalanceProcessor
+	GetContractHandler() process.ContractHandler
+	Close()
 }

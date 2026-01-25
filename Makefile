@@ -25,7 +25,7 @@ tests: clean-tests
 slow-tests: clean-tests
 	@docker compose -f docker/docker-compose.yml build
 	@docker compose -f docker/docker-compose.yml up -d
-	@go test ./integrationTests/... -v -timeout 40m -tags slow
+	@go test ./integrationTests/... -v -timeout 40m
 	@docker compose -f docker/docker-compose.yml down -v
 
 build:

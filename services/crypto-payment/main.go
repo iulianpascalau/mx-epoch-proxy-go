@@ -11,12 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/config"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/crypto"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/storage"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/factory"
 	"github.com/joho/godotenv"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
@@ -147,20 +143,7 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("missing MNEMONICS environment variable")
 	}
 
-	walletInteractor := interactors.NewWallet()
-	multipleKeysHandler, err := crypto.NewMultipleKeysHandler(walletInteractor, mnemonics)
-	if err != nil {
-		return err
-	}
-
 	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
-	sqliteWrapper, err := storage.NewSQLiteWrapper(sqlitePath, multipleKeysHandler)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = sqliteWrapper.Close()
-	}()
 
 	cfg, err := loadConfig(workingDir)
 	if err != nil {
@@ -181,94 +164,23 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	cacher := storage.NewTimeCacher(time.Duration(cfg.SCSettingsCacheInSeconds) * time.Second)
-	defer cacher.Close()
-
-	contractQueryHandler, err := process.NewContractQueryHandler(
-		proxy,
-		cfg.ContractAddress,
-		cacher,
-	)
-	if err != nil {
-		return err
-	}
-
-	configHandler, err := process.NewConfigHandler(
-		cfg.WalletURL,
-		cfg.ExplorerURL,
-		contractQueryHandler,
-	)
-	if err != nil {
-		return err
-	}
-
-	accountHandler, err := process.NewAccountHandler(contractQueryHandler, sqliteWrapper)
-	if err != nil {
-		return err
-	}
-
-	apiHandler, err := api.NewHandler(sqliteWrapper, configHandler, accountHandler)
-	if err != nil {
-		return err
-	}
-
-	httpServer := api.NewHTTPServer(apiHandler, int(cfg.Port), cfg.ServiceApiKey)
-	err = httpServer.Start()
-	defer func() {
-		_ = httpServer.Close()
-	}()
-	if err != nil {
-		return err
-	}
-
-	time.Sleep(time.Second * 1)
-
 	relayersKeys, err := loadPemFiles(workingDir)
 	if err != nil {
 		return err
 	}
 
-	relayersHandlers := make([]process.SingleKeyHandler, 0, len(relayersKeys))
-	for _, relayerKey := range relayersKeys {
-		relayerHandler, errCreate := crypto.NewSingleKeyHandler(relayerKey)
-		if errCreate != nil {
-			return errCreate
-		}
-		relayersHandlers = append(relayersHandlers, relayerHandler)
-	}
-
-	relayedTxProcessor, err := process.NewRelayedTxProcessor(
-		proxy,
-		multipleKeysHandler,
-		relayersHandlers,
-		cfg.CallSCGasLimit,
-		cfg.ContractAddress,
-	)
-	if err != nil {
-		return fmt.Errorf("%w while initializing the relayedTxProcessor", err)
-	}
-	defer func() {
-		_ = relayedTxProcessor.Close()
-	}()
-
-	balanceProcessor, err := process.NewBalanceProcessor(
-		sqliteWrapper,
-		proxy,
-		relayedTxProcessor,
-		contractQueryHandler,
-		cfg.MinimumBalanceToProcess,
-	)
+	components, err := factory.NewComponentsHandler(mnemonics, sqlitePath, proxy, *cfg, relayersKeys)
 	if err != nil {
 		return err
 	}
+	defer components.Close()
+
+	time.Sleep(time.Second)
 
 	ctxRun, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	common.CronJobStarter(ctxRun, func() {
-		errRun := balanceProcessor.ProcessAll(ctxRun)
-		log.LogIfError(errRun)
-	}, time.Duration(cfg.TimeToProcessAddressesInSeconds)*time.Second)
+	components.StartCronJobs(ctxRun)
 
 	log.Info("Service is running... Press Ctrl+C to stop")
 

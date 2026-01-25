@@ -9,8 +9,8 @@ import (
 )
 
 func TestPauseUnpause(t *testing.T) {
-	if !IsSlowTestTag {
-		t.Skip("Skipping slow test")
+	if !framework.IsChainSimulatorIsRunning() {
+		t.Skip("No chain simulator instance running found. Skipping slow test")
 	}
 	cryptoService := framework.NewCryptoPaymentService(t)
 
@@ -21,6 +21,7 @@ func TestPauseUnpause(t *testing.T) {
 	defer cryptoService.TearDown()
 
 	cryptoService.CreateService()
+	balanceProcessor := cryptoService.Components.GetBalanceProcessor()
 
 	log.Info("======== 1. Check that the contract is not paused after deployment")
 	checkIsPaused(ctx, cryptoService, false)
@@ -60,7 +61,7 @@ func TestPauseUnpause(t *testing.T) {
 	log.Info("   Done ✓")
 
 	log.Info("   ===== 4b. Trying to process payments")
-	err := cryptoService.BalanceProcessor.ProcessAll(ctx)
+	err := balanceProcessor.ProcessAll(ctx)
 	require.NotNil(t, err)
 	log.Error("Error processing payments", "error", err)
 	log.Info("   Done ✓")
@@ -101,7 +102,7 @@ func TestPauseUnpause(t *testing.T) {
 	log.Info("   Done ✓")
 
 	log.Info("   ===== 7b. Trying to process payments")
-	err = cryptoService.BalanceProcessor.ProcessAll(ctx)
+	err = balanceProcessor.ProcessAll(ctx)
 	require.Nil(t, err)
 	log.Info("   Done ✓")
 
@@ -120,7 +121,8 @@ func TestPauseUnpause(t *testing.T) {
 }
 
 func checkIsPaused(ctx context.Context, service *framework.CryptoPaymentService, expected bool) {
-	isPaused, err := service.ContractQueryHandler.IsContractPaused(ctx)
+	contractHandler := service.Components.GetContractHandler()
+	isPaused, err := contractHandler.IsContractPaused(ctx)
 	require.Nil(service, err)
 
 	require.Equal(service, expected, isPaused)

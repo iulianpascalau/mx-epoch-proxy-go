@@ -23,7 +23,7 @@ func TestHTTPServer_StartAndClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// The address should now be updated with the actual port
-	addr := server.server.Addr
+	addr := server.GetAddress()
 	require.NotEmpty(t, addr)
 	require.False(t, strings.HasSuffix(addr, ":0"))
 
