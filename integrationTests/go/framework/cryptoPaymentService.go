@@ -15,7 +15,6 @@ import (
 
 const deployGasLimit = 20_000_000
 const callGasLimit = 40_000_000
-const requestsPerEGLD = 500_000
 const minimumBalanceToCall = 0.01 // 0.01 EGLD
 
 // CryptoPaymentService will hold all elements used by the crypto-payment service
@@ -48,7 +47,7 @@ func NewCryptoPaymentService(tb testing.TB) *CryptoPaymentService {
 }
 
 // Setup prepares the environment
-func (crs *CryptoPaymentService) Setup(ctx context.Context) {
+func (crs *CryptoPaymentService) Setup(ctx context.Context, numRequestsPerEGLD int64) {
 	log.Info("minting tokens to the users")
 	crs.ChainSimulator.FundWallets(ctx, crs.Keys.WalletsToFundOnMultiversX())
 
@@ -59,7 +58,7 @@ func (crs *CryptoPaymentService) Setup(ctx context.Context) {
 		crs.Keys.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
-			hex.EncodeToString(big.NewInt(requestsPerEGLD).Bytes()),
+			hex.EncodeToString(big.NewInt(numRequestsPerEGLD).Bytes()),
 		},
 	)
 
@@ -89,7 +88,7 @@ func (crs *CryptoPaymentService) CreateService() {
 		CallSCGasLimit:                  callGasLimit,
 		SCSettingsCacheInMillis:         1,
 		MinimumBalanceToProcess:         minimumBalanceToCall,
-		TimeToProcessAddressesInSeconds: 0,
+		TimeToProcessAddressesInSeconds: 5,
 		ServiceApiKey:                   "service-api-key",
 	}
 

@@ -160,6 +160,11 @@ func (ch *componentsHandler) GetBalanceProcessor() BalanceProcessor {
 	return ch.balanceProcessor
 }
 
+// GetHTTPServer returns the HTTPServer instance
+func (ch *componentsHandler) GetHTTPServer() HTTPServer {
+	return ch.httpServer
+}
+
 // GetContractHandler returns the ContractHandler instance
 func (ch *componentsHandler) GetContractHandler() process.ContractHandler {
 	return ch.contractHandler
