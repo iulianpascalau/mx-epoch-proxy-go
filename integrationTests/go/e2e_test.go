@@ -103,7 +103,7 @@ func TestCreateFreeUserAndCreateKeyAndTestRequestsAreThrottledThenSwitchToPremiu
 		// Generate a block to ensure any pending txs (from balanceProcessor) are processed
 		cryptoPaymentService.ChainSimulator.GenerateBlocks(ctx, 1)
 
-		reqs := session.GetNumberOfRequests(t)
+		reqs := session.GetNumberOfRequests()
 		return reqs >= 50
 	}, 2*time.Minute, 1*time.Second)
 	log.Info("Done ✓")
