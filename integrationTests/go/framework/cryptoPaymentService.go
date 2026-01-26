@@ -88,7 +88,7 @@ func (crs *CryptoPaymentService) CreateService() {
 		CallSCGasLimit:                  callGasLimit,
 		SCSettingsCacheInMillis:         1,
 		MinimumBalanceToProcess:         minimumBalanceToCall,
-		TimeToProcessAddressesInSeconds: 0,
+		TimeToProcessAddressesInSeconds: 5,
 		ServiceApiKey:                   "service-api-key",
 	}
 
