@@ -169,7 +169,7 @@ func (session *testSession) GetDepositAddress() string {
 	return session.depositAddress
 }
 
-func (session *testSession) GetNumberOfRequests(tb testing.TB) int {
+func (session *testSession) GetNumberOfRequests() int {
 	req, _ := http.NewRequest(http.MethodGet, session.baseAddress+api.EndpointApiCryptoPaymentAccount, nil)
 	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
 	client := &http.Client{}
