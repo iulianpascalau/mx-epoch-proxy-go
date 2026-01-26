@@ -27,7 +27,7 @@ func TestCreateFreeUserAndCreateKeyAndTestRequestsAreThrottled(t *testing.T) {
 	proxyService.Setup(ctx)
 	defer proxyService.TearDown()
 
-	proxyService.CreateService()
+	proxyService.CreateService("") // no crypto payment test
 
 	baseAddress := "http://" + proxyService.Components.GetAPIEngine().Address()
 

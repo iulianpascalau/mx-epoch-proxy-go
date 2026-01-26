@@ -135,4 +135,7 @@ func TestNewComponentsHandler_Getters(t *testing.T) {
 
 	assert.False(t, check.IfNil(components.GetContractHandler()))
 	assert.Equal(t, "*process.contractQueryHandler", fmt.Sprintf("%T", components.GetContractHandler()))
+
+	assert.False(t, check.IfNilReflect(components.GetHTTPServer()))
+	assert.Equal(t, "*api.httpServer", fmt.Sprintf("%T", components.GetHTTPServer()))
 }

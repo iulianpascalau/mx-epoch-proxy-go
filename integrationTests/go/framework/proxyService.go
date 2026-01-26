@@ -55,7 +55,7 @@ func (ps *ProxyService) TearDown() {
 }
 
 // CreateService will assemble all the service processing components
-func (ps *ProxyService) CreateService() {
+func (ps *ProxyService) CreateService(cryptoPaymentURL string) {
 	var err error
 
 	cfg := config.Config{
@@ -82,11 +82,11 @@ func (ps *ProxyService) CreateService() {
 			Frontend: "https://frontend",
 		},
 		CryptoPayment: config.CryptoPaymentConfig{
-			URL:                          "no-url",
+			URL:                          cryptoPaymentURL,
 			ServiceApiKey:                "service-api-key",
 			TimeoutInSeconds:             5,
 			ConfigCacheDurationInSeconds: 5,
-			Enabled:                      false,
+			Enabled:                      len(cryptoPaymentURL) > 0,
 		},
 	}
 

@@ -40,6 +40,7 @@ type CryptoPaymentComponentsHandler interface {
 	GetSQLiteWrapper() factory.SQLiteWrapper
 	GetBalanceProcessor() factory.BalanceProcessor
 	GetContractHandler() process.ContractHandler
+	GetHTTPServer() factory.HTTPServer
 	Close()
 }
 
