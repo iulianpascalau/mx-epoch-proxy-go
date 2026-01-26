@@ -5,6 +5,8 @@ import (
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/factory"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
+	proxyApi "github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/api"
+	proxyFactory "github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/factory"
 	"github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/core"
@@ -38,5 +40,13 @@ type CryptoPaymentComponentsHandler interface {
 	GetSQLiteWrapper() factory.SQLiteWrapper
 	GetBalanceProcessor() factory.BalanceProcessor
 	GetContractHandler() process.ContractHandler
+	Close()
+}
+
+// ProxyComponentsHandler defines the operations supported by a component able to manage multiple components
+type ProxyComponentsHandler interface {
+	StartCronJobs(ctx context.Context)
+	GetSQLiteWrapper() proxyApi.KeyAccessProvider
+	GetAPIEngine() proxyFactory.APIEngine
 	Close()
 }
