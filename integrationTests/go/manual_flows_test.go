@@ -2,7 +2,6 @@ package _go
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	"testing"
@@ -44,25 +43,15 @@ func TestManualFlowsIsolation(t *testing.T) {
 	// Allow services to stabilize
 	time.Sleep(time.Second)
 
-	// Helper to create a ready-to-use session
-	createSession := func(userIndex int) SessionHandler {
-		email := fmt.Sprintf("user%d@example.com", userIndex)
-		sess := framework.NewTestSession(
-			proxyService.Components,
-			email,
-			"password123456",
-		)
-		sess.Register(t)
-		sess.Activate(t, proxyService.EmailSender)
-		sess.Login(t)
-		return sess
-	}
-
 	// =========================================================================
 	// FLOW-002: Duplicate Address Request Prevention
 	// =========================================================================
 	t.Run("FLOW-002_DuplicateAddressPrevention", func(t *testing.T) {
-		session := createSession(1)
+		email := "user1@example.com"
+		session := framework.NewTestSession(proxyService.Components, email, "password123456")
+		session.Register(t)
+		session.Activate(t, proxyService.EmailSender)
+		session.Login(t)
 
 		// 1. First request should succeed
 		manualFlowsLog.Info("Step 1: Requesting first payment address...")
@@ -86,7 +75,11 @@ func TestManualFlowsIsolation(t *testing.T) {
 	// FLOW-003: Concurrent Address Creation (Race Condition)
 	// =========================================================================
 	t.Run("FLOW-003_ConcurrentAddressRequest", func(t *testing.T) {
-		session := createSession(2)
+		email := "user2@example.com"
+		session := framework.NewTestSession(proxyService.Components, email, "password123456")
+		session.Register(t)
+		session.Activate(t, proxyService.EmailSender)
+		session.Login(t)
 		manualFlowsLog.Info("Step 1: Launching concurrent address creation requests...")
 
 		var wg sync.WaitGroup
@@ -98,6 +91,8 @@ func TestManualFlowsIsolation(t *testing.T) {
 			wg.Add(1)
 			go func(idx int) {
 				defer wg.Done()
+				// Note: InvokeCryptoPaymentCreateAddress uses t for NewRequest error checking
+				// This is generally safe as NewRequest shouldn't fail with valid constant inputs
 				resp, err := session.InvokeCryptoPaymentCreateAddress(t)
 				if err == nil {
 					responses[idx] = resp.StatusCode
@@ -128,9 +123,7 @@ func TestManualFlowsIsolation(t *testing.T) {
 		assert.Equal(t, concurrency-1, failCount, "All other requests should fail with 400 or lock error")
 
 		// Verify DB state consistency (User should have valid ID)
-		// We expect the deposit address to exist now.
-		// If we call ObtainDepositAddress again, it will try to create one and FAIL (400), which is fine.
-		// Instead, we just check if we can fetch the account.
+		// Check via Account endpoint
 		resp, err := session.InvokeCryptoPaymentAccount(t)
 		require.Nil(t, err)
 		defer func() {
@@ -144,7 +137,11 @@ func TestManualFlowsIsolation(t *testing.T) {
 	// Verify that DB credits are NOT lowered if Contract has less
 	// =========================================================================
 	t.Run("FLOW-SYNC-001_SyncDowngradeProtection", func(t *testing.T) {
-		session := createSession(3)
+		email := "user3@example.com"
+		session := framework.NewTestSession(proxyService.Components, email, "password123456")
+		session.Register(t)
+		session.Activate(t, proxyService.EmailSender)
+		session.Login(t)
 
 		// 1. Get initial address (creates DB entry with 0 credits)
 		session.ObtainDepositAddress(t)
@@ -152,13 +149,13 @@ func TestManualFlowsIsolation(t *testing.T) {
 		// 2. ARTIFICIALLY inject high credits into the Proxy DB
 		// We need to bypass the API and touch the DB directly.
 		keyAccess := proxyService.Components.GetSQLiteWrapper()
-		user, err := keyAccess.GetUser("user3@example.com")
+		user, err := keyAccess.GetUser(email)
 		require.Nil(t, err)
 
 		// Grant 5,000,000 credits manually (simulate Admin Bonus)
 		currentMax := uint64(5_000_000)
 		// Fix: Pass empty string for password to avoid re-hashing or length validation issues
-		err = keyAccess.UpdateUser("user3@example.com", "", user.IsAdmin, currentMax, user.IsPremium)
+		err = keyAccess.UpdateUser(email, "", user.IsAdmin, currentMax, user.IsPremium)
 		require.Nil(t, err)
 
 		manualFlowsLog.Info("Step 1: Manually set DB limit to 5,000,000. Contract has 0.")
@@ -167,7 +164,7 @@ func TestManualFlowsIsolation(t *testing.T) {
 		time.Sleep(2 * time.Second)
 
 		// 4. Verify DB Value hasn't been overwritten by the (0) value from contract
-		updatedUser, err := keyAccess.GetUser("user3@example.com")
+		updatedUser, err := keyAccess.GetUser(email)
 		require.Nil(t, err)
 
 		assert.Equal(t, currentMax, updatedUser.MaxRequests, "Database sync should NEVER lower the user's credit balance")

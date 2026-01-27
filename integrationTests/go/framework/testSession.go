@@ -91,6 +91,7 @@ func (session *testSession) Login(tb testing.TB) {
 
 	var loginResp map[string]string
 	_ = json.NewDecoder(resp.Body).Decode(&loginResp)
+	_ = resp.Body.Close()
 	session.jwtToken = loginResp["token"]
 	require.NotEmpty(tb, session.jwtToken)
 }
@@ -137,6 +138,7 @@ func (session *testSession) CheckCryptoPaymentService(tb testing.TB) {
 
 	var cryptoConfig map[string]interface{}
 	_ = json.NewDecoder(resp.Body).Decode(&cryptoConfig)
+	_ = resp.Body.Close()
 	require.True(tb, cryptoConfig["isAvailable"].(bool))
 }
 
@@ -152,6 +154,7 @@ func (session *testSession) ObtainDepositAddress(tb testing.TB) {
 
 	var accountResp map[string]interface{}
 	_ = json.NewDecoder(resp.Body).Decode(&accountResp)
+	_ = resp.Body.Close()
 	session.depositAddress = accountResp["address"].(string)
 	require.NotEmpty(tb, session.depositAddress)
 }
