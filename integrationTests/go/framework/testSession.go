@@ -141,20 +141,12 @@ func (session *testSession) CheckCryptoPaymentService(tb testing.TB) {
 }
 
 func (session *testSession) ObtainDepositAddress(tb testing.TB) {
-	req, err := http.NewRequest(http.MethodPost, session.baseAddress+api.EndpointApiCryptoPaymentCreateAddress, nil)
-	require.Nil(tb, err)
-	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := session.InvokeCryptoPaymentCreateAddress(tb)
 	require.Nil(tb, err)
 	require.Equal(tb, http.StatusOK, resp.StatusCode)
-
 	_ = resp.Body.Close()
 
-	req, err = http.NewRequest(http.MethodGet, session.baseAddress+api.EndpointApiCryptoPaymentAccount, nil)
-	require.Nil(tb, err)
-	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
-	resp, err = client.Do(req)
+	resp, err = session.InvokeCryptoPaymentAccount(tb)
 	require.Nil(tb, err)
 	require.Equal(tb, http.StatusOK, resp.StatusCode)
 
@@ -162,6 +154,22 @@ func (session *testSession) ObtainDepositAddress(tb testing.TB) {
 	_ = json.NewDecoder(resp.Body).Decode(&accountResp)
 	session.depositAddress = accountResp["address"].(string)
 	require.NotEmpty(tb, session.depositAddress)
+}
+
+func (session *testSession) InvokeCryptoPaymentCreateAddress(tb testing.TB) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, session.baseAddress+api.EndpointApiCryptoPaymentCreateAddress, nil)
+	require.Nil(tb, err)
+	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
+	client := &http.Client{}
+	return client.Do(req)
+}
+
+func (session *testSession) InvokeCryptoPaymentAccount(tb testing.TB) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, session.baseAddress+api.EndpointApiCryptoPaymentAccount, nil)
+	require.Nil(tb, err)
+	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
+	client := &http.Client{}
+	return client.Do(req)
 }
 
 // GetDepositAddress returns the deposit address
