@@ -1,0 +1,230 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.86.0",
+            "commitHash": "05f9846f893b09a1be1fc8560e33fc3c815cfecb",
+            "commitDate": "2025-03-31",
+            "channel": "Stable",
+            "short": "rustc 1.86.0 (05f9846f8 2025-03-31)"
+        },
+        "contractCrate": {
+            "name": "requests",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.57.1"
+        }
+    },
+    "name": "RequestsContract",
+    "constructor": {
+        "docs": [
+            "Constructor - initializes the contract with the number of requests per EGLD"
+        ],
+        "inputs": [
+            {
+                "name": "num_requests_per_egld",
+                "type": "BigUint"
+            }
+        ],
+        "outputs": []
+    },
+    "upgradeConstructor": {
+        "docs": [
+            "Upgrade function - called when contract is upgraded"
+        ],
+        "inputs": [
+            {
+                "name": "num_requests_per_egld",
+                "type": "BigUint"
+            }
+        ],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "docs": [
+                "Add acquired requests for a given ID - payable only in EGLD",
+                "The number of acquired requests added = (EGLD amount transferred in regular units) * num_requests_per_egld",
+                "Example: 2.5 EGLD * 100 rate = 250 acquired requests"
+            ],
+            "name": "addRequests",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "EGLD"
+            ],
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Get the number of acquired requests for a given ID",
+                "Returns 0 if the ID was not credited"
+            ],
+            "name": "getRequests",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Check if the contract is paused"
+            ],
+            "name": "isPaused",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Get the number of requests per EGLD"
+            ],
+            "name": "getRequestsPerEgld",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Change the number of requests per EGLD",
+                "Can only be called by the owner"
+            ],
+            "name": "changeNumRequestsPerEGLD",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_num_requests_per_egld",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Pause the contract - prevents new requests from being added",
+                "Can only be called by the owner"
+            ],
+            "name": "pause",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Unpause the contract - allows new requests to be added again",
+                "Can only be called by the owner"
+            ],
+            "name": "unpause",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Withdraw all available EGLD in the contract to the owner's address",
+                "Can only be called by the owner"
+            ],
+            "name": "withdrawAll",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        }
+    ],
+    "events": [
+        {
+            "docs": [
+                "Event emitted when requests are added"
+            ],
+            "identifier": "addRequests",
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "egld_amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "requests_added",
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Event emitted when the exchange rate is changed"
+            ],
+            "identifier": "changeNumRequestsPerEGLD",
+            "inputs": [
+                {
+                    "name": "old_value",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "new_value",
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Event emitted when the contract is paused"
+            ],
+            "identifier": "pause",
+            "inputs": []
+        },
+        {
+            "docs": [
+                "Event emitted when the contract is unpaused"
+            ],
+            "identifier": "unpause",
+            "inputs": []
+        },
+        {
+            "docs": [
+                "Event emitted when EGLD is withdrawn"
+            ],
+            "identifier": "withdraw",
+            "inputs": [
+                {
+                    "name": "recipient",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ]
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {}
+}

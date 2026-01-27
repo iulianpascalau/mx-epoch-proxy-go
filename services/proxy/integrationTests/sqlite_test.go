@@ -3,6 +3,7 @@ package integrationTests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
@@ -29,6 +30,10 @@ func BenchmarkSqlite(b *testing.B) {
 
 		_, _, _ = wrapper.IsKeyAllowed(key)
 	}
+
+	b.StopTimer()
+	_ = wrapper.Close()
+	b.StartTimer()
 }
 
 func setupBenchmark(tb testing.TB) api.KeyAccessProvider {
@@ -36,13 +41,14 @@ func setupBenchmark(tb testing.TB) api.KeyAccessProvider {
 
 	keys = make([]string, 0, 2000)
 
-	keyAccessProvider, err := storage.NewSQLiteWrapper(dbPath)
+	counters, _ := storage.NewCountersCache(time.Minute)
+	keyAccessProvider, err := storage.NewSQLiteWrapper(dbPath, counters)
 	require.NoError(tb, err)
 
 	for i := 0; i < 100; i++ {
 		user := fmt.Sprintf("user free %d", i)
 
-		err = keyAccessProvider.AddUser(user, "pass", i%4 == 0, 0, string(common.FreeAccountType), true, "")
+		err = keyAccessProvider.AddUser(user, "pass", i%4 == 0, 0, false, true, "")
 		require.NoError(tb, err)
 
 		for j := 0; j < 10; j++ {
@@ -57,7 +63,7 @@ func setupBenchmark(tb testing.TB) api.KeyAccessProvider {
 		user := fmt.Sprintf("user premium %d", i)
 
 		maxRequests := uint64(10 + i)
-		err = keyAccessProvider.AddUser(user, "pass", i%4 == 0, maxRequests, string(common.PremiumAccountType), true, "")
+		err = keyAccessProvider.AddUser(user, "pass", i%4 == 0, maxRequests, true, true, "")
 		require.NoError(tb, err)
 
 		for j := 0; j < 10; j++ {

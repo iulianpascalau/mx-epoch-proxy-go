@@ -9,7 +9,7 @@ import (
 
 // KeyAccessProvider can decide if a provided key has or not query access
 type KeyAccessProvider interface {
-	AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error
+	AddUser(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error
 	ActivateUser(token string) error
 	GetAllUsers() (map[string]common.UsersDetails, error)
 	IsKeyAllowed(key string) (string, common.AccountType, error)
@@ -18,12 +18,14 @@ type KeyAccessProvider interface {
 	AddKey(username string, key string) error
 	RemoveKey(username string, key string) error
 	RemoveUser(username string) error
-	UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, accountType string) error
+	UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool) error
 	GetUser(username string) (*common.UsersDetails, error)
 	GetPerformanceMetrics() (map[string]uint64, error)
 	UpdatePassword(username string, password string) error
 	RequestEmailChange(username string, newEmail string, token string) error
 	ConfirmEmailChange(token string) (string, error)
+	SetCryptoPaymentID(username string, paymentID uint64) error
+	Close() error
 	IsInterfaceNil() bool
 }
 
@@ -46,5 +48,20 @@ type CaptchaHandler interface {
 type Authenticator interface {
 	GenerateToken(username string, isAdmin bool) (string, error)
 	CheckAuth(r *http.Request) (*common.Claims, error)
+	IsInterfaceNil() bool
+}
+
+// CryptoPaymentClient handles communication with the crypto-payment service
+type CryptoPaymentClient interface {
+	GetConfig() (*common.CryptoPaymentConfig, error)
+	CreateAddress() (*common.CreateAddressResponse, error)
+	GetAccount(paymentID uint64) (*common.AccountInfo, error)
+	IsInterfaceNil() bool
+}
+
+// MutexHandler defines the operations supported by a component able to lock/unlock users
+type MutexHandler interface {
+	TryLock(username string) error
+	Unlock(username string)
 	IsInterfaceNil() bool
 }

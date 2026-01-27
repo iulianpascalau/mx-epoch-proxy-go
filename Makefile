@@ -22,6 +22,12 @@ clean-tests:
 tests: clean-tests
 	go test ./...
 
+slow-tests: clean-tests
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up -d
+	@go test ./integrationTests/... -v -timeout 40m
+	@docker compose -f docker/docker-compose.yml down -v
+
 build:
 	cd ./services/proxy && go build -v \
 	-o ${binary} \
@@ -39,3 +45,24 @@ run-frontend:
 
 run-solution:
 	$(MAKE) -j2 run-backend run-frontend
+
+binary-crypto-payment = crypto-payment-server
+
+build-crypto-payment:
+	cd ./services/crypto-payment && go build -v \
+	-o ${binary-crypto-payment} \
+	-ldflags="-X main.appVersion=$(shell git describe --tags --long --dirty) -X main.commitID=$(shell git rev-parse HEAD)"
+
+run-crypto-payment: build-crypto-payment
+	cd ./services/crypto-payment && \
+		./${binary-crypto-payment} --log-level="*:DEBUG"
+
+lint-install:
+ifeq (,$(wildcard test -f bin/golangci-lint))
+	@echo "Installing golint"
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
+endif
+
+run-lint:
+	@echo "Running golint"
+	bin/golangci-lint run --max-issues-per-linter 0 --max-same-issues 0 --timeout=2m

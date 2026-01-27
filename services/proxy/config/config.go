@@ -2,11 +2,14 @@ package config
 
 // Config specify all config options this proxy will use
 type Config struct {
-	Port            uint64
-	FreeAccount     FreeAccountConfig
-	Gateways        []GatewayConfig
-	ClosedEndpoints []string
-	AppDomains      AppDomainsConfig
+	Port                      uint64
+	CountersCacheTTLInSeconds uint32
+	UpdateContractDBInSeconds uint32
+	FreeAccount               FreeAccountConfig
+	Gateways                  []GatewayConfig
+	ClosedEndpoints           []string
+	AppDomains                AppDomainsConfig
+	CryptoPayment             CryptoPaymentConfig
 }
 
 // GatewayConfig defines a gateway and its set epochs
@@ -29,4 +32,19 @@ type FreeAccountConfig struct {
 type AppDomainsConfig struct {
 	Backend  string
 	Frontend string
+}
+
+// CryptoPaymentConfig holds the configuration for the crypto-payment service integration
+type CryptoPaymentConfig struct {
+	URL                          string
+	ServiceApiKey                string
+	TimeoutInSeconds             uint64
+	ConfigCacheDurationInSeconds uint64
+	Enabled                      bool
+}
+
+// EmailsConfig holds the configuration for the emails formats
+type EmailsConfig struct {
+	RegistrationEmailBytes []byte
+	ChangeEmailBytes       []byte
 }

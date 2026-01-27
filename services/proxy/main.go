@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -16,8 +14,8 @@ import (
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/config"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/factory"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/process"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/storage"
 	"github.com/joho/godotenv"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -112,8 +110,8 @@ func main() {
 	}
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Multiversx Team",
-			Email: "contact@multiversx.com",
+			Name:  "Iulian Pascalau",
+			Email: "iulian.pascalau@gmail.com",
 		},
 	}
 
@@ -166,107 +164,9 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	hostFinder, err := process.NewHostsFinder(cfg.Gateways)
-	if err != nil {
-		return err
-	}
-
-	loadedGateways := hostFinder.LoadedGateways()
-	for _, host := range loadedGateways {
-		log.Info("Loaded gateway",
-			"name", host.Name,
-			"URL", host.URL,
-			"nonces", fmt.Sprintf("%s - %s", host.NonceStart, host.NonceEnd),
-			"epochs", fmt.Sprintf("%s - %s", host.EpochStart, host.EpochEnd),
-		)
-	}
-
-	tester := api.NewGatewayTester()
-	err = tester.TestGateways(loadedGateways)
-	if err != nil {
-		return err
-	}
-
-	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
-	sqliteWrapper, err := storage.NewSQLiteWrapper(sqlitePath)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		_ = sqliteWrapper.Close()
-	}()
-
-	err = ensureAdmin(sqliteWrapper)
-	if err != nil {
-		return err
-	}
-
-	if cfg.FreeAccount.ClearPeriodInSeconds == 0 {
-		return fmt.Errorf("can not start as the config contains a 0 value for FreeAccount.ClearPeriodInSeconds")
-	}
-
-	keyCounter := common.NewKeyCounter()
-	limitPeriod := time.Duration(cfg.FreeAccount.ClearPeriodInSeconds) * time.Second
-	common.CronJobStarter(context.Background(), func() {
-		log.Debug("Clearing the keys counters")
-		keyCounter.Clear()
-	}, limitPeriod)
-
-	accessChecker, err := process.NewAccessChecker(
-		sqliteWrapper,
-		keyCounter,
-		cfg.FreeAccount.MaxCalls,
-	)
-	if err != nil {
-		return err
-	}
-
-	requestsProcessor, err := process.NewRequestsProcessor(
-		hostFinder,
-		accessChecker,
-		sqliteWrapper,
-		cfg.ClosedEndpoints,
-	)
-	if err != nil {
-		return err
-	}
-
-	authenticator := api.NewJWTAuthenticator(envFileContents[envFileVarJwtKey])
-
-	accessKeysHandler, err := api.NewAccessKeysHandler(sqliteWrapper, authenticator)
-	if err != nil {
-		return err
-	}
-
-	usersHandler, err := api.NewUsersHandler(sqliteWrapper, authenticator)
-	if err != nil {
-		return err
-	}
-
-	loginHandler, err := api.NewLoginHandler(sqliteWrapper, authenticator)
-	if err != nil {
-		return err
-	}
-
-	performanceHandler, err := api.NewPerformanceHandler(sqliteWrapper, authenticator)
-	if err != nil {
-		return err
-	}
-
 	smtpPort, err := strconv.Atoi(envFileContents[envFileVarSmtpPort])
 	if err != nil {
 		return fmt.Errorf("invalid SMTP port: %w", err)
-	}
-	emailSender := process.NewSmtpSender(process.ArgsSmtpSender{
-		SmtpPort: smtpPort,
-		SmtpHost: envFileContents[envFileVarSmtpHost],
-		From:     envFileContents[envFileVarSmtpFrom],
-		Password: envFileContents[envFileVarSmtpPassword],
-	})
-
-	if len(cfg.AppDomains.Backend) == 0 || len(cfg.AppDomains.Frontend) == 0 {
-		return fmt.Errorf("the AppDomains section is not correctly configured in config.toml file")
 	}
 
 	emailTemplateBytes, err := os.ReadFile(emailTemplateFile)
@@ -274,72 +174,51 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("failed to read email template file: %w", err)
 	}
 
-	captchaWrapper := process.NewCaptchaWrapper()
-
-	registrationHandler, err := api.NewRegistrationHandler(
-		sqliteWrapper,
-		emailSender,
-		cfg.AppDomains,
-		captchaWrapper,
-		string(emailTemplateBytes),
-	)
-	if err != nil {
-		return err
-	}
-
-	captchaHandler, err := api.NewCaptchaHandler(captchaWrapper)
-	if err != nil {
-		return err
-	}
-
 	changeEmailTemplateBytes, err := os.ReadFile(emailChangeTemplateFile)
 	if err != nil {
 		return fmt.Errorf("failed to read email change template file: %w", err)
 	}
 
-	userCredentialsHandler, err := api.NewUserCredentialsHandler(
-		sqliteWrapper,
+	emailsConfig := config.EmailsConfig{
+		RegistrationEmailBytes: emailTemplateBytes,
+		ChangeEmailBytes:       changeEmailTemplateBytes,
+	}
+
+	emailSender := process.NewSmtpSender(process.ArgsSmtpSender{
+		SmtpPort: smtpPort,
+		SmtpHost: envFileContents[envFileVarSmtpHost],
+		From:     envFileContents[envFileVarSmtpFrom],
+		Password: envFileContents[envFileVarSmtpPassword],
+	})
+	captchaWrapper := process.NewCaptchaWrapper()
+
+	sqlitePath := path.Join(workingDir, defaultDataPath, dbFile)
+	components, err := factory.NewComponentsHandler(
+		cfg,
+		sqlitePath,
+		envFileContents[envFileVarJwtKey],
+		emailsConfig,
+		appVersion,
+		swaggerPath,
 		emailSender,
-		cfg.AppDomains,
-		string(changeEmailTemplateBytes),
-		authenticator,
+		captchaWrapper,
 	)
 	if err != nil {
 		return err
 	}
+	defer components.Close()
 
-	handlers := map[string]http.Handler{
-		api.EndpointApiAccessKeys:         accessKeysHandler,
-		api.EndpointApiAdminUsers:         usersHandler,
-		api.EndpointApiLogin:              loginHandler,
-		api.EndpointApiPerformance:        performanceHandler,
-		api.EndpointApiRegister:           registrationHandler,
-		api.EndpointApiActivate:           registrationHandler,
-		api.EndpointApiChangePassword:     userCredentialsHandler,
-		api.EndpointApiRequestEmailChange: userCredentialsHandler,
-		api.EndpointApiConfirmEmailChange: userCredentialsHandler,
-		api.EndpointCaptchaSingle:         http.HandlerFunc(captchaHandler.GenerateCaptchaHandler),
-		api.EndpointCaptchaMultiple:       http.HandlerFunc(captchaHandler.ServeCaptchaImageHandler),
-		api.EndpointAppInfo: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"version": appVersion,
-				"backend": cfg.AppDomains.Backend,
-			})
-		}),
-		api.EndpointSwagger: http.StripPrefix(api.EndpointSwagger, http.FileServer(http.Dir(swaggerPath))),
-		api.EndpointRoot:    http.RedirectHandler(api.EndpointSwagger, http.StatusFound),
-		"*":                 requestsProcessor,
-	}
+	ctxCronJobs, cancelCronJobs := context.WithCancel(context.Background())
+	defer cancelCronJobs()
 
-	demuxer := process.NewDemuxer(handlers, nil)
-	engine, err := api.NewAPIEngine(fmt.Sprintf(":%d", cfg.Port), api.CORSMiddleware(demuxer))
+	components.StartCronJobs(ctxCronJobs)
+
+	err = ensureAdmin(components.GetSQLiteWrapper())
 	if err != nil {
 		return err
 	}
 
-	log.Info("Serving requests", "interface", engine.Address())
+	log.Info("Serving requests", "interface", components.GetAPIEngine().Address())
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -347,12 +226,8 @@ func run(ctx *cli.Context) error {
 	<-sigs
 
 	log.Info("application closing, calling Close on all subcomponents...")
-	err = engine.Close()
-	if sqliteWrapper != nil {
-		err = sqliteWrapper.Close()
-	}
 
-	return err
+	return nil
 }
 
 func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) (common.FileLoggingHandler, error) {
@@ -422,7 +297,7 @@ func ensureAdmin(sqliteWrapper api.KeyAccessProvider) error {
 		envFileContents[envFileVarInitialAdminPass],
 		true,
 		0,
-		"premium",
+		true,
 		true,
 		"")
 	if err != nil {

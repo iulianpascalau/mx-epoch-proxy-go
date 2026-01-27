@@ -74,8 +74,10 @@ func TestRequestsArePassedCorrectly(t *testing.T) {
 	require.NoError(t, err)
 	dbPath := tmpfile.Name()
 	_ = tmpfile.Close()
-	storer, _ := storage.NewSQLiteWrapper(dbPath)
-	_ = storer.AddUser("test", "test", true, 0, "premium", true, "")
+
+	counters, _ := storage.NewCountersCache(time.Minute)
+	storer, _ := storage.NewSQLiteWrapper(dbPath, counters)
+	_ = storer.AddUser("test", "test", true, 0, true, true, "")
 	err = storer.AddKey("test", "e05d2cdbce887650f5f26f770e55570b")
 	require.Nil(t, err)
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink, Zap, AlertTriangle, CreditCard, Wallet } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -21,6 +21,25 @@ interface UserDetails {
     IsAdmin: boolean;
     AccountType: string;
     IsActive: boolean;
+    IsPremium: boolean;
+    PaymentID?: number; // Added for crypto payment
+    SCMaxRequests?: number; // Added for crypto payment stats
+}
+
+interface CryptoPaymentState {
+    isServiceAvailable: boolean;
+    isPaused: boolean;
+    requestsPerEGLD: number;
+    walletURL: string;
+    explorerURL: string;
+    contractAddress: string;
+
+    paymentId: number | null;
+    depositAddress: string | null;
+    numberOfRequests: number;
+
+    isLoading: boolean;
+    error: string | null;
 }
 
 const copyToClipboard = async (text: string) => {
@@ -43,6 +62,12 @@ const copyToClipboard = async (text: string) => {
         console.error('Failed to copy: ', err);
         alert('Failed to copy to clipboard');
     }
+};
+
+const ensureProtocol = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `https://${url}`;
 };
 
 export const Dashboard = () => {
@@ -80,6 +105,146 @@ export const Dashboard = () => {
         key: string | null;
         direction: 'asc' | 'desc';
     }>({ type: null, key: null, direction: 'asc' });
+
+    // Crypto Payment State
+    const [cryptoState, setCryptoState] = useState<CryptoPaymentState>({
+        isServiceAvailable: false,
+        isPaused: false,
+        requestsPerEGLD: 10000,
+        walletURL: 'https://devnet-wallet.multiversx.com',
+        explorerURL: 'https://devnet-explorer.multiversx.com',
+        contractAddress: 'erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw',
+        paymentId: null,
+        depositAddress: null,
+        numberOfRequests: 0,
+        isLoading: false,
+        error: null
+    });
+
+    // Real Crypto API
+    const fetchCryptoData = async (isBackground = false) => {
+        if (!isBackground) {
+            setCryptoState(prev => ({ ...prev, isLoading: true, error: null }));
+        }
+        const token = getAccessKey();
+        if (!token) return;
+
+        try {
+            // 1. Fetch Config
+            const configRes = await axios.get('/api/crypto-payment/config', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const config = configRes.data;
+            const newState = {
+                isServiceAvailable: config.isAvailable,
+                isPaused: config.isPaused,
+                requestsPerEGLD: config.requestsPerEGLD,
+                walletURL: ensureProtocol(config.walletURL),
+                explorerURL: ensureProtocol(config.explorerURL),
+                contractAddress: config.contractAddress,
+                isLoading: false,
+                error: null
+            };
+
+            setCryptoState(prev => ({ ...prev, ...newState }));
+
+            // 2. Fetch Account (if service is available)
+            if (config.isAvailable) {
+                try {
+                    const accountRes = await axios.get('/api/crypto-payment/account', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (accountRes.data) {
+                        setCryptoState(prev => ({
+                            ...prev,
+                            paymentId: accountRes.data.paymentId,
+                            depositAddress: accountRes.data.address,
+                            numberOfRequests: accountRes.data.numberOfRequests
+                        }));
+                    }
+                } catch (accErr: any) {
+                    // 404 means no account yet, which is fine
+                    if (accErr.response?.status !== 404) {
+                        console.error("Failed to fetch crypto account", accErr);
+                    } else {
+                        // Reset account specific fields if 404 (user might have deleted account or just has none)
+                        setCryptoState(prev => ({
+                            ...prev,
+                            paymentId: null,
+                            depositAddress: null,
+                            numberOfRequests: 0
+                        }));
+                    }
+                }
+            }
+
+        } catch (err: any) {
+            console.error('Failed to fetch crypto config: ', err);
+            // If config fails (e.g. 503), the service is unavailable
+            setCryptoState(prev => ({
+                ...prev,
+                isServiceAvailable: false,
+                isPaused: false, // Ensure paused state is cleared if service is down
+                isLoading: false,
+                requestsPerEGLD: 0, // Reset rate
+                error: err.response?.data?.error || "Crypto service unavailable"
+            }));
+        }
+    };
+
+    const handleRequestAddress = async () => {
+        if (cryptoState.isPaused) return;
+        setCryptoState(prev => ({ ...prev, isLoading: true, error: null }));
+        const token = getAccessKey();
+
+        try {
+            await axios.post('/api/crypto-payment/create-address', {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            // Fetch account details immediately to get the address
+            const accountRes = await axios.get('/api/crypto-payment/account', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (accountRes.data) {
+                setCryptoState(prev => ({
+                    ...prev,
+                    paymentId: accountRes.data.paymentId,
+                    depositAddress: accountRes.data.address,
+                    numberOfRequests: accountRes.data.numberOfRequests,
+                    isLoading: false
+                }));
+                // Also refresh the main user data to ensure all views are in sync
+                fetchData(user?.is_admin || false);
+            }
+        } catch (err: any) {
+            console.error('Failed to create address: ', err);
+            setCryptoState(prev => ({
+                ...prev,
+                isLoading: false,
+                error: err.response?.data?.error || "Failed to request payment address"
+            }));
+        }
+    };
+
+
+
+    useEffect(() => {
+        if (user) {
+            fetchCryptoData(); // Initial load
+
+            // Poll every 15 seconds to keep status updated
+            const interval = setInterval(() => {
+                fetchCryptoData(true); // Background refresh
+                fetchData(user.is_admin, true); // Background refresh of DB data
+            }, 10000);
+
+            return () => clearInterval(interval);
+        }
+    }, [user]);
 
     useEffect(() => {
         const token = getAccessKey();
@@ -135,8 +300,8 @@ export const Dashboard = () => {
         };
     }, [navigate]);
 
-    const fetchData = async (isAdmin: boolean) => {
-        setLoading(true);
+    const fetchData = async (isAdmin: boolean, isBackground = false) => {
+        if (!isBackground) setLoading(true);
         const token = getAccessKey();
         const userInfo = getUserInfo();
         try {
@@ -174,7 +339,7 @@ export const Dashboard = () => {
             }
             console.error(e);
         } finally {
-            setLoading(false);
+            if (!isBackground) setLoading(false);
         }
     };
 
@@ -401,7 +566,7 @@ export const Dashboard = () => {
                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
                                     <div className="text-slate-400 text-sm mb-1">Max Requests</div>
                                     <div className="text-2xl font-bold text-slate-200">
-                                        {users[user.username.toLowerCase()].MaxRequests === 0 ? 'Unlimited' : users[user.username.toLowerCase()].MaxRequests}
+                                        {users[user.username.toLowerCase()].IsPremium ? 'Unlimited' : users[user.username.toLowerCase()].MaxRequests}
                                     </div>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5">
@@ -411,6 +576,214 @@ export const Dashboard = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+
+                    {/* Crypto Payment / Premium Management Section */}
+                    {/* Only show for non-admin users or admins who want to see the UI */}
+                    {!user.is_admin && users[user.username.toLowerCase()] && (
+                        <div className="glass-panel p-6 col-span-1 lg:col-span-2 relative overflow-hidden">
+                            {/* Background accent for premium feel */}
+                            {users[user.username.toLowerCase()].AccountType === 'premium' && (
+                                <div className="absolute top-0 right-0 p-32 bg-amber-500/10 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                            )}
+
+                            <div className="flex justify-between items-center mb-6 flex-wrap gap-4 relative z-10">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <Zap className={users[user.username.toLowerCase()].AccountType === 'premium' ? "text-amber-400" : "text-indigo-400"} />
+                                    {users[user.username.toLowerCase()].AccountType === 'premium'
+                                        ? "Premium Account Management"
+                                        : (cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID)
+                                            ? "Deposit Details"
+                                            : "Upgrade to Premium"}
+                                </h2>
+                                {/* Service Status Indicator */}
+                                <div className="flex items-center gap-2 text-sm bg-black/20 px-3 py-1 rounded-full">
+                                    <div className={`w-2 h-2 rounded-full ${cryptoState.isLoading ? 'bg-slate-400 animate-pulse' : !cryptoState.isServiceAvailable ? 'bg-red-500' : cryptoState.isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                                    <span className="text-slate-400">
+                                        {cryptoState.isLoading ? 'Checking Service...' : !cryptoState.isServiceAvailable ? 'Crypto Service Unavailable' : cryptoState.isPaused ? 'Payments Paused' : 'Crypto Service Online'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Error pane removed */}
+
+                            {/* State: Loading */}
+                            {cryptoState.isLoading && !cryptoState.depositAddress && (
+                                <div className="flex justify-center p-8">
+                                    <Loader className="animate-spin text-indigo-500" size={30} />
+                                </div>
+                            )}
+
+                            {/* State: Free User - No Payment ID */}
+                            {!cryptoState.paymentId && !users[user.username.toLowerCase()].PaymentID && users[user.username.toLowerCase()].AccountType !== 'premium' && !cryptoState.isLoading && (
+                                <div className="space-y-6 relative z-10">
+                                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-6">
+                                        <div className="flex items-start gap-4">
+                                            <div className="bg-indigo-500/20 p-3 rounded-full text-indigo-400 hidden sm:block">
+                                                <CreditCard size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-medium text-white mb-2">Unlock Unlimited Requests</h3>
+                                                <p className="text-slate-400 mb-4 text-sm leading-relaxed max-w-2xl">
+                                                    Upgrade your account to Premium by making a secure crypto payment.
+                                                    You are paying directly to the smart contract using EGLD.
+                                                    Zero gas fees for deposit transaction relay.
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 mb-6">
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
+                                                        Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
+                                                    </span>
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Instant Activation</span>
+                                                </div>
+                                                <button
+                                                    onClick={handleRequestAddress}
+                                                    disabled={cryptoState.isPaused || !cryptoState.isServiceAvailable}
+                                                    className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center gap-2"
+                                                >
+                                                    {cryptoState.isLoading ? <Loader className="animate-spin" size={18} /> : <Wallet size={18} />}
+                                                    Request Payment Address
+                                                </button>
+                                                {cryptoState.isPaused && (
+                                                    <p className="text-amber-400 text-xs mt-3 flex items-center gap-1">
+                                                        <AlertTriangle size={12} /> Service is currently paused. Payments are disabled.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* State: Has Payment ID / Premium User */}
+                            {!!(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && (
+                                <div className="space-y-6 relative z-10">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Left: Payment Info */}
+                                        <div className="bg-white/5 rounded-lg p-5 border border-white/10">
+                                            <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Deposit Details</h3>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Your Unique Deposit Address</label>
+                                                    <div className="flex items-center gap-2 bg-black/20 p-2 rounded border border-white/5">
+                                                        <code className="text-xs text-indigo-300 break-all font-mono">{cryptoState.depositAddress || "Loading address..."}</code>
+                                                        {cryptoState.depositAddress && (
+                                                            <button
+                                                                onClick={() => copyToClipboard(cryptoState.depositAddress || "")}
+                                                                className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                                                                title="Copy Address"
+                                                            >
+                                                                <Copy size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-xs text-slate-500 block mb-1">Payment ID</label>
+                                                        <div className="text-slate-200 font-mono">#{cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs text-slate-500 block mb-1">Current Rate</label>
+                                                        <div className="text-slate-200">{cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req/EGLD</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-2 flex gap-2">
+                                                    <a
+                                                        href={cryptoState.walletURL ? `${cryptoState.walletURL}` : "#"}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className={`flex-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs py-2 rounded flex items-center justify-center gap-2 transition-colors border border-indigo-500/20 ${!cryptoState.walletURL ? 'pointer-events-none opacity-50' : ''}`}
+                                                    >
+                                                        <Wallet size={14} /> Open Web Wallet
+                                                    </a>
+                                                    <a
+                                                        href={cryptoState.explorerURL && cryptoState.depositAddress ? `${cryptoState.explorerURL}/accounts/${cryptoState.depositAddress}` : "#"}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className={`flex-1 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-xs py-2 rounded flex items-center justify-center gap-2 transition-colors ${(!cryptoState.explorerURL || !cryptoState.depositAddress) ? 'pointer-events-none opacity-50' : ''}`}
+                                                    >
+                                                        <ExternalLink size={14} /> Explorer
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                        {/* Right: Balance & Status */}
+                                        <div className="bg-white/5 rounded-lg p-5 border border-white/10 flex flex-col justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-medium text-slate-400 mb-4 uppercase tracking-wider">Requests Balance</h3>
+
+                                                <div className="mb-2">
+                                                    <span className="text-3xl font-bold text-white">
+                                                        {Math.max(0, users[user.username.toLowerCase()].MaxRequests - users[user.username.toLowerCase()].GlobalCounter).toLocaleString()}
+                                                    </span>
+                                                    <span className="text-slate-500 text-sm ml-2">available credits</span>
+                                                </div>
+                                                <div className="text-xs text-slate-400 mb-2">
+                                                    Used: {users[user.username.toLowerCase()]?.GlobalCounter.toLocaleString()} requests
+                                                </div>
+                                                {users[user.username.toLowerCase()]?.SCMaxRequests ? (
+                                                    <div className="text-xs text-emerald-400/80 mb-2">
+                                                        Bought: {users[user.username.toLowerCase()].SCMaxRequests?.toLocaleString()} requests
+                                                    </div>
+                                                ) : null}
+
+                                                {/* Visual Bar */}
+                                                <div className="relative pt-1">
+                                                    <div className="flex mb-2 items-center justify-between">
+                                                        <div className="text-right w-full">
+                                                            <span className="text-xs font-semibold inline-block text-indigo-300">
+                                                                {(() => {
+                                                                    const u = users[user.username.toLowerCase()];
+                                                                    // If max requests is 0 (unlimited), show 0% usage or handle differently
+                                                                    if (!u || u.MaxRequests === 0) return "Usage 0%";
+                                                                    const pct = Math.min(100, Math.round((u.GlobalCounter / u.MaxRequests) * 100));
+                                                                    return `Usage ${pct}%`;
+                                                                })()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-black/30">
+                                                        <div
+                                                            style={{
+                                                                width: (() => {
+                                                                    const u = users[user.username.toLowerCase()];
+                                                                    if (!u || u.MaxRequests === 0) return '0%';
+                                                                    const pct = Math.min(100, (u.GlobalCounter / u.MaxRequests) * 100);
+                                                                    return `${pct}%`;
+                                                                })()
+                                                            }}
+                                                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                                                        ></div>
+                                                    </div>
+                                                </div>
+
+                                                {users[user.username.toLowerCase()].AccountType === 'premium' && (
+                                                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                                                        <Check size={12} /> Account is Premium active
+                                                    </p>
+                                                )}
+                                            </div>
+
+
+                                        </div>
+                                    </div>
+
+                                    {cryptoState.isPaused && (
+                                        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-200 p-3 rounded text-sm text-center">
+                                            ⚠️ The smart contract is currently paused. Deposits made now will be processed when it resumes.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         </div>
                     )}
 
@@ -565,10 +938,11 @@ export const Dashboard = () => {
                                             </th>
                                             <th className="py-3 px-4">Verified</th>
                                             <th className="py-3 px-4">Role</th>
+                                            <th className="py-3 px-4">Forced to Premium</th>
                                             <th className="py-3 px-4">Account Type</th>
-                                            <th className="py-3 px-4">Limits (Req)</th>
-                                            <th className="py-3 px-4"></th>
+                                            <th className="py-3 px-4">Limits</th>
                                             <th className="py-3 px-4">Current Usage</th>
+                                            <th className="py-3 px-4"></th>
                                             <th className="py-3 px-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -589,12 +963,22 @@ export const Dashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${u.IsPremium ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-500/20 text-slate-300'}`}>
+                                                        {u.IsPremium ? 'YES' : 'NO'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-semibold ${u.AccountType === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-500/20 text-slate-300'}`}>
                                                         {(u.AccountType || 'free').toUpperCase()}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-300">
-                                                    {u.MaxRequests === 0 ? 'Unlimited' : u.MaxRequests}
+                                                    {u.MaxRequests}
+                                                </td>
+                                                <td className="py-3 px-4 text-slate-300">
+                                                    <div className="flex items-center gap-2">
+                                                        {u.GlobalCounter}
+                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <button
@@ -604,11 +988,6 @@ export const Dashboard = () => {
                                                         <Key size={12} />
                                                         Manage Keys
                                                     </button>
-                                                </td>
-                                                <td className="py-3 px-4 text-slate-300">
-                                                    <div className="flex items-center gap-2">
-                                                        {u.GlobalCounter}
-                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4 text-right flex justify-end gap-2">
                                                     <button
@@ -656,84 +1035,89 @@ export const Dashboard = () => {
                     )}
 
                 </div>
-            )}
+            )
+            }
 
-            {user.is_admin && (
-                <div className="glass-panel p-6 col-span-1 lg:col-span-2">
-                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <ArrowUp className="text-indigo-400" /> Response Time Distribution
-                        </h2>
-                        <button
-                            onClick={refreshPerformance}
-                            className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-normal transition-all"
-                        >
-                            <RotateCcw size={16} /> Refresh Graph
-                        </button>
-                    </div>
-                    <div className="h-80 flex items-end gap-2 pt-6 pb-24 px-4 bg-black/20 rounded-lg">
-                        {(() => {
-                            const labelsToUse = performanceLabels.length > 0 ? performanceLabels : Object.keys(performanceMetrics).sort();
-                            const maxPerf = Math.max(...Object.values(performanceMetrics).concat([1]));
-                            return labelsToUse.map(label => {
-                                const val = performanceMetrics[label] || 0;
-                                const height = (val / maxPerf) * 100;
-                                return (
-                                    <div key={label} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end relative">
-                                        <div className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity mb-1 font-mono absolute -top-5">{val}</div>
-                                        <div
-                                            className="w-full bg-indigo-500/50 hover:bg-indigo-400 rounded-t transition-all relative min-h-[1px]"
-                                            style={{ height: `${height}%` }}
-                                        >
-                                        </div>
-                                        <div className="absolute -bottom-2 w-0 h-0 flex justify-center items-center">
-                                            <div className="text-[10px] text-slate-500 -rotate-90 origin-right translate-y-[50%] translate-x-[-50%] whitespace-nowrap w-24 text-right pr-2">
-                                                {label}
+            {
+                user.is_admin && (
+                    <div className="glass-panel p-6 col-span-1 lg:col-span-2">
+                        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                            <h2 className="text-xl font-semibold flex items-center gap-2">
+                                <ArrowUp className="text-indigo-400" /> Response Time Distribution
+                            </h2>
+                            <button
+                                onClick={refreshPerformance}
+                                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-normal transition-all"
+                            >
+                                <RotateCcw size={16} /> Refresh Graph
+                            </button>
+                        </div>
+                        <div className="h-80 flex items-end gap-2 pt-6 pb-24 px-4 bg-black/20 rounded-lg">
+                            {(() => {
+                                const labelsToUse = performanceLabels.length > 0 ? performanceLabels : Object.keys(performanceMetrics).sort();
+                                const maxPerf = Math.max(...Object.values(performanceMetrics).concat([1]));
+                                return labelsToUse.map(label => {
+                                    const val = performanceMetrics[label] || 0;
+                                    const height = (val / maxPerf) * 100;
+                                    return (
+                                        <div key={label} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end relative">
+                                            <div className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity mb-1 font-mono absolute -top-5">{val}</div>
+                                            <div
+                                                className="w-full bg-indigo-500/50 hover:bg-indigo-400 rounded-t transition-all relative min-h-[1px]"
+                                                style={{ height: `${height}%` }}
+                                            >
+                                            </div>
+                                            <div className="absolute -bottom-2 w-0 h-0 flex justify-center items-center">
+                                                <div className="text-[10px] text-slate-500 -rotate-90 origin-right translate-y-[50%] translate-x-[-50%] whitespace-nowrap w-24 text-right pr-2">
+                                                    {label}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )
-                            });
-                        })()}
+                                    )
+                                });
+                            })()}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
 
             {/* API Info Panel */}
-            {appInfo && (
-                <div className="glass-panel p-6 mt-8">
-                    <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
-                        <BookOpen className="text-indigo-400" /> API Documentation
-                    </h2>
-                    <div className="flex flex-col items-center justify-center gap-4 py-4 w-full max-w-md mx-auto">
-                        <a
-                            href={`${appInfo.backend}/swagger/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between w-full md:w-80 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
-                        >
-                            <span>Go to Swagger Interface</span>
-                            <ExternalLink size={18} />
-                        </a>
-                        <a
-                            href="https://docs.multiversx.com/integrators/deep-history-squad/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between w-full md:w-80 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-slate-500/10 hover:shadow-slate-500/20"
-                        >
-                            <span>Official Deep History Docs</span>
-                            <ExternalLink size={18} />
-                        </a>
-                        <div className="text-center w-full border-t border-white/5 pt-6">
-                            <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
-                                Build {appInfo.version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
-                            </p>
-                        </div>
+            {
+                appInfo && (
+                    <div className="glass-panel p-6 mt-8">
+                        <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+                            <BookOpen className="text-indigo-400" /> API Documentation
+                        </h2>
+                        <div className="flex flex-col items-center justify-center gap-4 py-4 w-full max-w-md mx-auto">
+                            <a
+                                href={`${appInfo.backend}/swagger/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between w-full md:w-80 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+                            >
+                                <span>Go to Swagger Interface</span>
+                                <ExternalLink size={18} />
+                            </a>
+                            <a
+                                href="https://docs.multiversx.com/integrators/deep-history-squad/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between w-full md:w-80 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-slate-500/10 hover:shadow-slate-500/20"
+                            >
+                                <span>Official Deep History Docs</span>
+                                <ExternalLink size={18} />
+                            </a>
+                            <div className="text-center w-full border-t border-white/5 pt-6">
+                                <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
+                                    Build {appInfo.version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
+                                </p>
+                            </div>
 
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Key Modal */}
             {

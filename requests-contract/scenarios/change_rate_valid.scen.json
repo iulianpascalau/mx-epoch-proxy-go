@@ -1,0 +1,94 @@
+{
+  "name": "Change exchange rate with valid value",
+  "comment": "Owner changes exchange rate from 100 to 200",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "check_initial_rate",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequestsPerEgld",
+        "arguments": []
+      },
+      "expect": {
+        "out": [
+          "100"
+        ],
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "change_rate",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "changeNumRequestsPerEGLD",
+        "arguments": [
+          "200"
+        ],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "out": [],
+        "status": "0",
+        "logs": [
+          {
+            "address": "sc:requests",
+            "endpoint": "str:changeNumRequestsPerEGLD",
+            "topics": [
+              "str:changeNumRequestsPerEGLD",
+              "100"
+            ],
+            "data": "*"
+          }
+        ]
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "check_updated_rate",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequestsPerEgld",
+        "arguments": []
+      },
+      "expect": {
+        "out": [
+          "200"
+        ],
+        "status": "0"
+      }
+    }
+  ]
+}

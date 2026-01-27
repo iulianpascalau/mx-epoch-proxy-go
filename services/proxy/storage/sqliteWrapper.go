@@ -8,21 +8,32 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const maxPassLen = 72
 
+var log = logger.GetOrCreate("storage")
+
 // sqliteWrapper handles the connection to the SQLite database
 type sqliteWrapper struct {
-	db *sql.DB
+	db                     *sql.DB
+	pendingWritesWaitGroup *sync.WaitGroup
+	counters               CountersCache
 }
 
 // NewSQLiteWrapper creates a new instance of SQLiteWrapper
-func NewSQLiteWrapper(dbPath string) (*sqliteWrapper, error) {
+func NewSQLiteWrapper(dbPath string, counters CountersCache) (*sqliteWrapper, error) {
+	if check.IfNil(counters) {
+		return nil, errNilCountersCache
+	}
+
 	err := prepareDirectories(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create initial empty DB file: %w", err)
@@ -54,7 +65,11 @@ func NewSQLiteWrapper(dbPath string) (*sqliteWrapper, error) {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
-	wrapper := &sqliteWrapper{db: db}
+	wrapper := &sqliteWrapper{
+		db:                     db,
+		counters:               counters,
+		pendingWritesWaitGroup: &sync.WaitGroup{},
+	}
 	err = wrapper.initializeTables()
 	if err != nil {
 		_ = db.Close()
@@ -76,11 +91,14 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 		is_admin BOOLEAN DEFAULT FALSE,
 		max_requests INTEGER DEFAULT 0,
 		request_count INTEGER DEFAULT 0,
-		account_type TEXT DEFAULT 'free',
+
+		is_premium BOOLEAN DEFAULT FALSE,
 		is_active BOOLEAN DEFAULT TRUE,
 		activation_token TEXT DEFAULT '',
 		pending_email TEXT DEFAULT '',
-		change_email_token TEXT DEFAULT ''
+		change_email_token TEXT DEFAULT '',
+		crypto_payment_id INTEGER DEFAULT NULL,
+		sc_max_requests INTEGER DEFAULT 0
 	);`
 	_, err := wrapper.db.Exec(usersTable)
 	if err != nil {
@@ -88,11 +106,13 @@ func (wrapper *sqliteWrapper) initializeTables() error {
 	}
 
 	// Migration: Attempt to add columns for existing databases
-	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN account_type TEXT DEFAULT 'free';")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT FALSE;")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN activation_token TEXT DEFAULT '';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN pending_email TEXT DEFAULT '';")
 	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN change_email_token TEXT DEFAULT '';")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN crypto_payment_id INTEGER DEFAULT NULL;")
+	_, _ = wrapper.db.Exec("ALTER TABLE users ADD COLUMN sc_max_requests INTEGER DEFAULT 0;")
 
 	keysTable := `
 	CREATE TABLE IF NOT EXISTS access_keys (
@@ -148,12 +168,10 @@ func processKey(key string) (string, error) {
 }
 
 // AddUser creates the associated user
-func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin bool, maxRequests uint64, accountTypeStr string, isActive bool, activationToken string) error {
+func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 	if len(password) > maxPassLen {
 		return fmt.Errorf("password is too long (maximum %d characters allowed)", maxPassLen)
 	}
-
-	accountType := formatAccountType(accountTypeStr)
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -170,11 +188,11 @@ func (wrapper *sqliteWrapper) AddUser(username string, password string, isAdmin 
 
 	// Upsert User
 	query := `
-	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type, is_active, activation_token) 
+	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, is_premium, is_active, activation_token) 
 	VALUES (?, ?, ?, ?, 0, ?, ?, ?)
 	`
 
-	_, err = tx.Exec(query, username, hex.EncodeToString(hash), isAdmin, maxRequests, accountType, isActive, activationToken)
+	_, err = tx.Exec(query, username, hex.EncodeToString(hash), isAdmin, maxRequests, isPremium, isActive, activationToken)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -206,11 +224,13 @@ func (wrapper *sqliteWrapper) RemoveUser(username string) error {
 		return fmt.Errorf("failed to remove user: %w", err)
 	}
 
+	wrapper.counters.Remove(username)
+
 	return tx.Commit()
 }
 
 // UpdateUser updates the user's details
-func (wrapper *sqliteWrapper) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, accountTypeStr string) error {
+func (wrapper *sqliteWrapper) UpdateUser(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool) error {
 	tx, err := wrapper.db.Begin()
 	if err != nil {
 		return err
@@ -218,8 +238,6 @@ func (wrapper *sqliteWrapper) UpdateUser(username string, password string, isAdm
 	defer func() {
 		_ = tx.Rollback()
 	}()
-
-	accountType := formatAccountType(accountTypeStr)
 
 	if password != "" {
 		if len(password) > maxPassLen {
@@ -230,14 +248,14 @@ func (wrapper *sqliteWrapper) UpdateUser(username string, password string, isAdm
 			return errGenerate
 		}
 
-		query := `UPDATE users SET hashed_password = ?, is_admin = ?, max_requests = ?, account_type = ? WHERE username = ?`
-		_, err = tx.Exec(query, hex.EncodeToString(hash), isAdmin, maxRequests, accountType, username)
+		query := `UPDATE users SET hashed_password = ?, is_admin = ?, max_requests = ?, is_premium = ? WHERE username = ?`
+		_, err = tx.Exec(query, hex.EncodeToString(hash), isAdmin, maxRequests, isPremium, username)
 		if err != nil {
 			return fmt.Errorf("failed to update user with password: %w", err)
 		}
 	} else {
-		query := `UPDATE users SET is_admin = ?, max_requests = ?, account_type = ? WHERE username = ?`
-		_, err = tx.Exec(query, isAdmin, maxRequests, accountType, username)
+		query := `UPDATE users SET is_admin = ?, max_requests = ?, is_premium = ? WHERE username = ?`
+		_, err = tx.Exec(query, isAdmin, maxRequests, isPremium, username)
 		if err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
 		}
@@ -301,26 +319,18 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 		return "", "", err
 	}
 
-	tx, err := wrapper.db.Begin()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
 	// Get User limits via Key
 	query := `
-		SELECT u.max_requests, u.request_count, u.username, u.account_type
+		SELECT u.max_requests, u.request_count, u.username, u.is_premium
 		FROM users u
 		JOIN access_keys k ON u.username = k.username
 		WHERE k.key = ?
 	`
 	var maxRequests, requestCount uint64
 	var username string
-	var accountType string
+	var isPremium bool
 
-	err = tx.QueryRow(query, key).Scan(&maxRequests, &requestCount, &username, &accountType)
+	err = wrapper.db.QueryRow(query, key).Scan(&maxRequests, &requestCount, &username, &isPremium)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", "", fmt.Errorf("the provided key is not allowed (no rows)")
@@ -329,31 +339,62 @@ func (wrapper *sqliteWrapper) IsKeyAllowed(key string) (string, common.AccountTy
 		return "", "", fmt.Errorf("error querying if is allowed: %w", err)
 	}
 
-	// Check limit
-	if maxRequests > 0 && requestCount >= maxRequests {
-		return "", "", fmt.Errorf("the provided key is not allowed, max_requests: %d, request_count: %d", maxRequests, requestCount)
-	}
+	userCounter := wrapper.counters.Get(username)
 
-	// Increment counter on users
-	query = `UPDATE users SET request_count = request_count + 1 WHERE username = ?`
+	// Determine account type return
+	userDetails := &common.UsersDetails{
+		IsPremium:     isPremium,
+		MaxRequests:   maxRequests,
+		GlobalCounter: max(userCounter, requestCount),
+	}
+	common.ProcessUserDetails(userDetails)
+	wrapper.counters.Set(username, userDetails.GlobalCounter+1)
+
+	wrapper.pendingWritesWaitGroup.Add(2)
+	go wrapper.incrementCountersOnUsers(username)
+	go wrapper.incrementCountersOnKeys(key)
+
+	return username, userDetails.ProcessedAccountType, nil
+}
+
+func (wrapper *sqliteWrapper) incrementCountersOnUsers(username string) {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		log.Error("error creating transaction (update in users)", "username", username, "error", err)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET request_count = request_count + 1 WHERE username = ?`
 	_, err = tx.Exec(query, username)
 	if err != nil {
-		return "", "", fmt.Errorf("error updating the request counter (update in users): %w", err)
+		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
 	}
 
-	// Increment counter on access_keys
-	query = `UPDATE access_keys SET request_count = request_count + 1 WHERE key = ?`
-	_, err = tx.Exec(query, key)
+	query = `UPDATE users SET max_requests = request_count WHERE username = ? and max_requests < request_count`
+	_, err = tx.Exec(query, username)
 	if err != nil {
-		return "", "", fmt.Errorf("error updating the request counter (update in access_keys): %w", err)
+		log.Error("error updating the request counter (update in users)", "username", username, "error", err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return "", "", fmt.Errorf("error updating the request counter (commit): %w", err)
+		log.Error("error commiting transaction (update in users)", "username", username, "error", err)
 	}
 
-	return username, formatAccountType(accountType), nil
+	wrapper.pendingWritesWaitGroup.Done()
+}
+
+func (wrapper *sqliteWrapper) incrementCountersOnKeys(key string) {
+	query := `UPDATE access_keys SET request_count = request_count + 1 WHERE key = ?`
+	_, err := wrapper.db.Exec(query, key)
+	if err != nil {
+		log.Error("error updating the request counter (update in keys)", "key", common.AnonymizeKey(key), "error", err)
+	}
+
+	wrapper.pendingWritesWaitGroup.Done()
 }
 
 // CheckUserCredentials checks if the user with the given username and password exists and returns details
@@ -391,9 +432,10 @@ func (wrapper *sqliteWrapper) GetUser(username string) (*common.UsersDetails, er
 }
 
 func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDetails, error) {
-	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active FROM users WHERE username = ?`
+	query := `SELECT max_requests, request_count, username, hashed_password, is_admin, is_premium, is_active, crypto_payment_id, sc_max_requests FROM users WHERE username = ?`
 	var details common.UsersDetails
-	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive)
+	var cryptoPaymentID sql.NullInt64
+	err := wrapper.db.QueryRow(query, username).Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.IsPremium, &details.IsActive, &cryptoPaymentID, &details.SCMaxRequests)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
@@ -401,12 +443,17 @@ func (wrapper *sqliteWrapper) getUserDetails(username string) (*common.UsersDeta
 		return nil, fmt.Errorf("error querying user: %w", err)
 	}
 
+	if cryptoPaymentID.Valid {
+		details.CryptoPaymentID = uint64(cryptoPaymentID.Int64)
+	}
+	details.GlobalCounter = max(details.GlobalCounter, wrapper.counters.Get(details.Username))
+	common.ProcessUserDetails(&details)
+
 	return &details, nil
 }
 
 // GetAllKeys returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.AccessKeyDetails, error) {
-
 	var rows *sql.Rows
 	var err error
 	if username == "" {
@@ -441,6 +488,9 @@ func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.Acc
 		if err != nil {
 			return nil, err
 		}
+
+		details.GlobalCounter = max(details.GlobalCounter, wrapper.counters.Get(details.Username))
+
 		result[strings.ToLower(key)] = details
 	}
 	return result, rows.Err()
@@ -449,7 +499,7 @@ func (wrapper *sqliteWrapper) GetAllKeys(username string) (map[string]common.Acc
 // GetAllUsers returns all access keys and their details
 func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, error) {
 	query := `
-		SELECT max_requests, request_count, username, hashed_password, is_admin, account_type, is_active
+		SELECT max_requests, request_count, username, hashed_password, is_admin, is_premium, is_active, crypto_payment_id, sc_max_requests
 		FROM users
 	`
 	rows, err := wrapper.db.Query(query)
@@ -463,22 +513,21 @@ func (wrapper *sqliteWrapper) GetAllUsers() (map[string]common.UsersDetails, err
 	result := make(map[string]common.UsersDetails)
 	for rows.Next() {
 		var details common.UsersDetails
-		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.AccountType, &details.IsActive)
+		var cryptoPaymentID sql.NullInt64
+		err = rows.Scan(&details.MaxRequests, &details.GlobalCounter, &details.Username, &details.HashedPassword, &details.IsAdmin, &details.IsPremium, &details.IsActive, &cryptoPaymentID, &details.SCMaxRequests)
 		if err != nil {
 			return nil, err
 		}
+		if cryptoPaymentID.Valid {
+			details.CryptoPaymentID = uint64(cryptoPaymentID.Int64)
+		}
+
+		details.GlobalCounter = max(details.GlobalCounter, wrapper.counters.Get(details.Username))
+		common.ProcessUserDetails(&details)
+
 		result[strings.ToLower(details.Username)] = details
 	}
 	return result, rows.Err()
-}
-
-func formatAccountType(accountTypeStr string) common.AccountType {
-	accountTypeStr = strings.ToLower(accountTypeStr)
-	if accountTypeStr == string(common.PremiumAccountType) {
-		return common.PremiumAccountType
-	}
-
-	return common.FreeAccountType
 }
 
 // ActivateUser activates the user with the given token
@@ -509,37 +558,50 @@ func (wrapper *sqliteWrapper) ActivateUser(token string) error {
 	return tx.Commit()
 }
 
-// AddPerformanceMetric increments the counter for the given label
-func (wrapper *sqliteWrapper) AddPerformanceMetric(label string) error {
-	tx, err := wrapper.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+// AddPerformanceMetricAsync increments the counter for the given label in an async manner
+func (wrapper *sqliteWrapper) AddPerformanceMetricAsync(label string) {
+	wrapper.pendingWritesWaitGroup.Add(1)
 
-	// Try update
-	query := "UPDATE performance SET counter = counter + 1 WHERE label = ?"
-	res, err := tx.Exec(query, label)
-	if err != nil {
-		return fmt.Errorf("failed to update performance metric: %w", err)
-	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
+	go func() {
+		defer wrapper.pendingWritesWaitGroup.Done()
 
-	if rows == 0 {
-		// Insert
-		query = "INSERT INTO performance (label, counter) VALUES (?, 1)"
-		_, err = tx.Exec(query, label)
+		tx, err := wrapper.db.Begin()
 		if err != nil {
-			return fmt.Errorf("failed to insert performance metric: %w", err)
+			log.Error("failed to begin transaction for performance metric", "error", err)
+			return
 		}
-	}
+		defer func() {
+			_ = tx.Rollback()
+		}()
 
-	return tx.Commit()
+		// Try update
+		query := "UPDATE performance SET counter = counter + 1 WHERE label = ?"
+		res, err := tx.Exec(query, label)
+		if err != nil {
+			log.Error("failed to update performance metric", "error", err)
+			return
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			log.Error("failed to get rows affected for performance metric", "error", err)
+			return
+		}
+
+		if rows == 0 {
+			// Insert
+			query = "INSERT INTO performance (label, counter) VALUES (?, 1)"
+			_, err = tx.Exec(query, label)
+			if err != nil {
+				log.Error("failed to insert performance metric", "error", err)
+				return
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			log.Error("failed to commit performance metric transaction", "error", err)
+		}
+	}()
 }
 
 // GetPerformanceMetrics returns the performance metrics
@@ -565,11 +627,6 @@ func (wrapper *sqliteWrapper) GetPerformanceMetrics() (map[string]uint64, error)
 	}
 
 	return metrics, nil
-}
-
-// Close closes the database connection
-func (wrapper *sqliteWrapper) Close() error {
-	return wrapper.db.Close()
 }
 
 // UpdatePassword updates the user's password
@@ -661,12 +718,13 @@ func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
 	}()
 
 	// 1. Find user with this token
-	querySelect := `SELECT username, pending_email, hashed_password, is_admin, max_requests, request_count, account_type, is_active FROM users WHERE change_email_token = ?`
-	var oldUsername, newEmail, hashedPassword, accountType string
-	var isAdmin, isActive bool
+	querySelect := `SELECT username, pending_email, hashed_password, is_admin, max_requests, request_count, is_premium, is_active, crypto_payment_id FROM users WHERE change_email_token = ?`
+	var oldUsername, newEmail, hashedPassword string
+	var isAdmin, isActive, isPremium bool
 	var maxRequests, requestCount uint64
+	var cryptoPaymentID sql.NullInt64
 
-	err = tx.QueryRow(querySelect, token).Scan(&oldUsername, &newEmail, &hashedPassword, &isAdmin, &maxRequests, &requestCount, &accountType, &isActive)
+	err = tx.QueryRow(querySelect, token).Scan(&oldUsername, &newEmail, &hashedPassword, &isAdmin, &maxRequests, &requestCount, &isPremium, &isActive, &cryptoPaymentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("invalid or expired token")
@@ -691,10 +749,10 @@ func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
 	}
 
 	insertQueryFull := `
-	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, account_type, is_active, activation_token, pending_email, change_email_token) 
-	VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '')
+	INSERT INTO users (username, hashed_password, is_admin, max_requests, request_count, is_premium, is_active, activation_token, pending_email, change_email_token, crypto_payment_id) 
+	VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '', ?)
 	`
-	_, err = tx.Exec(insertQueryFull, newEmail, hashedPassword, isAdmin, maxRequests, requestCount, accountType, isActive)
+	_, err = tx.Exec(insertQueryFull, newEmail, hashedPassword, isAdmin, maxRequests, requestCount, isPremium, isActive, cryptoPaymentID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new user entry: %w", err)
 	}
@@ -719,6 +777,105 @@ func (wrapper *sqliteWrapper) ConfirmEmailChange(token string) (string, error) {
 	}
 
 	return newEmail, nil
+}
+
+// SetCryptoPaymentID updates the user's crypto payment ID
+func (wrapper *sqliteWrapper) SetCryptoPaymentID(username string, paymentID uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET crypto_payment_id = ? WHERE username = ?`
+	result, err := tx.Exec(query, paymentID, username)
+	if err != nil {
+		return fmt.Errorf("failed to set crypto payment ID: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
+}
+
+// UpdateMaxRequests updates the user's max requests
+func (wrapper *sqliteWrapper) UpdateMaxRequests(username string, maxRequests uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := `UPDATE users SET max_requests = ? WHERE username = ?`
+	result, err := tx.Exec(query, maxRequests, username)
+	if err != nil {
+		return fmt.Errorf("failed to update max requests: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit()
+}
+
+// UpdateUserMaxRequestsFromContract updates the user's max requests based on the contract's value
+func (wrapper *sqliteWrapper) UpdateUserMaxRequestsFromContract(username string, contractMaxRequests uint64) error {
+	tx, err := wrapper.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	var dbSCMaxRequests uint64
+	var dbMaxRequests uint64
+	query := `SELECT sc_max_requests, max_requests FROM users WHERE username = ?`
+	err = tx.QueryRow(query, username).Scan(&dbSCMaxRequests, &dbMaxRequests)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user not found")
+		}
+		return fmt.Errorf("failed to get user details: %w", err)
+	}
+
+	if contractMaxRequests <= dbSCMaxRequests {
+		return tx.Commit()
+	}
+
+	diff := contractMaxRequests - dbSCMaxRequests
+	newMaxRequests := dbMaxRequests + diff
+
+	updateQuery := `UPDATE users SET max_requests = ?, sc_max_requests = ? WHERE username = ?`
+	_, err = tx.Exec(updateQuery, newMaxRequests, contractMaxRequests, username)
+	if err != nil {
+		return fmt.Errorf("failed to update user max requests: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// Close closes the database connection
+func (wrapper *sqliteWrapper) Close() error {
+	// allow all pending updates to finish before closing the db connection
+	wrapper.pendingWritesWaitGroup.Wait()
+
+	return wrapper.db.Close()
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil
