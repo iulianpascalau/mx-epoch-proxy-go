@@ -109,9 +109,10 @@ func TestManualFlowsIsolation(t *testing.T) {
 		successCount := 0
 		failCount := 0
 		for _, code := range responses {
-			if code == http.StatusOK {
+			switch code {
+			case http.StatusOK:
 				successCount++
-			} else if code == http.StatusBadRequest || code == http.StatusConflict {
+			case http.StatusBadRequest, http.StatusConflict:
 				failCount++
 			}
 		}
