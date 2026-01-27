@@ -91,6 +91,7 @@ func (session *testSession) Login(tb testing.TB) {
 
 	var loginResp map[string]string
 	_ = json.NewDecoder(resp.Body).Decode(&loginResp)
+	_ = resp.Body.Close()
 	session.jwtToken = loginResp["token"]
 	require.NotEmpty(tb, session.jwtToken)
 }
@@ -137,31 +138,41 @@ func (session *testSession) CheckCryptoPaymentService(tb testing.TB) {
 
 	var cryptoConfig map[string]interface{}
 	_ = json.NewDecoder(resp.Body).Decode(&cryptoConfig)
+	_ = resp.Body.Close()
 	require.True(tb, cryptoConfig["isAvailable"].(bool))
 }
 
 func (session *testSession) ObtainDepositAddress(tb testing.TB) {
-	req, err := http.NewRequest(http.MethodPost, session.baseAddress+api.EndpointApiCryptoPaymentCreateAddress, nil)
-	require.Nil(tb, err)
-	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := session.InvokeCryptoPaymentCreateAddress(tb)
 	require.Nil(tb, err)
 	require.Equal(tb, http.StatusOK, resp.StatusCode)
-
 	_ = resp.Body.Close()
 
-	req, err = http.NewRequest(http.MethodGet, session.baseAddress+api.EndpointApiCryptoPaymentAccount, nil)
-	require.Nil(tb, err)
-	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
-	resp, err = client.Do(req)
+	resp, err = session.InvokeCryptoPaymentAccount(tb)
 	require.Nil(tb, err)
 	require.Equal(tb, http.StatusOK, resp.StatusCode)
 
 	var accountResp map[string]interface{}
 	_ = json.NewDecoder(resp.Body).Decode(&accountResp)
+	_ = resp.Body.Close()
 	session.depositAddress = accountResp["address"].(string)
 	require.NotEmpty(tb, session.depositAddress)
+}
+
+func (session *testSession) InvokeCryptoPaymentCreateAddress(tb testing.TB) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, session.baseAddress+api.EndpointApiCryptoPaymentCreateAddress, nil)
+	require.Nil(tb, err)
+	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
+	client := &http.Client{}
+	return client.Do(req)
+}
+
+func (session *testSession) InvokeCryptoPaymentAccount(tb testing.TB) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, session.baseAddress+api.EndpointApiCryptoPaymentAccount, nil)
+	require.Nil(tb, err)
+	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
+	client := &http.Client{}
+	return client.Do(req)
 }
 
 // GetDepositAddress returns the deposit address
