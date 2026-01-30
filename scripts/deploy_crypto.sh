@@ -57,8 +57,8 @@ if systemctl cat $SERVICE_NAME > /dev/null 2>&1; then
     sudo systemctl start $SERVICE_NAME
 else
     echo "Service $SERVICE_NAME not found. Creating it..."
-    chmod +x ./scripts/create_crypto_payment_service.sh
-    ./scripts/create_crypto_payment_service.sh
+    chmod +x "$PROJECT_DIR/scripts/create_crypto_payment_service.sh"
+    "$PROJECT_DIR/scripts/create_crypto_payment_service.sh"
 fi
 
 # 5. Monitor

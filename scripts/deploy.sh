@@ -69,8 +69,8 @@ if systemctl cat $BACKEND_SERVICE > /dev/null 2>&1; then
     sudo systemctl start $BACKEND_SERVICE
 else
     echo "Service $BACKEND_SERVICE not found. Creating it..."
-    chmod +x ./scripts/create_backend_service.sh
-    ./scripts/create_backend_service.sh
+    chmod +x "$PROJECT_DIR/scripts/create_backend_service.sh"
+    "$PROJECT_DIR/scripts/create_backend_service.sh"
 fi
 
 # Frontend
@@ -78,8 +78,8 @@ if systemctl cat $FRONTEND_SERVICE > /dev/null 2>&1; then
     sudo systemctl start $FRONTEND_SERVICE
 else
     echo "Service $FRONTEND_SERVICE not found. Creating it..."
-    chmod +x ./scripts/create_frontend_service.sh
-    ./scripts/create_frontend_service.sh
+    chmod +x "$PROJECT_DIR/scripts/create_frontend_service.sh"
+    "$PROJECT_DIR/scripts/create_frontend_service.sh"
 fi
 
 # 6. Monitor
