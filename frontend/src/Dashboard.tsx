@@ -727,7 +727,15 @@ export const Dashboard = () => {
                                                     <span className="text-slate-500 text-sm ml-2">available credits</span>
                                                 </div>
                                                 <div className="text-xs text-slate-400 mb-2">
-                                                    Used: {users[user.username.toLowerCase()]?.GlobalCounter.toLocaleString()} requests
+                                                    {(() => {
+                                                        const u = users[user.username.toLowerCase()];
+                                                        if (u?.SCMaxRequests && u.SCMaxRequests > 0) {
+                                                            const freeBase = u.MaxRequests - u.SCMaxRequests;
+                                                            const paidUsed = Math.max(0, u.GlobalCounter - freeBase);
+                                                            return `Used (Premium): ${paidUsed.toLocaleString()} / ${u.SCMaxRequests.toLocaleString()}`;
+                                                        }
+                                                        return `Used: ${u?.GlobalCounter.toLocaleString()} requests`;
+                                                    })()}
                                                 </div>
                                                 {users[user.username.toLowerCase()]?.SCMaxRequests ? (
                                                     <div className="text-xs text-emerald-400/80 mb-2">
@@ -742,9 +750,18 @@ export const Dashboard = () => {
                                                             <span className="text-xs font-semibold inline-block text-indigo-300">
                                                                 {(() => {
                                                                     const u = users[user.username.toLowerCase()];
-                                                                    // If max requests is 0 (unlimited), show 0% usage or handle differently
                                                                     if (!u || u.MaxRequests === 0) return "Usage 0%";
-                                                                    const pct = Math.min(100, Math.round((u.GlobalCounter / u.MaxRequests) * 100));
+
+                                                                    let used = u.GlobalCounter;
+                                                                    let total = u.MaxRequests;
+
+                                                                    if (u.SCMaxRequests && u.SCMaxRequests > 0) {
+                                                                        const freeBase = u.MaxRequests - u.SCMaxRequests;
+                                                                        used = Math.max(0, u.GlobalCounter - freeBase);
+                                                                        total = u.SCMaxRequests;
+                                                                    }
+
+                                                                    const pct = Math.min(100, Math.round((used / total) * 100));
                                                                     return `Usage ${pct}%`;
                                                                 })()}
                                                             </span>
@@ -756,7 +773,17 @@ export const Dashboard = () => {
                                                                 width: (() => {
                                                                     const u = users[user.username.toLowerCase()];
                                                                     if (!u || u.MaxRequests === 0) return '0%';
-                                                                    const pct = Math.min(100, (u.GlobalCounter / u.MaxRequests) * 100);
+
+                                                                    let used = u.GlobalCounter;
+                                                                    let total = u.MaxRequests;
+
+                                                                    if (u.SCMaxRequests && u.SCMaxRequests > 0) {
+                                                                        const freeBase = u.MaxRequests - u.SCMaxRequests;
+                                                                        used = Math.max(0, u.GlobalCounter - freeBase);
+                                                                        total = u.SCMaxRequests;
+                                                                    }
+
+                                                                    const pct = Math.min(100, (used / total) * 100);
                                                                     return `${pct}%`;
                                                                 })()
                                                             }}
