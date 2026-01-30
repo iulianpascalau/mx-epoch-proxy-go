@@ -37,15 +37,12 @@ git pull origin "$BRANCH"
 
 # 3. Recompile Backend
 echo "Step 3: Recompiling Backend..."
-# Adjust go path if necessary, assuming it is in path or /usr/local/go/bin/go
-if command -v go &> /dev/null; then
-    GO_CMD="go"
-elif [ -f "/usr/local/go/bin/go" ]; then
-    GO_CMD="/usr/local/go/bin/go"
-else
-    echo "Error: Go binary not found."
-    exit 1
-fi
+# Load common functions
+source ./scripts/common.sh
+
+# Ensure Go is installed
+ensure_go_installed
+GO_CMD="go"
 
 cd ./services/proxy
 $GO_CMD build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
