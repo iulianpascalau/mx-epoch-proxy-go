@@ -26,7 +26,7 @@ cd "$PROJECT_DIR"
 
 # 1. Stop Service
 echo "Step 1: Stopping service..."
-sudo systemctl stop $SERVICE_NAME
+sudo systemctl stop $SERVICE_NAME || echo "Service $SERVICE_NAME not found or not running, skipping stop."
 
 # 2. Checkout Code
 echo "Step 2: Checking out code..."
@@ -36,14 +36,12 @@ git pull origin "$BRANCH"
 
 # 3. Recompile Backend
 echo "Step 3: Recompiling Crypto Payment Service..."
-if command -v go &> /dev/null; then
-    GO_CMD="go"
-elif [ -f "/usr/local/go/bin/go" ]; then
-    GO_CMD="/usr/local/go/bin/go"
-else
-    echo "Error: Go binary not found."
-    exit 1
-fi
+# Load common functions
+source ./scripts/common.sh
+
+# Ensure Go is installed
+ensure_go_installed
+GO_CMD="go"
 
 cd ./services/crypto-payment
 $GO_CMD build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o crypto-payment-server main.go
@@ -55,7 +53,13 @@ echo "Build successful."
 
 # 4. Restart Service
 echo "Step 4: Restarting service..."
-sudo systemctl start $SERVICE_NAME
+if systemctl cat $SERVICE_NAME > /dev/null 2>&1; then
+    sudo systemctl start $SERVICE_NAME
+else
+    echo "Service $SERVICE_NAME not found. Creating it..."
+    chmod +x "$PROJECT_DIR/scripts/create_crypto_payment_service.sh"
+    "$PROJECT_DIR/scripts/create_crypto_payment_service.sh"
+fi
 
 # 5. Monitor
 echo "Step 5: Monitoring status..."
