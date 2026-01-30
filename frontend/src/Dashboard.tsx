@@ -625,17 +625,17 @@ export const Dashboard = () => {
                                                 <CreditCard size={24} />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-medium text-white mb-2">Unlock Unlimited Requests</h3>
+                                                <h3 className="text-lg font-medium text-white mb-2">Unlock Unthrottled Requests</h3>
                                                 <p className="text-slate-400 mb-4 text-sm leading-relaxed max-w-2xl">
                                                     Upgrade your account to Premium by making a secure crypto payment.
-                                                    You are paying directly to the smart contract using EGLD.
-                                                    Zero gas fees for deposit transaction relay.
+                                                    You are paying to a proxy address that will cost you a minimum fee. A relayer will invoke
+                                                    the smart-contract responsible with the payments and allocated credits.
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mb-6">
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
                                                         Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
                                                     </span>
-                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Instant Activation</span>
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Activation: under 2 minutes</span>
                                                 </div>
                                                 <button
                                                     onClick={handleRequestAddress}
