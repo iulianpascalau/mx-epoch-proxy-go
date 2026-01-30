@@ -57,9 +57,12 @@ export const Login = () => {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <div className="glass-panel p-8 w-full max-w-md">
-                <h1 className="text-3xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+                <h1 className="text-3xl font-bold mb-2 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
                     Deep History on MultiversX
                 </h1>
+                <p className="text-center text-slate-400 text-sm mb-8 font-light italic">
+                    Uncover the past, analyze the future
+                </p>
 
                 {message && (
                     <div className="mb-6 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-200 text-sm text-center">
