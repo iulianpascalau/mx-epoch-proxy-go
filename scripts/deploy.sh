@@ -27,7 +27,7 @@ cd "$PROJECT_DIR"
 
 # 1. Stop Services
 echo "Step 1: Stopping services..."
-sudo systemctl stop $FRONTEND_SERVICE $BACKEND_SERVICE
+sudo systemctl stop $FRONTEND_SERVICE $BACKEND_SERVICE || echo "Services not found or not running, skipping stop."
 
 # 2. Checkout Code
 echo "Step 2: Checking out code..."

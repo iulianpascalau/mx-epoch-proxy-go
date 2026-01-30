@@ -26,7 +26,7 @@ cd "$PROJECT_DIR"
 
 # 1. Stop Service
 echo "Step 1: Stopping service..."
-sudo systemctl stop $SERVICE_NAME
+sudo systemctl stop $SERVICE_NAME || echo "Service $SERVICE_NAME not found or not running, skipping stop."
 
 # 2. Checkout Code
 echo "Step 2: Checking out code..."
