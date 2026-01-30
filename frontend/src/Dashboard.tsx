@@ -635,7 +635,7 @@ export const Dashboard = () => {
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
                                                         Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
                                                     </span>
-                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Activation: under 2 minutes</span>
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Activation: under 3 minutes</span>
                                                 </div>
                                                 <button
                                                     onClick={handleRequestAddress}
