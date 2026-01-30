@@ -40,10 +40,10 @@ func ConvertTimeToInterval(timeToWait time.Duration) string {
 
 func convertAtCounter(counter int) string {
 	if counter == 0 {
-		return makeInterval("0ms", fmt.Sprintf("%s", intervals[0]))
+		return makeInterval("0ms", intervals[0].String())
 	}
 
-	return makeInterval(fmt.Sprintf("%s", intervals[counter-1]), fmt.Sprintf("%s", intervals[counter]))
+	return makeInterval(intervals[counter-1].String(), intervals[counter].String())
 }
 
 func convertOverTheMaximum() string {

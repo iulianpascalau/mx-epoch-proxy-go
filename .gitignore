@@ -21,9 +21,10 @@
 go.work
 go.work.sum
 
-# env file & configs
+# env file & configs & keys
 .env
 config.toml
+*.pem
 
 # binary and other output directories
 data/

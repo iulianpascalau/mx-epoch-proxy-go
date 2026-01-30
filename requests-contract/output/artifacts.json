@@ -1,0 +1,26 @@
+{
+    "buildMetadata": {
+        "versionRust": "1.86.0",
+        "versionScTool": "0.57.1",
+        "versionWasmOpt": "0.116.1",
+        "targetPlatform": "linux/amd64"
+    },
+    "buildOptions": {
+        "packageWholeProjectSrc": true,
+        "specificContract": "requests",
+        "cargoTargetDir": "/rust/cargo-target-dir",
+        "noWasmOpt": false,
+        "buildRootFolder": "/tmp/project"
+    },
+    "contracts": {
+        "requests": {
+            "version": "0.0.0",
+            "codehash": "1e8c9ef47f3f3f00b58b48075411edab699126c8ee9ff69f53827dfcf2eecf0a",
+            "artifacts": {
+                "bytecode": "requests.wasm",
+                "abi": "requests.abi.json",
+                "srcPackage": "requests-0.0.0.source.json"
+            }
+        }
+    }
+}

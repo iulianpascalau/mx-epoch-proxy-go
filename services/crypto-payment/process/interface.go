@@ -1,0 +1,72 @@
+package process
+
+import (
+	"context"
+
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/common"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
+)
+
+// DataProvider defines the operations required from the storage layer
+type DataProvider interface {
+	GetAll() ([]*common.BalanceEntry, error)
+	Get(id uint64) (*common.BalanceEntry, error)
+	IsInterfaceNil() bool
+}
+
+// BlockchainDataProvider defines the operations to fetch data from the blockchain
+type BlockchainDataProvider interface {
+	GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error)
+	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
+	SendTransaction(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
+	SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+	ExecuteVMQuery(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
+	IsInterfaceNil() bool
+}
+
+// BalanceOperator defines the operations supported by a component able to process balance changes and SC calls
+type BalanceOperator interface {
+	Process(ctx context.Context, id uint64, senderAddress core.AddressHandler, value string, nonce uint64) error
+	Close() error
+	IsInterfaceNil() bool
+}
+
+// MultipleKeysHandler defines the operations supported by a component able to manage multiple keys
+type MultipleKeysHandler interface {
+	GetBech32AddressAtIndex(index uint32) (string, error)
+	Sign(index uint32, msg []byte) ([]byte, error)
+	IsInterfaceNil() bool
+}
+
+// SingleKeyHandler defines the operations supported by a component able to manage a single key
+type SingleKeyHandler interface {
+	Sign(msg []byte) ([]byte, error)
+	GetBech32Address() string
+	GetAddress() core.AddressHandler
+	IsInterfaceNil() bool
+}
+
+// NonceTransactionsHandler represents the interface able to handle the current nonce and the transactions resend mechanism
+type NonceTransactionsHandler interface {
+	ApplyNonceAndGasPrice(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error
+	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	Close() error
+}
+
+// ContractHandler defines the operations to query the contract state
+type ContractHandler interface {
+	IsContractPaused(ctx context.Context) (bool, error)
+	GetRequestsPerEGLD(ctx context.Context) (uint64, error)
+	GetRequests(ctx context.Context, id uint64) (uint64, error)
+	IsInterfaceNil() bool
+}
+
+// Cacher defines the operations to cache data
+type Cacher interface {
+	Get(key string) (interface{}, bool)
+	Set(key string, value interface{})
+	Close()
+	IsInterfaceNil() bool
+}

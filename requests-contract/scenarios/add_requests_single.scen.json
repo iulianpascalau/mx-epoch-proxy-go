@@ -1,0 +1,86 @@
+{
+  "name": "Add requests for a single user",
+  "comment": "User sends 1 EGLD, should receive 100 requests (100 * 1 EGLD)",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        },
+        "address:user": {
+          "nonce": "0",
+          "balance": "2000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_requests",
+      "tx": {
+        "from": "address:user",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "1000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "out": [],
+        "status": "0",
+        "logs": [
+          {
+            "address": "sc:requests",
+            "endpoint": "str:addRequests",
+            "topics": [
+              "str:addRequests",
+              "42",
+              "1000000000000000000"
+            ],
+            "data": "*"
+          }
+        ]
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query_requests",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "42"
+        ]
+      },
+      "expect": {
+        "out": [
+          "100"
+        ]
+      }
+    }
+  ]
+}

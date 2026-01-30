@@ -27,7 +27,7 @@ cd "$PROJECT_DIR"
 
 # 1. Stop Services
 echo "Step 1: Stopping services..."
-sudo systemctl stop $FRONTEND_SERVICE $BACKEND_SERVICE
+sudo systemctl stop $FRONTEND_SERVICE $BACKEND_SERVICE || echo "Services not found or not running, skipping stop."
 
 # 2. Checkout Code
 echo "Step 2: Checking out code..."
@@ -37,15 +37,12 @@ git pull origin "$BRANCH"
 
 # 3. Recompile Backend
 echo "Step 3: Recompiling Backend..."
-# Adjust go path if necessary, assuming it is in path or /usr/local/go/bin/go
-if command -v go &> /dev/null; then
-    GO_CMD="go"
-elif [ -f "/usr/local/go/bin/go" ]; then
-    GO_CMD="/usr/local/go/bin/go"
-else
-    echo "Error: Go binary not found."
-    exit 1
-fi
+# Load common functions
+source ./scripts/common.sh
+
+# Ensure Go is installed
+ensure_go_installed
+GO_CMD="go"
 
 cd ./services/proxy
 $GO_CMD build -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)" -o epoch-proxy-server main.go
@@ -66,7 +63,24 @@ cd ..
 
 # 5. Restart Services
 echo "Step 5: Restarting services..."
-sudo systemctl start $BACKEND_SERVICE $FRONTEND_SERVICE
+
+# Backend
+if systemctl cat $BACKEND_SERVICE > /dev/null 2>&1; then
+    sudo systemctl start $BACKEND_SERVICE
+else
+    echo "Service $BACKEND_SERVICE not found. Creating it..."
+    chmod +x "$PROJECT_DIR/scripts/create_backend_service.sh"
+    "$PROJECT_DIR/scripts/create_backend_service.sh"
+fi
+
+# Frontend
+if systemctl cat $FRONTEND_SERVICE > /dev/null 2>&1; then
+    sudo systemctl start $FRONTEND_SERVICE
+else
+    echo "Service $FRONTEND_SERVICE not found. Creating it..."
+    chmod +x "$PROJECT_DIR/scripts/create_frontend_service.sh"
+    "$PROJECT_DIR/scripts/create_frontend_service.sh"
+fi
 
 # 6. Monitor
 echo "Step 6: Monitoring status..."

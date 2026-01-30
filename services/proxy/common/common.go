@@ -49,3 +49,37 @@ func CronJobStarter(ctx context.Context, handler func(), timeToCall time.Duratio
 		}
 	}()
 }
+
+// ProcessUserDetails implements a high-level logic to set 3 fields on the provided user details object: the
+// ProcessedAccountType, CryptoPaymentInitiated and IsUnlimited
+func ProcessUserDetails(userDetails *UsersDetails) {
+	if userDetails == nil {
+		return
+	}
+
+	if userDetails.IsPremium {
+		// the account is premium (no heavy throttling) with unlimited request
+		userDetails.IsUnlimited = true
+		userDetails.ProcessedAccountType = PremiumAccountType
+		userDetails.CryptoPaymentInitiated = false
+
+		return
+	}
+
+	userDetails.CryptoPaymentInitiated = userDetails.CryptoPaymentID > 0
+
+	if userDetails.MaxRequests > 0 && userDetails.GlobalCounter < userDetails.MaxRequests {
+		// the account is premium (no heavy throttling) with credits still left
+		userDetails.IsUnlimited = false
+		userDetails.ProcessedAccountType = PremiumAccountType
+
+		return
+	}
+
+	// the account should be treated as free because the user depleted it's purchased credits but requests should still work although heavily throttled
+	// or
+	// the account was declared free and no purchase completed
+
+	userDetails.IsUnlimited = false
+	userDetails.ProcessedAccountType = FreeAccountType
+}

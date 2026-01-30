@@ -1,0 +1,73 @@
+{
+  "name": "Get requests for existing user",
+  "comment": "Query requests for a user that has been credited",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        },
+        "address:user": {
+          "nonce": "0",
+          "balance": "2100000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_requests",
+      "tx": {
+        "from": "address:user",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "99"
+        ],
+        "value": "2000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scQuery",
+      "txId": "query",
+      "tx": {
+        "to": "sc:requests",
+        "function": "getRequests",
+        "arguments": [
+          "99"
+        ]
+      },
+      "expect": {
+        "out": [
+          "200"
+        ]
+      }
+    }
+  ]
+}

@@ -12,6 +12,8 @@ func TestConfig(t *testing.T) {
 
 	testString := `
 Port = 8080
+CountersCacheTTLInSeconds = 5
+UpdateContractDBInSeconds = 60
 
 # Gateways defines the list of gateways that will be used by this proxy
 Gateways = [
@@ -26,10 +28,28 @@ ClosedEndpoints = [
     "/transaction/send-multiple",
     "/transaction/send-user-funds"
 ]
+
+[CryptoPayment]
+    # Enable/disable crypto-payment integration
+    Enabled = true
+
+    # URL of the crypto-payment service
+    URL = "http://localhost:8081"
+
+    # API key for service-to-service authentication
+    ServiceApiKey = "secure-random-key"
+
+    # Timeout for HTTP requests in seconds
+    TimeoutInSeconds = 10
+
+    # Cache duration for /config endpoint in seconds
+    ConfigCacheDurationInSeconds = 60
 `
 
 	expectedCfg := Config{
-		Port: 8080,
+		Port:                      8080,
+		CountersCacheTTLInSeconds: 5,
+		UpdateContractDBInSeconds: 60,
 		Gateways: []GatewayConfig{
 			{
 				URL:        "http://192.168.167.22:8080",
@@ -60,6 +80,13 @@ ClosedEndpoints = [
 			"/transaction/send/",
 			"/transaction/send-multiple",
 			"/transaction/send-user-funds",
+		},
+		CryptoPayment: CryptoPaymentConfig{
+			Enabled:                      true,
+			URL:                          "http://localhost:8081",
+			ServiceApiKey:                "secure-random-key",
+			TimeoutInSeconds:             10,
+			ConfigCacheDurationInSeconds: 60,
 		},
 	}
 

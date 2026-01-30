@@ -114,11 +114,11 @@ func (handler *registrationHandler) handleRegister(w http.ResponseWriter, r *htt
 	err = handler.keyAccessProvider.AddUser(
 		req.Username,
 		req.Password,
-		false,                          // isAdmin
-		0,                              // maxRequests is 0 so infinite requests at low speed
-		string(common.FreeAccountType), // accountType
-		false,                          // isActive
-		activationToken,                // activationToken
+		false,           // isAdmin
+		0,               // maxRequests is 0 so infinite requests at low speed
+		false,           // isPremium
+		false,           // isActive
+		activationToken, // activationToken
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed: users.username") {

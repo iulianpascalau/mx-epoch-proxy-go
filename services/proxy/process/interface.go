@@ -10,6 +10,7 @@ import (
 // HostFinder is able to return a valid host based on a search criteria
 type HostFinder interface {
 	FindHost(urlValues map[string][]string) (config.GatewayConfig, error)
+	LoadedGateways() []config.GatewayConfig
 	IsInterfaceNil() bool
 }
 
@@ -34,6 +35,19 @@ type KeyCounter interface {
 
 // PerformanceMonitor is able to store performance metrics
 type PerformanceMonitor interface {
-	AddPerformanceMetric(label string) error
+	AddPerformanceMetricAsync(label string)
+	IsInterfaceNil() bool
+}
+
+// CryptoDataFetcher handles communication with the crypto-payment service
+type CryptoDataFetcher interface {
+	GetAccount(paymentID uint64) (*common.AccountInfo, error)
+	IsInterfaceNil() bool
+}
+
+// UsersSyncerStore defines the operations supported by the storage for synchronizing users
+type UsersSyncerStore interface {
+	GetAllUsers() (map[string]common.UsersDetails, error)
+	UpdateUserMaxRequestsFromContract(username string, contractMaxRequests uint64) error
 	IsInterfaceNil() bool
 }

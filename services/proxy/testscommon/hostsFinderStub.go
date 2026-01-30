@@ -8,7 +8,8 @@ import (
 
 // HostsFinderStub -
 type HostsFinderStub struct {
-	FindHostCalled func(urlValues map[string][]string) (config.GatewayConfig, error)
+	FindHostCalled       func(urlValues map[string][]string) (config.GatewayConfig, error)
+	LoadedGatewaysCalled func() []config.GatewayConfig
 }
 
 // FindHost -
@@ -18,6 +19,15 @@ func (stub *HostsFinderStub) FindHost(urlValues map[string][]string) (config.Gat
 	}
 
 	return config.GatewayConfig{}, errors.New("not implemented")
+}
+
+// LoadedGateways -
+func (stub *HostsFinderStub) LoadedGateways() []config.GatewayConfig {
+	if stub.LoadedGatewaysCalled != nil {
+		return stub.LoadedGatewaysCalled()
+	}
+
+	return make([]config.GatewayConfig, 0)
 }
 
 // IsInterfaceNil -

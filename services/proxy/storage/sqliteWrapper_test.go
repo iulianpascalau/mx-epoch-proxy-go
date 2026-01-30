@@ -4,13 +4,16 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func createTestDB(tb testing.TB) *sqliteWrapper {
-	wrapper, err := NewSQLiteWrapper(path.Join(tb.TempDir(), "data", "sqlite.db"))
+	counters, _ := NewCountersCache(time.Minute)
+	wrapper, err := NewSQLiteWrapper(path.Join(tb.TempDir(), "data", "sqlite.db"), counters)
 	require.NoError(tb, err)
 
 	return wrapper
@@ -23,6 +26,13 @@ func closeWrapper(wrapper *sqliteWrapper) {
 func TestNewSQLiteWrapper(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil counters cache should error", func(t *testing.T) {
+		wrapper, err := NewSQLiteWrapper(path.Join(t.TempDir(), "data", "sqlite.db"), nil)
+
+		assert.Equal(t, errNilCountersCache, err)
+		assert.Nil(t, wrapper)
+		assert.True(t, wrapper.IsInterfaceNil())
+	})
 	t.Run("should create new wrapper and db file", func(t *testing.T) {
 		wrapper := createTestDB(t)
 		defer closeWrapper(wrapper)
@@ -39,13 +49,13 @@ func TestSQLiteWrapper_AddUser(t *testing.T) {
 	defer closeWrapper(wrapper)
 
 	t.Run("large password (73 chars) should not work", func(t *testing.T) {
-		err := wrapper.AddUser("user1", strings.Repeat("*", maxPassLen+1), false, 100, "free", true, "")
+		err := wrapper.AddUser("user1", strings.Repeat("*", maxPassLen+1), false, 100, false, true, "")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "password is too long")
 	})
 
 	t.Run("large password (72 chars) should work", func(t *testing.T) {
-		err := wrapper.AddUser("user1", strings.Repeat("*", maxPassLen), false, 100, "free", true, "")
+		err := wrapper.AddUser("user1", strings.Repeat("*", maxPassLen), false, 100, false, true, "")
 		assert.Nil(t, err)
 
 		// Verify directly in DB
@@ -72,7 +82,7 @@ func TestSQLiteWrapper_AddUser(t *testing.T) {
 	})
 
 	t.Run("should add user successfully", func(t *testing.T) {
-		err := wrapper.AddUser("user2", "hash1", false, 200, "free", true, "")
+		err := wrapper.AddUser("user2", "hash1", false, 200, false, true, "")
 		assert.NoError(t, err)
 
 		// Verify directly in DB via JOIN or querying both tables
@@ -95,7 +105,7 @@ func TestSQLiteWrapper_AddUser(t *testing.T) {
 	})
 
 	t.Run("should not overwrite existing user", func(t *testing.T) {
-		err := wrapper.AddUser("user3", "hash3", true, 300, "premium", true, "")
+		err := wrapper.AddUser("user3", "hash3", true, 300, true, true, "")
 		assert.NoError(t, err)
 
 		var maxRequests uint64
@@ -115,7 +125,7 @@ func TestSQLiteWrapper_AddUser(t *testing.T) {
 		assert.NotEmpty(t, hashedPassword)
 		assert.Equal(t, true, isAdmin)
 
-		err = wrapper.AddUser("user3", "hash4", false, 400, "free", true, "")
+		err = wrapper.AddUser("user3", "hash4", false, 400, false, true, "")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "failed to create user")
 
@@ -140,7 +150,7 @@ func TestSQLiteWrapper_AddKey(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
-	_ = wrapper.AddUser("user", "pass", false, 0, "free", true, "")
+	_ = wrapper.AddUser("user", "pass", false, 0, false, true, "")
 
 	t.Run("key is empty", func(t *testing.T) {
 		err := wrapper.AddKey("user", "   ")
@@ -189,7 +199,7 @@ func TestSQLiteWrapper_AddKey(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "failed to insert key")
 
-		_ = wrapper.AddUser("user-alt", "pass-alt", false, 0, "free", true, "")
+		_ = wrapper.AddUser("user-alt", "pass-alt", false, 0, false, true, "")
 		err = wrapper.AddKey("user-alt", "KeY1")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "failed to insert key")
@@ -222,8 +232,8 @@ func TestSQLiteWrapper_RemoveKey(t *testing.T) {
 	wrapper := createTestDB(t)
 	defer closeWrapper(wrapper)
 
-	_ = wrapper.AddUser("user1", "pass1", false, 0, "free", true, "")
-	_ = wrapper.AddUser("user2", "pass2", false, 0, "free", true, "")
+	_ = wrapper.AddUser("user1", "pass1", false, 0, false, true, "")
+	_ = wrapper.AddUser("user2", "pass2", false, 0, false, true, "")
 	_ = wrapper.AddKey("user1", "key1-user1")
 
 	t.Run("key is empty", func(t *testing.T) {
@@ -287,7 +297,7 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 	})
 
 	t.Run("should allow requests within limit", func(t *testing.T) {
-		_ = wrapper.AddUser("admin1", "pass", true, 3, "premium", true, "")
+		_ = wrapper.AddUser("admin1", "pass", true, 3, true, true, "")
 		_ = wrapper.AddKey("admin1", "kEy1")
 
 		// First request
@@ -297,6 +307,9 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 		// Second request
 		_, _, err = wrapper.IsKeyAllowed("keY1")
 		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(2), wrapper.GetCacheCounterForUser("admin1")) // the counter should be up to date already
+		time.Sleep(time.Second * 2)                                          // allow async counters write
 
 		// Verify count
 		var globalCounter uint64
@@ -310,18 +323,20 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 		assert.Equal(t, uint64(2), keyCounter)
 	})
 
-	t.Run("should deny requests exceeding limit", func(t *testing.T) {
-		_ = wrapper.AddUser("admin2", "pass", true, 1, "premium", true, "")
+	t.Run("should allow requests exceeding limit", func(t *testing.T) {
+		_ = wrapper.AddUser("admin2", "pass", true, 1, true, true, "")
 		_ = wrapper.AddKey("admin2", "kEy2")
 
 		// First request - ok
 		_, _, err := wrapper.IsKeyAllowed("keY2")
 		assert.NoError(t, err)
 
-		// Second request - denied
+		// Second request - still ok
 		_, _, err = wrapper.IsKeyAllowed("keY2")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "key is not allowed")
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(2), wrapper.GetCacheCounterForUser("admin2")) // the counter should be up to date already
+		time.Sleep(time.Second * 2)                                          // allow async counters write
 
 		// Verify count
 		var globalCounter uint64
@@ -331,18 +346,36 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
     JOIN access_keys k ON u.username = k.username 
 	WHERE k.key = ?`, "key2").Scan(&globalCounter, &keyCounter)
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(1), globalCounter)
-		assert.Equal(t, uint64(1), keyCounter)
+		assert.Equal(t, uint64(2), globalCounter)
+		assert.Equal(t, uint64(2), keyCounter)
+
+		// Third request - still ok
+		_, _, err = wrapper.IsKeyAllowed("keY2")
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(3), wrapper.GetCacheCounterForUser("admin2")) // the counter should be up to date already
+		time.Sleep(time.Second * 2)                                          // allow async counters write
+
+		// Verify count
+		err = wrapper.db.QueryRow(`SELECT u.request_count global_counter, k.request_count as key_counter 
+	FROM users u 
+    JOIN access_keys k ON u.username = k.username 
+	WHERE k.key = ?`, "key2").Scan(&globalCounter, &keyCounter)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(3), globalCounter)
+		assert.Equal(t, uint64(3), keyCounter)
 	})
 
 	t.Run("should allow unlimited requests if max_requests is 0", func(t *testing.T) {
-		_ = wrapper.AddUser("admin3", "pass", true, 0, "premium", true, "")
+		_ = wrapper.AddUser("admin3", "pass", true, 0, true, true, "")
 		_ = wrapper.AddKey("admin3", "kEy3")
 
 		for i := 0; i < 5000; i++ {
 			_, _, err := wrapper.IsKeyAllowed("keY3")
 			assert.NoError(t, err)
 		}
+
+		assert.Equal(t, uint64(5000), wrapper.GetCacheCounterForUser("admin3")) // the counter should be up to date already
 	})
 
 	t.Run("should return error for non-existent key", func(t *testing.T) {
@@ -350,6 +383,9 @@ func TestSQLiteWrapper_IsKeyAllowed(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no rows")
 	})
+
+	err := wrapper.Close()
+	assert.NoError(t, err)
 }
 
 func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
@@ -359,9 +395,9 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 	defer closeWrapper(wrapper)
 
 	t.Run("should return all keys for a user", func(t *testing.T) {
-		_ = wrapper.AddUser("admin", "passAdmin", true, 0, "premium", true, "")
-		_ = wrapper.AddUser("user1", "passUser1", false, 100, "free", true, "")
-		_ = wrapper.AddUser("user2", "passUser2", false, 0, "free", true, "")
+		_ = wrapper.AddUser("admin", "passAdmin", true, 0, true, true, "")
+		_ = wrapper.AddUser("user1", "passUser1", false, 100, false, true, "")
+		_ = wrapper.AddUser("user2", "passUser2", false, 0, false, true, "")
 
 		_ = wrapper.AddKey("user1", "key1-user1")
 		_ = wrapper.AddKey("user1", "key2-user1")
@@ -397,9 +433,9 @@ func TestSQLiteWrapper_GetAllKeys(t *testing.T) {
 	})
 
 	t.Run("should return all keys", func(t *testing.T) {
-		_ = wrapper.AddUser("admin", "passAdmin", true, 0, "premium", true, "")
-		_ = wrapper.AddUser("user1", "passUser1", false, 100, "free", true, "")
-		_ = wrapper.AddUser("user2", "passUser2", false, 0, "free", true, "")
+		_ = wrapper.AddUser("admin", "passAdmin", true, 0, true, true, "")
+		_ = wrapper.AddUser("user1", "passUser1", false, 100, false, true, "")
+		_ = wrapper.AddUser("user2", "passUser2", false, 0, false, true, "")
 
 		_ = wrapper.AddKey("user1", "key1-user1")
 		_ = wrapper.AddKey("user1", "key2-user1")
@@ -443,9 +479,9 @@ func TestSQLiteWrapper_GetAllUsers(t *testing.T) {
 	defer closeWrapper(wrapper)
 
 	t.Run("should return all users", func(t *testing.T) {
-		_ = wrapper.AddUser("admin", "passAdmin", true, 0, "premium", true, "")
-		_ = wrapper.AddUser("user1", "passUser1", false, 100, "free", true, "")
-		_ = wrapper.AddUser("user2", "passUser2", false, 0, "free", true, "")
+		_ = wrapper.AddUser("admin", "passAdmin", true, 0, true, true, "")
+		_ = wrapper.AddUser("user1", "passUser1", false, 100, false, true, "")
+		_ = wrapper.AddUser("user2", "passUser2", false, 0, false, true, "")
 
 		_ = wrapper.AddKey("user1", "key1-user1")
 		_ = wrapper.AddKey("user1", "key2-user1")
@@ -489,9 +525,9 @@ func TestSqliteWrapper_GetUser(t *testing.T) {
 	wrapper := createTestDB(t)
 	defer closeWrapper(wrapper)
 
-	_ = wrapper.AddUser("admin", "passAdmin", true, 0, "premium", true, "")
-	_ = wrapper.AddUser("user1", "passUser1", false, 100, "free", true, "")
-	_ = wrapper.AddUser("user2", "passUser2", false, 0, "free", true, "")
+	_ = wrapper.AddUser("admin", "passAdmin", true, 0, true, true, "")
+	_ = wrapper.AddUser("user1", "passUser1", false, 100, false, true, "")
+	_ = wrapper.AddUser("user2", "passUser2", false, 0, false, true, "")
 
 	_ = wrapper.AddKey("user1", "key1-user1")
 	_ = wrapper.AddKey("user1", "key2-user1")
@@ -515,7 +551,7 @@ func TestSQLiteWrapper_RemoveUser(t *testing.T) {
 
 	t.Run("should remove user and associated keys", func(t *testing.T) {
 		username := "user_to_remove"
-		err := wrapper.AddUser(username, "cleanPass", false, 100, "free", true, "")
+		err := wrapper.AddUser(username, "cleanPass", false, 100, false, true, "")
 		require.NoError(t, err)
 
 		err = wrapper.AddKey(username, "key1")
@@ -552,11 +588,11 @@ func TestSQLiteWrapper_UpdateUser(t *testing.T) {
 
 	username := "user_update"
 	initialPass := "pass123"
-	err := wrapper.AddUser(username, initialPass, false, 50, "free", true, "")
+	err := wrapper.AddUser(username, initialPass, false, 50, false, true, "")
 	require.NoError(t, err)
 
 	t.Run("should update details without password", func(t *testing.T) {
-		err = wrapper.UpdateUser(username, "", true, 1000, "premium")
+		err = wrapper.UpdateUser(username, "", true, 1000, true)
 		assert.NoError(t, err)
 
 		// Verify Update
@@ -568,7 +604,7 @@ func TestSQLiteWrapper_UpdateUser(t *testing.T) {
 
 	t.Run("should update details with new password", func(t *testing.T) {
 		newPass := "newPass456"
-		err = wrapper.UpdateUser(username, newPass, false, 2000, "free")
+		err = wrapper.UpdateUser(username, newPass, false, 2000, false)
 		assert.NoError(t, err)
 
 		// Verify Old Password Fails
@@ -584,9 +620,54 @@ func TestSQLiteWrapper_UpdateUser(t *testing.T) {
 
 	t.Run("should fail on long password", func(t *testing.T) {
 		longPass := strings.Repeat("a", 73)
-		err = wrapper.UpdateUser(username, longPass, false, 2000, "free")
+		err = wrapper.UpdateUser(username, longPass, false, 2000, false)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "password is too long")
+	})
+
+	t.Run("should update user to premium with zero max requests", func(t *testing.T) {
+		regularUser := "reg_user_test"
+		err = wrapper.AddUser(regularUser, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		// Update to Premium with 0 max requests
+		err = wrapper.UpdateUser(regularUser, "", false, 0, true)
+		require.NoError(t, err)
+
+		// Verify with GetUser
+		details, errGet := wrapper.GetUser(regularUser)
+		require.NoError(t, errGet)
+
+		assert.True(t, details.IsPremium, "IsPremium should be true after update")
+		assert.Equal(t, uint64(0), details.MaxRequests, "MaxRequests should be 0")
+		assert.Equal(t, common.PremiumAccountType, details.ProcessedAccountType, "AccountType should be premium after update")
+		assert.True(t, details.IsUnlimited, "Should be unlimited")
+	})
+
+	t.Run("should update user to free with no more requests available", func(t *testing.T) {
+		regularUser := "reg_user_test1"
+		err = wrapper.AddUser(regularUser, "pass", false, 2, false, true, "")
+		require.NoError(t, err)
+
+		key := regularUser + "_key12345678"
+		err = wrapper.AddKey(regularUser, key)
+		require.NoError(t, err)
+
+		// create 2 requests:
+		_, tier, errCheck := wrapper.IsKeyAllowed(key)
+		assert.Equal(t, common.PremiumAccountType, tier)
+		assert.NoError(t, errCheck)
+
+		_, tier, errCheck = wrapper.IsKeyAllowed(key)
+		assert.Equal(t, common.PremiumAccountType, tier)
+		assert.NoError(t, errCheck)
+
+		// Verify with GetUser
+		details, errGet := wrapper.GetUser(regularUser)
+		require.NoError(t, errGet)
+		assert.Equal(t, uint64(2), details.MaxRequests)
+		assert.Equal(t, uint64(2), details.GlobalCounter)
+		assert.Equal(t, common.FreeAccountType, details.ProcessedAccountType)
 	})
 }
 
@@ -596,8 +677,8 @@ func TestSqliteWrapper_CheckUserCredentials(t *testing.T) {
 	wrapper := createTestDB(t)
 	defer closeWrapper(wrapper)
 
-	_ = wrapper.AddUser("admin", "adminPass", true, 0, "premium", true, "")
-	_ = wrapper.AddUser("user", "userPass", false, 100, "free", true, "")
+	_ = wrapper.AddUser("admin", "adminPass", true, 0, true, true, "")
+	_ = wrapper.AddUser("user", "userPass", false, 100, false, true, "")
 
 	t.Run("user not found should error", func(t *testing.T) {
 		userDetails, err := wrapper.CheckUserCredentials("missing-user", "pass")
@@ -635,7 +716,7 @@ func TestSqliteWrapper_CheckUserCredentials(t *testing.T) {
 func BenchmarkSQLiteWrapper_IsKeyAllowed(b *testing.B) {
 	wrapper := createTestDB(b)
 	defer closeWrapper(wrapper)
-	_ = wrapper.AddUser("admin3", "pass", true, 0, "premium", true, "")
+	_ = wrapper.AddUser("admin3", "pass", true, 0, true, true, "")
 	_ = wrapper.AddKey("admin3", "kEy3")
 
 	for i := 0; i < b.N; i++ {
@@ -654,7 +735,7 @@ func TestSQLiteWrapper_ActivateUser(t *testing.T) {
 
 	t.Run("should activate user with valid token", func(t *testing.T) {
 		token := "validToken"
-		err := wrapper.AddUser("user1", "pass", false, 100, "free", false, token)
+		err := wrapper.AddUser("user1", "pass", false, 100, false, false, token)
 		require.NoError(t, err)
 
 		err = wrapper.ActivateUser(token)
@@ -677,7 +758,7 @@ func TestSQLiteWrapper_ActivateUser(t *testing.T) {
 
 	t.Run("should fail if user already activated (token cleared)", func(t *testing.T) {
 		token := "token2"
-		err := wrapper.AddUser("user2", "pass", false, 100, "free", true, "") // Already active, token empty
+		err := wrapper.AddUser("user2", "pass", false, 100, false, true, "") // Already active, token empty
 		require.NoError(t, err)
 
 		err = wrapper.ActivateUser(token)
@@ -685,37 +766,41 @@ func TestSQLiteWrapper_ActivateUser(t *testing.T) {
 	})
 }
 
-func TestSqliteWrapper_AddPerformanceMetric(t *testing.T) {
+func TestSqliteWrapper_AddPerformanceMetricAsync(t *testing.T) {
 	t.Parallel()
 
 	wrapper := createTestDB(t)
 	defer closeWrapper(wrapper)
 
 	t.Run("should add metric", func(t *testing.T) {
-		err := wrapper.AddPerformanceMetric("label1")
-		assert.NoError(t, err)
+		wrapper.AddPerformanceMetricAsync("label1")
+		// allow the write
+		time.Sleep(time.Second * 2)
 
 		var counter int
-		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
+		err := wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, counter)
 
-		err = wrapper.AddPerformanceMetric("label1")
-		assert.NoError(t, err)
+		wrapper.AddPerformanceMetricAsync("label1")
+		// allow the write
+		time.Sleep(time.Second * 2)
 
 		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, counter)
 
-		err = wrapper.AddPerformanceMetric("label2")
-		assert.NoError(t, err)
+		wrapper.AddPerformanceMetricAsync("label2")
+		// allow the write
+		time.Sleep(time.Second * 2)
 
 		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label2").Scan(&counter)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, counter)
 
-		err = wrapper.AddPerformanceMetric("label1")
-		assert.NoError(t, err)
+		wrapper.AddPerformanceMetricAsync("label1")
+		// allow the write
+		time.Sleep(time.Second * 2)
 
 		err = wrapper.db.QueryRow("SELECT counter FROM performance WHERE label = ?", "label1").Scan(&counter)
 		assert.NoError(t, err)
@@ -734,29 +819,44 @@ func TestSqliteWrapper_GetPerformanceMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, metrics, 0)
 
-	_ = wrapper.AddPerformanceMetric("label1")
+	wrapper.AddPerformanceMetricAsync("label1")
+	// allow the write
+	time.Sleep(time.Second * 2)
+
 	metrics, err = wrapper.GetPerformanceMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, metrics["label1"], uint64(1))
 
-	_ = wrapper.AddPerformanceMetric("label1")
+	wrapper.AddPerformanceMetricAsync("label1")
+	// allow the write
+	time.Sleep(time.Second * 2)
+
 	metrics, err = wrapper.GetPerformanceMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, metrics["label1"], uint64(2))
 
-	_ = wrapper.AddPerformanceMetric("label2")
+	wrapper.AddPerformanceMetricAsync("label2")
+	// allow the write
+	time.Sleep(time.Second * 2)
+
 	metrics, err = wrapper.GetPerformanceMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, metrics["label1"], uint64(2))
 	assert.Equal(t, metrics["label2"], uint64(1))
 
-	_ = wrapper.AddPerformanceMetric("label2")
+	wrapper.AddPerformanceMetricAsync("label2")
+	// allow the write
+	time.Sleep(time.Second * 2)
+
 	metrics, err = wrapper.GetPerformanceMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, metrics["label1"], uint64(2))
 	assert.Equal(t, metrics["label2"], uint64(2))
 
-	_ = wrapper.AddPerformanceMetric("label1")
+	wrapper.AddPerformanceMetricAsync("label1")
+	// allow the write
+	time.Sleep(time.Second * 2)
+
 	metrics, err = wrapper.GetPerformanceMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, metrics["label1"], uint64(3))
@@ -772,7 +872,7 @@ func TestSqliteWrapper_UpdatePassword(t *testing.T) {
 	t.Run("should update password", func(t *testing.T) {
 		username := "user_pass_update"
 		oldPass := "oldPass"
-		err := wrapper.AddUser(username, oldPass, false, 100, "free", true, "")
+		err := wrapper.AddUser(username, oldPass, false, 100, false, true, "")
 		require.NoError(t, err)
 
 		newPass := "newUniquePass"
@@ -797,7 +897,7 @@ func TestSqliteWrapper_UpdatePassword(t *testing.T) {
 
 	t.Run("should fail if password too long", func(t *testing.T) {
 		username := "user_pass_long"
-		_ = wrapper.AddUser(username, "pass", false, 100, "free", true, "")
+		_ = wrapper.AddUser(username, "pass", false, 100, false, true, "")
 
 		err := wrapper.UpdatePassword(username, strings.Repeat("a", 73))
 		assert.Error(t, err)
@@ -814,7 +914,7 @@ func TestSqliteWrapper_RequestAndConfirmEmailChange(t *testing.T) {
 	t.Run("full flow success", func(t *testing.T) {
 		username := "user_email_flow"
 		initialEmail := username
-		err := wrapper.AddUser(username, "pass", false, 100, "free", true, "")
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
 		require.NoError(t, err)
 
 		// Add a key to verify migration
@@ -861,8 +961,8 @@ func TestSqliteWrapper_RequestAndConfirmEmailChange(t *testing.T) {
 	t.Run("request should fail if new email already taken", func(t *testing.T) {
 		user1 := "user1_taken"
 		user2 := "user2_taken"
-		_ = wrapper.AddUser(user1, "pass", false, 0, "free", true, "")
-		_ = wrapper.AddUser(user2, "pass", false, 0, "free", true, "")
+		_ = wrapper.AddUser(user1, "pass", false, 0, false, true, "")
+		_ = wrapper.AddUser(user2, "pass", false, 0, false, true, "")
 
 		err := wrapper.RequestEmailChange(user1, user2, "token")
 		assert.Error(t, err)
@@ -873,5 +973,106 @@ func TestSqliteWrapper_RequestAndConfirmEmailChange(t *testing.T) {
 		_, err := wrapper.ConfirmEmailChange("invalid_token")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid or expired token")
+	})
+}
+
+func TestSqliteWrapper_UpdateMaxRequests(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should update max requests", func(t *testing.T) {
+		username := "user_max_req"
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		err = wrapper.UpdateMaxRequests(username, 200)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(200), user.MaxRequests)
+	})
+
+	t.Run("should error if user not found", func(t *testing.T) {
+		err := wrapper.UpdateMaxRequests("non_existent", 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
+	})
+}
+
+func TestSQLiteWrapper_UpdateUserMaxRequestsFromContract(t *testing.T) {
+	t.Parallel()
+
+	wrapper := createTestDB(t)
+	defer closeWrapper(wrapper)
+
+	t.Run("should update max requests logic correctly", func(t *testing.T) {
+		username := "user_contract_update"
+		// Initial: MaxRequests=100, SCMaxRequests=0 (default)
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		// 1. First top up (Contract goes from 0 -> 200)
+		// Diff = 200 - 0 = 200
+		// New MaxRequests = 100 + 200 = 300
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 200)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(300), user.MaxRequests)
+		assert.Equal(t, uint64(200), user.SCMaxRequests)
+
+		// 2. No top up (Contract stays at 200)
+		// Should do nothing
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 200)
+		assert.NoError(t, err)
+
+		user, err = wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(300), user.MaxRequests)
+		assert.Equal(t, uint64(200), user.SCMaxRequests)
+
+		// 3. Second top up (Contract goes from 200 -> 300)
+		// Diff = 300 - 200 = 100
+		// New MaxRequests = 300 + 100 = 400
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 300)
+		assert.NoError(t, err)
+
+		user, err = wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(400), user.MaxRequests)
+		assert.Equal(t, uint64(300), user.SCMaxRequests)
+	})
+
+	t.Run("should not update if contract value assumes reset or lower", func(t *testing.T) {
+		username := "user_contract_lower"
+		err := wrapper.AddUser(username, "pass", false, 100, false, true, "")
+		require.NoError(t, err)
+
+		// Set initial SC state to 200 via direct update to simulate prior state
+		// We'll just assume we did a top up first
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 200)
+		require.NoError(t, err)
+
+		// Current: Max=300, SC=200
+
+		// Contract reports 150 (maybe a bug or reset on contract side?)
+		// Our logic says: if contract <= dbSC, do nothing.
+		err = wrapper.UpdateUserMaxRequestsFromContract(username, 150)
+		assert.NoError(t, err)
+
+		user, err := wrapper.GetUser(username)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(300), user.MaxRequests)   // Unchanged
+		assert.Equal(t, uint64(200), user.SCMaxRequests) // Unchanged
+	})
+
+	t.Run("should error if user not found", func(t *testing.T) {
+		err := wrapper.UpdateUserMaxRequestsFromContract("non_existent", 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "user not found")
 	})
 }

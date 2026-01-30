@@ -2,15 +2,14 @@ package testscommon
 
 // PerformanceMonitorStub -
 type PerformanceMonitorStub struct {
-	AddPerformanceMetricCalled func(label string) error
+	AddPerformanceMetricAsyncHandler func(label string)
 }
 
 // AddPerformanceMetric -
-func (stub *PerformanceMonitorStub) AddPerformanceMetric(label string) error {
-	if stub.AddPerformanceMetricCalled != nil {
-		return stub.AddPerformanceMetricCalled(label)
+func (stub *PerformanceMonitorStub) AddPerformanceMetricAsync(label string) {
+	if stub.AddPerformanceMetricAsyncHandler != nil {
+		stub.AddPerformanceMetricAsyncHandler(label)
 	}
-	return nil
 }
 
 // IsInterfaceNil -

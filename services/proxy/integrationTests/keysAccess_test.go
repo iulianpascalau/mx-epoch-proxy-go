@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/api"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/common"
@@ -128,7 +129,9 @@ func setupStorer(tb testing.TB) api.KeyAccessProvider {
 	require.NoError(tb, err)
 	dbPath := tmpfile.Name()
 	_ = tmpfile.Close()
-	storer, _ := storage.NewSQLiteWrapper(dbPath)
+
+	counters, _ := storage.NewCountersCache(time.Minute)
+	storer, _ := storage.NewSQLiteWrapper(dbPath, counters)
 
 	return storer
 }
@@ -143,7 +146,7 @@ func ensureAdmin(tb testing.TB, storer api.KeyAccessProvider) {
 		}
 	}
 
-	err = storer.AddUser(adminUser, adminPass, true, 0, "premium", true, "")
+	err = storer.AddUser(adminUser, adminPass, true, 0, true, true, "")
 	require.Nil(tb, err)
 }
 

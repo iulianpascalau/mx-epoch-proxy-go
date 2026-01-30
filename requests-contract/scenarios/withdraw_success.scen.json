@@ -1,0 +1,72 @@
+{
+  "name": "Withdraw all EGLD successfully",
+  "comment": "Owner withdraws all accumulated EGLD from contract",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        },
+        "address:user": {
+          "nonce": "0",
+          "balance": "3000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "add_requests",
+      "tx": {
+        "from": "address:user",
+        "to": "sc:requests",
+        "function": "addRequests",
+        "arguments": [
+          "42"
+        ],
+        "value": "2000000000000000000",
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "withdraw",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "withdrawAll",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "0"
+      }
+    }
+  ]
+}

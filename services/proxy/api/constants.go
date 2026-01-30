@@ -15,6 +15,11 @@ const (
 	EndpointApiRequestEmailChange = "/api/request-email-change"
 	EndpointApiConfirmEmailChange = "/api/confirm-email-change"
 
+	EndpointApiCryptoPaymentConfig        = "/api/crypto-payment/config"
+	EndpointApiCryptoPaymentCreateAddress = "/api/crypto-payment/create-address"
+	EndpointApiCryptoPaymentAccount       = "/api/crypto-payment/account"
+	EndpointApiAdminCryptoPaymentAccount  = "/api/admin-crypto-payment/account"
+
 	EndpointSwagger = "/swagger/"
 	EndpointRoot    = "/"
 

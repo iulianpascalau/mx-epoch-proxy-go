@@ -138,7 +138,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 
 	t.Run("wrong captcha", func(t *testing.T) {
 		storer := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 				assert.Fail(t, "should not have called this")
 				return errors.New("fail")
 			},
@@ -167,7 +167,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 
 	t.Run("username already taken", func(t *testing.T) {
 		storer := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 				return errors.New("UNIQUE constraint failed: users.username")
 			},
 		}
@@ -202,7 +202,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 
 	t.Run("db error", func(t *testing.T) {
 		storer := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 				return errors.New("db fail")
 			},
 		}
@@ -227,7 +227,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 		var sentTo, sentSubject string
 		var sentBody any
 		storer := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 				assert.Equal(t, "test@example.com", username)
 				assert.Equal(t, "password123", password)
 				assert.False(t, isActive)
@@ -270,7 +270,7 @@ func TestRegistrationHandler_ServeHTTP_Register(t *testing.T) {
 
 	t.Run("email error (should NOT fail request)", func(t *testing.T) {
 		storer := &testscommon.StorerStub{
-			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, accountType string, isActive bool, activationToken string) error {
+			AddUserHandler: func(username string, password string, isAdmin bool, maxRequests uint64, isPremium bool, isActive bool, activationToken string) error {
 				return nil
 			},
 		}

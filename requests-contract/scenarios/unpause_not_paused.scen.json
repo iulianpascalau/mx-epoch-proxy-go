@@ -1,0 +1,51 @@
+{
+  "name": "Unpause when not paused",
+  "comment": "Owner tries to unpause when contract is not paused, should fail",
+  "steps": [
+    {
+      "step": "setState",
+      "accounts": {
+        "address:owner": {
+          "nonce": "0",
+          "balance": "1000000000000000000"
+        }
+      },
+      "newAddresses": [
+        {
+          "creatorAddress": "address:owner",
+          "creatorNonce": "0",
+          "newAddress": "sc:requests"
+        }
+      ]
+    },
+    {
+      "step": "scDeploy",
+      "txId": "deploy",
+      "tx": {
+        "from": "address:owner",
+        "contractCode": "mxsc:../output/requests.mxsc.json",
+        "arguments": [
+          "100"
+        ],
+        "gasLimit": "60000000",
+        "gasPrice": "1000000000"
+      }
+    },
+    {
+      "step": "scCall",
+      "txId": "unpause",
+      "tx": {
+        "from": "address:owner",
+        "to": "sc:requests",
+        "function": "unpause",
+        "arguments": [],
+        "gasLimit": "5000000",
+        "gasPrice": "1000000000"
+      },
+      "expect": {
+        "status": "4",
+        "message": "str:Contract is not paused"
+      }
+    }
+  ]
+}
