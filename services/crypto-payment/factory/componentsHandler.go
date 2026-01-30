@@ -176,20 +176,20 @@ func (ch *componentsHandler) Close() {
 		return
 	}
 
-	if ch.sqliteWrapper != nil {
+	if !check.IfNil(ch.sqliteWrapper) {
 		err := ch.sqliteWrapper.Close()
 		log.LogIfError(err)
 	}
 
-	if ch.timeCacher != nil {
+	if !check.IfNil(ch.timeCacher) {
 		ch.timeCacher.Close()
 	}
 
-	if ch.httpServer != nil {
+	if !check.IfNilReflect(ch.httpServer) {
 		_ = ch.httpServer.Close()
 	}
 
-	if ch.balanceOperator != nil {
+	if !check.IfNil(ch.balanceOperator) {
 		_ = ch.balanceOperator.Close()
 	}
 }

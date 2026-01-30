@@ -290,12 +290,12 @@ func (ch *componentsHandler) Close() {
 		return
 	}
 
-	if ch.sqliteWrapper != nil {
+	if !check.IfNil(ch.sqliteWrapper) {
 		err := ch.sqliteWrapper.Close()
 		log.LogIfError(err)
 	}
 
-	if ch.apiEngine != nil {
+	if !check.IfNilReflect(ch.apiEngine) {
 		err := ch.apiEngine.Close()
 		log.LogIfError(err)
 	}
