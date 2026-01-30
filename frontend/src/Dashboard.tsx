@@ -33,6 +33,7 @@ interface CryptoPaymentState {
     walletURL: string;
     explorerURL: string;
     contractAddress: string;
+    minimumBalance: number;
 
     paymentId: number | null;
     depositAddress: string | null;
@@ -114,6 +115,7 @@ export const Dashboard = () => {
         walletURL: 'https://devnet-wallet.multiversx.com',
         explorerURL: 'https://devnet-explorer.multiversx.com',
         contractAddress: 'erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw',
+        minimumBalance: 0,
         paymentId: null,
         depositAddress: null,
         numberOfRequests: 0,
@@ -143,6 +145,7 @@ export const Dashboard = () => {
                 walletURL: ensureProtocol(config.walletURL),
                 explorerURL: ensureProtocol(config.explorerURL),
                 contractAddress: config.contractAddress,
+                minimumBalance: config.minimumBalance,
                 isLoading: false,
                 error: null
             };
@@ -625,17 +628,17 @@ export const Dashboard = () => {
                                                 <CreditCard size={24} />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-medium text-white mb-2">Unlock Unlimited Requests</h3>
+                                                <h3 className="text-lg font-medium text-white mb-2">Unlock Unthrottled Requests</h3>
                                                 <p className="text-slate-400 mb-4 text-sm leading-relaxed max-w-2xl">
                                                     Upgrade your account to Premium by making a secure crypto payment.
-                                                    You are paying directly to the smart contract using EGLD.
-                                                    Zero gas fees for deposit transaction relay.
+                                                    You are paying to a proxy address that will cost you a minimum fee. A relayer will invoke
+                                                    the smart contract responsible for the payments and allocated credits.
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mb-6">
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
                                                         Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
                                                     </span>
-                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Instant Activation</span>
+                                                    <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Activation: under 3 minutes</span>
                                                 </div>
                                                 <button
                                                     onClick={handleRequestAddress}
@@ -691,6 +694,12 @@ export const Dashboard = () => {
                                                         <label className="text-xs text-slate-500 block mb-1">Current Rate</label>
                                                         <div className="text-slate-200">{cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req/EGLD</div>
                                                     </div>
+                                                    <div className="col-span-2 mt-1">
+                                                        <div className="text-[10px] text-amber-500/80 font-medium flex items-center gap-1.5 uppercase tracking-wide">
+                                                            <div className="w-1 h-1 rounded-full bg-amber-500"></div>
+                                                            Minimum deposit required: <span className="text-amber-400 font-bold">{cryptoState.minimumBalance} EGLD</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div className="pt-2 flex gap-2">
@@ -727,7 +736,15 @@ export const Dashboard = () => {
                                                     <span className="text-slate-500 text-sm ml-2">available credits</span>
                                                 </div>
                                                 <div className="text-xs text-slate-400 mb-2">
-                                                    Used: {users[user.username.toLowerCase()]?.GlobalCounter.toLocaleString()} requests
+                                                    {(() => {
+                                                        const u = users[user.username.toLowerCase()];
+                                                        if (u?.SCMaxRequests && u.SCMaxRequests > 0) {
+                                                            const freeBase = u.MaxRequests - u.SCMaxRequests;
+                                                            const paidUsed = Math.max(0, u.GlobalCounter - freeBase);
+                                                            return `Used (Premium): ${paidUsed.toLocaleString()} / ${u.SCMaxRequests.toLocaleString()}`;
+                                                        }
+                                                        return `Used: ${u?.GlobalCounter.toLocaleString()} requests`;
+                                                    })()}
                                                 </div>
                                                 {users[user.username.toLowerCase()]?.SCMaxRequests ? (
                                                     <div className="text-xs text-emerald-400/80 mb-2">
@@ -742,9 +759,18 @@ export const Dashboard = () => {
                                                             <span className="text-xs font-semibold inline-block text-indigo-300">
                                                                 {(() => {
                                                                     const u = users[user.username.toLowerCase()];
-                                                                    // If max requests is 0 (unlimited), show 0% usage or handle differently
                                                                     if (!u || u.MaxRequests === 0) return "Usage 0%";
-                                                                    const pct = Math.min(100, Math.round((u.GlobalCounter / u.MaxRequests) * 100));
+
+                                                                    let used = u.GlobalCounter;
+                                                                    let total = u.MaxRequests;
+
+                                                                    if (u.SCMaxRequests && u.SCMaxRequests > 0) {
+                                                                        const freeBase = u.MaxRequests - u.SCMaxRequests;
+                                                                        used = Math.max(0, u.GlobalCounter - freeBase);
+                                                                        total = u.SCMaxRequests;
+                                                                    }
+
+                                                                    const pct = Math.min(100, Math.round((used / total) * 100));
                                                                     return `Usage ${pct}%`;
                                                                 })()}
                                                             </span>
@@ -756,7 +782,17 @@ export const Dashboard = () => {
                                                                 width: (() => {
                                                                     const u = users[user.username.toLowerCase()];
                                                                     if (!u || u.MaxRequests === 0) return '0%';
-                                                                    const pct = Math.min(100, (u.GlobalCounter / u.MaxRequests) * 100);
+
+                                                                    let used = u.GlobalCounter;
+                                                                    let total = u.MaxRequests;
+
+                                                                    if (u.SCMaxRequests && u.SCMaxRequests > 0) {
+                                                                        const freeBase = u.MaxRequests - u.SCMaxRequests;
+                                                                        used = Math.max(0, u.GlobalCounter - freeBase);
+                                                                        total = u.SCMaxRequests;
+                                                                    }
+
+                                                                    const pct = Math.min(100, (used / total) * 100);
                                                                     return `${pct}%`;
                                                                 })()
                                                             }}

@@ -52,6 +52,7 @@ const (
 //
 //	go build -v -ldflags="-X main.appVersion=$(git describe --all | cut -c7-32)
 var appVersion = "undefined"
+var fileLogging common.FileLoggingHandler
 
 var (
 	proxyHelpTemplate = `NAME:
@@ -117,6 +118,12 @@ func main() {
 
 	app.Action = run
 
+	defer func() {
+		if fileLogging != nil {
+			_ = fileLogging.Close()
+		}
+	}()
+
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err.Error())
@@ -133,14 +140,9 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	fileLogging, err := attachFileLogger(log, saveLogFile, workingDir)
+	err = attachFileLogger(log, saveLogFile, workingDir)
 	if err != nil {
 		return err
-	}
-	if fileLogging != nil {
-		defer func() {
-			_ = fileLogging.Close()
-		}()
 	}
 
 	if !check.IfNil(fileLogging) {
@@ -230,8 +232,7 @@ func run(ctx *cli.Context) error {
 	return nil
 }
 
-func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) (common.FileLoggingHandler, error) {
-	var fileLogging common.FileLoggingHandler
+func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) error {
 	var err error
 	if saveLogFile {
 		argsFileLogging := file.ArgsFileLogging{
@@ -241,14 +242,14 @@ func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) (c
 		}
 		fileLogging, err = file.NewFileLogging(argsFileLogging)
 		if err != nil {
-			return nil, fmt.Errorf("%w creating a log file", err)
+			return fmt.Errorf("%w creating a log file", err)
 		}
 	}
 
 	err = logger.SetDisplayByteSlice(logger.ToHex)
 	log.LogIfError(err)
 
-	return fileLogging, nil
+	return nil
 }
 
 func loadConfig(filepath string) (config.Config, error) {
