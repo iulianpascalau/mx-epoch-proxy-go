@@ -36,6 +36,7 @@ const (
 
 // appVersion should be populated at build time using ldflags
 var appVersion = "undefined"
+var fileLogging FileLoggingHandler
 
 var (
 	helpTemplate = `NAME:
@@ -96,6 +97,12 @@ func main() {
 
 	app.Action = run
 
+	defer func() {
+		if fileLogging != nil {
+			_ = fileLogging.Close()
+		}
+	}()
+
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err.Error())
@@ -112,14 +119,9 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	fileLogging, err := attachFileLogger(log, saveLogFile, workingDir)
+	err = attachFileLogger(log, saveLogFile, workingDir)
 	if err != nil {
 		return err
-	}
-	if fileLogging != nil {
-		defer func() {
-			_ = fileLogging.Close()
-		}()
 	}
 
 	if fileLogging != nil {
@@ -200,8 +202,7 @@ type FileLoggingHandler interface {
 	Close() error
 }
 
-func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) (FileLoggingHandler, error) {
-	var fileLogging FileLoggingHandler
+func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) error {
 	var err error
 	if saveLogFile {
 		argsFileLogging := file.ArgsFileLogging{
@@ -211,14 +212,14 @@ func attachFileLogger(log logger.Logger, saveLogFile bool, workingDir string) (F
 		}
 		fileLogging, err = file.NewFileLogging(argsFileLogging)
 		if err != nil {
-			return nil, fmt.Errorf("%w creating a log file", err)
+			return fmt.Errorf("%w creating a log file", err)
 		}
 	}
 
 	err = logger.SetDisplayByteSlice(logger.ToHex)
 	log.LogIfError(err)
 
-	return fileLogging, nil
+	return nil
 }
 
 func loadConfig(workingDir string) (*config.Config, error) {
