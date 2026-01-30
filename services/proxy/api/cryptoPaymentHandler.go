@@ -110,6 +110,7 @@ func (h *cryptoPaymentHandler) handleConfig(w http.ResponseWriter, r *http.Reque
 		"walletURL":       cfg.WalletURL,
 		"explorerURL":     cfg.ExplorerURL,
 		"contractAddress": cfg.ContractAddress,
+		"minimumBalance":  cfg.MinimumBalance,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

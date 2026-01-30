@@ -83,6 +83,7 @@ func NewComponentsHandler(
 		cfg.WalletURL,
 		cfg.ExplorerURL,
 		ch.contractHandler,
+		cfg.MinimumBalanceToProcess,
 	)
 	if err != nil {
 		return nil, err

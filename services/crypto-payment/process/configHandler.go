@@ -11,6 +11,7 @@ type configHandler struct {
 	walletURL       string
 	explorerURL     string
 	contractHandler ContractHandler
+	minimumBalance  float64
 }
 
 // NewConfigHandler creates a new instance of configHandler
@@ -18,6 +19,7 @@ func NewConfigHandler(
 	walletURL string,
 	explorerURL string,
 	contractHandler ContractHandler,
+	minimumBalance float64,
 ) (*configHandler, error) {
 	if check.IfNil(contractHandler) {
 		return nil, fmt.Errorf("nil contract handler")
@@ -27,6 +29,7 @@ func NewConfigHandler(
 		walletURL:       walletURL,
 		explorerURL:     explorerURL,
 		contractHandler: contractHandler,
+		minimumBalance:  minimumBalance,
 	}, nil
 }
 
@@ -47,6 +50,7 @@ func (ch *configHandler) GetConfig(ctx context.Context) (map[string]interface{},
 		"walletURL":        ch.walletURL,
 		"explorerURL":      ch.explorerURL,
 		"requestsPerEGLD":  requestsPerEgld,
+		"minimumBalance":   ch.minimumBalance,
 	}, nil
 }
 

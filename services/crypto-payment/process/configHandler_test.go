@@ -16,7 +16,7 @@ func TestNewConfigHandler(t *testing.T) {
 	t.Run("nil contract handler should error", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewConfigHandler("wallet", "explorer", nil)
+		handler, err := NewConfigHandler("wallet", "explorer", nil, 0.05)
 		require.Nil(t, handler)
 		require.EqualError(t, err, "nil contract handler")
 	})
@@ -24,7 +24,7 @@ func TestNewConfigHandler(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		handler, err := NewConfigHandler("wallet", "explorer", &testsCommon.ContractHandlerStub{})
+		handler, err := NewConfigHandler("wallet", "explorer", &testsCommon.ContractHandlerStub{}, 0.05)
 		require.NotNil(t, handler)
 		require.NoError(t, err)
 		require.False(t, handler.IsInterfaceNil())
@@ -47,7 +47,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewConfigHandler(expectedWallet, expectedExplorer, contractHandler)
+		handler, _ := NewConfigHandler(expectedWallet, expectedExplorer, contractHandler, 0.05)
 		config, err := handler.GetConfig(context.Background())
 		require.Nil(t, config)
 		require.Equal(t, expectedErr, err)
@@ -66,7 +66,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewConfigHandler(expectedWallet, expectedExplorer, contractHandler)
+		handler, _ := NewConfigHandler(expectedWallet, expectedExplorer, contractHandler, 0.05)
 		config, err := handler.GetConfig(context.Background())
 		require.Nil(t, config)
 		require.Equal(t, expectedErr, err)
@@ -86,7 +86,8 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 			},
 		}
 
-		handler, _ := NewConfigHandler(expectedWallet, expectedExplorer, contractHandler)
+		expectedMinBalance := 0.05
+		handler, _ := NewConfigHandler(expectedWallet, expectedExplorer, contractHandler, expectedMinBalance)
 		config, err := handler.GetConfig(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, config)
@@ -95,5 +96,6 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 		assert.Equal(t, expectedRate, config["requestsPerEGLD"])
 		assert.Equal(t, expectedWallet, config["walletURL"])
 		assert.Equal(t, expectedExplorer, config["explorerURL"])
+		assert.Equal(t, expectedMinBalance, config["minimumBalance"])
 	})
 }

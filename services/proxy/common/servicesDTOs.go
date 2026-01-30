@@ -2,11 +2,12 @@ package common
 
 // CryptoPaymentConfig response from crypto-payment service
 type CryptoPaymentConfig struct {
-	IsContractPaused bool   `json:"isContractPaused"`
-	RequestsPerEGLD  uint64 `json:"requestsPerEGLD"`
-	WalletURL        string `json:"walletURL"`
-	ExplorerURL      string `json:"explorerURL"`
-	ContractAddress  string `json:"contractAddress"`
+	IsContractPaused bool    `json:"isContractPaused"`
+	RequestsPerEGLD  uint64  `json:"requestsPerEGLD"`
+	WalletURL        string  `json:"walletURL"`
+	ExplorerURL      string  `json:"explorerURL"`
+	ContractAddress  string  `json:"contractAddress"`
+	MinimumBalance   float64 `json:"minimumBalance"`
 }
 
 // CreateAddressResponse response from create-address endpoint
