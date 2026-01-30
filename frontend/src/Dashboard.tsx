@@ -629,7 +629,7 @@ export const Dashboard = () => {
                                                 <p className="text-slate-400 mb-4 text-sm leading-relaxed max-w-2xl">
                                                     Upgrade your account to Premium by making a secure crypto payment.
                                                     You are paying to a proxy address that will cost you a minimum fee. A relayer will invoke
-                                                    the smart-contract responsible with the payments and allocated credits.
+                                                    the smart contract responsible for the payments and allocated credits.
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mb-6">
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
