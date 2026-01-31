@@ -659,8 +659,50 @@ export const Dashboard = () => {
                                 </div>
                             )}
 
-                            {/* State: Has Payment ID / Premium User */}
-                            {!!(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && (
+                            {/* State: Forced Premium User */}
+                            {users[user.username.toLowerCase()].AccountType === 'premium' && (
+                                <div className="space-y-6 relative z-10">
+                                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-6 flex flex-col items-center text-center">
+                                        <div className="bg-emerald-500/20 p-4 rounded-full text-emerald-400 mb-4">
+                                            <Check size={32} />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white mb-2">Account is Premium active with unlimited credits</h3>
+                                        <p className="text-slate-400 mb-6">
+                                            Your account has been upgraded to Premium status. You have unlimited access to all services.
+                                        </p>
+
+                                        <div className="flex flex-col md:flex-row gap-4 w-full justify-center items-stretch">
+                                            {users[user.username.toLowerCase()].SCMaxRequests ? (
+                                                <div className="bg-white/5 rounded-lg p-4 border border-white/5 max-w-sm w-full flex flex-col justify-center">
+                                                    <div className="text-slate-400 text-sm mb-1">Bought Requests</div>
+                                                    <div className="text-2xl font-bold text-emerald-400 pb-2">
+                                                        {users[user.username.toLowerCase()].SCMaxRequests?.toLocaleString()}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            {cryptoState.depositAddress && (
+                                                <div className="bg-white/5 rounded-lg p-4 border border-white/5 max-w-sm w-full text-left flex flex-col justify-center">
+                                                    <label className="text-xs text-slate-500 block mb-1">For your reference, this is your allocated unique deposit address</label>
+                                                    <div className="flex items-center gap-2 bg-black/20 p-2 rounded border border-white/5">
+                                                        <code className="text-xs text-indigo-300 break-all font-mono">{cryptoState.depositAddress}</code>
+                                                        <button
+                                                            onClick={() => copyToClipboard(cryptoState.depositAddress || "")}
+                                                            className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors shrink-0"
+                                                            title="Copy Address"
+                                                        >
+                                                            <Copy size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* State: Has Payment ID / Not Forced Premium */}
+                            {!!(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && users[user.username.toLowerCase()].AccountType !== 'premium' && (
                                 <div className="space-y-6 relative z-10">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Left: Payment Info */}
