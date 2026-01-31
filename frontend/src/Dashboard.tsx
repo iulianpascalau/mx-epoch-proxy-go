@@ -620,7 +620,7 @@ export const Dashboard = () => {
                             )}
 
                             {/* State: Free User - No Payment ID */}
-                            {!cryptoState.paymentId && !users[user.username.toLowerCase()].PaymentID && users[user.username.toLowerCase()].AccountType !== 'premium' && !cryptoState.isLoading && (
+                            {!cryptoState.paymentId && !users[user.username.toLowerCase()].PaymentID && users[user.username.toLowerCase()].AccountType !== 'premium' && !users[user.username.toLowerCase()].IsPremium && !cryptoState.isLoading && (
                                 <div className="space-y-6 relative z-10">
                                     <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-6">
                                         <div className="flex items-start gap-4">
@@ -659,8 +659,8 @@ export const Dashboard = () => {
                                 </div>
                             )}
 
-                            {/* State: Forced Premium User */}
-                            {users[user.username.toLowerCase()].AccountType === 'premium' && (
+                            {/* State: Forced Premium User (No bought requests, just unlimited) */}
+                            {users[user.username.toLowerCase()].IsPremium && (
                                 <div className="space-y-6 relative z-10">
                                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-6 flex flex-col items-center text-center">
                                         <div className="bg-emerald-500/20 p-4 rounded-full text-emerald-400 mb-4">
@@ -672,14 +672,7 @@ export const Dashboard = () => {
                                         </p>
 
                                         <div className="flex flex-col md:flex-row gap-4 w-full justify-center items-stretch">
-                                            {users[user.username.toLowerCase()].SCMaxRequests ? (
-                                                <div className="bg-white/5 rounded-lg p-4 border border-white/5 max-w-sm w-full flex flex-col justify-center">
-                                                    <div className="text-slate-400 text-sm mb-1">Bought Requests</div>
-                                                    <div className="text-2xl font-bold text-emerald-400 pb-2">
-                                                        {users[user.username.toLowerCase()].SCMaxRequests?.toLocaleString()}
-                                                    </div>
-                                                </div>
-                                            ) : null}
+                                            {/* No bought requests here by definition */}
 
                                             {cryptoState.depositAddress && (
                                                 <div className="bg-white/5 rounded-lg p-4 border border-white/5 max-w-sm w-full text-left flex flex-col justify-center">
@@ -701,8 +694,8 @@ export const Dashboard = () => {
                                 </div>
                             )}
 
-                            {/* State: Has Payment ID / Not Forced Premium */}
-                            {!!(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && users[user.username.toLowerCase()].AccountType !== 'premium' && (
+                            {/* State: Has Payment ID / Not Forced Premium (Includes Paid Premium with Quota) */}
+                            {!!(cryptoState.paymentId || users[user.username.toLowerCase()].PaymentID) && !users[user.username.toLowerCase()].IsPremium && (
                                 <div className="space-y-6 relative z-10">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Left: Payment Info */}
