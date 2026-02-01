@@ -106,7 +106,7 @@ func (h *cryptoPaymentHandler) handleConfig(w http.ResponseWriter, r *http.Reque
 	response := map[string]interface{}{
 		"isAvailable":     true,
 		"isPaused":        cfg.IsContractPaused,
-		"requestsPerEGLD": cfg.RequestsPerEGLD,
+		"creditsPerEGLD":  cfg.CreditsPerEGLD,
 		"walletURL":       cfg.WalletURL,
 		"explorerURL":     cfg.ExplorerURL,
 		"contractAddress": cfg.ContractAddress,
@@ -204,9 +204,9 @@ func (h *cryptoPaymentHandler) handleGetAccount(w http.ResponseWriter, r *http.R
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"paymentId":        info.PaymentID,
-		"address":          info.Address,
-		"numberOfRequests": info.NumberOfRequests,
+		"paymentId": info.PaymentID,
+		"address":   info.Address,
+		"credits":   info.Credits,
 	})
 }
 
@@ -246,10 +246,10 @@ func (h *cryptoPaymentHandler) handleAdmin(w http.ResponseWriter, r *http.Reques
 		// I'll return a special JSON indicating no payment info.
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"username":         user.Username,
-			"paymentId":        nil,
-			"address":          nil,
-			"numberOfRequests": 0,
+			"username":  user.Username,
+			"paymentId": nil,
+			"address":   nil,
+			"credits":   0,
 		})
 		return
 	}
@@ -263,9 +263,9 @@ func (h *cryptoPaymentHandler) handleAdmin(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"username":         user.Username,
-		"paymentId":        info.PaymentID,
-		"address":          info.Address,
-		"numberOfRequests": info.NumberOfRequests,
+		"username":  user.Username,
+		"paymentId": info.PaymentID,
+		"address":   info.Address,
+		"credits":   info.Credits,
 	})
 }

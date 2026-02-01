@@ -550,7 +550,7 @@ func TestRelayedTxProcessor_Process(t *testing.T) {
 				assert.Equal(t, senderBech32, tx.Sender)
 				assert.Equal(t, uint64(1000000000), tx.GasPrice)
 				assert.Equal(t, gasLimit, tx.GasLimit)
-				assert.Equal(t, []byte("addRequests@05"), tx.Data)
+				assert.Equal(t, []byte("addCredits@05"), tx.Data)
 				assert.Equal(t, "T", tx.ChainID)
 				assert.Equal(t, uint32(1), tx.Version)
 				assert.Equal(t, hex.EncodeToString([]byte("userSig")), tx.Signature)

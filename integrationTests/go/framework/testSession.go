@@ -180,7 +180,8 @@ func (session *testSession) GetDepositAddress() string {
 	return session.depositAddress
 }
 
-func (session *testSession) GetNumberOfRequests() int {
+// GetCredits returns the number of credits
+func (session *testSession) GetCredits() int {
 	req, _ := http.NewRequest(http.MethodGet, session.baseAddress+api.EndpointApiCryptoPaymentAccount, nil)
 	req.Header.Set("Authorization", "Bearer "+session.jwtToken)
 	client := &http.Client{}
@@ -197,11 +198,11 @@ func (session *testSession) GetNumberOfRequests() int {
 	var acc map[string]interface{}
 	_ = json.NewDecoder(resp.Body).Decode(&acc)
 
-	// Check numberOfRequests. Should be around 50 (0.5 EGLD * 100 requests/EGLD)
-	reqs, ok := acc["numberOfRequests"].(float64)
+	// Check credits
+	credits, ok := acc["credits"].(float64)
 	if !ok {
 		return -1
 	}
 
-	return int(reqs)
+	return int(credits)
 }

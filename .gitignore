@@ -31,3 +31,4 @@ data/
 logs/
 .idea/
 epoch-proxy-server
+contracts/

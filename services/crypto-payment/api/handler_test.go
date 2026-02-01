@@ -43,17 +43,17 @@ func (m *mockConfigProvider) IsInterfaceNil() bool {
 }
 
 type mockAccountHandler struct {
-	getAccountCalled   int
-	getAccountID       uint64
-	getAccountAddr     string
-	getAccountRequests uint64
-	getAccountErr      error
+	getAccountCalled  int
+	getAccountID      uint64
+	getAccountAddr    string
+	getAccountCredits uint64
+	getAccountErr     error
 }
 
 func (m *mockAccountHandler) GetAccount(_ context.Context, id uint64) (string, uint64, error) {
 	m.getAccountCalled++
 	m.getAccountID = id
-	return m.getAccountAddr, m.getAccountRequests, m.getAccountErr
+	return m.getAccountAddr, m.getAccountCredits, m.getAccountErr
 }
 
 func (m *mockAccountHandler) IsInterfaceNil() bool {
@@ -168,11 +168,11 @@ func TestHandler_GetAccount(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		expectedID := uint64(123)
 		expectedAddr := "erd1test"
-		expectedRequests := uint64(10)
+		expectedCredits := uint64(10)
 
 		accountHandler := &mockAccountHandler{
-			getAccountAddr:     expectedAddr,
-			getAccountRequests: expectedRequests,
+			getAccountAddr:    expectedAddr,
+			getAccountCredits: expectedCredits,
 		}
 
 		h, _ := NewHandler(&mockStorage{}, &mockConfigProvider{}, accountHandler)
@@ -191,7 +191,7 @@ func TestHandler_GetAccount(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		require.Equal(t, expectedAddr, response["address"])
-		require.Equal(t, float64(expectedRequests), response["numberOfRequests"])
+		require.Equal(t, float64(expectedCredits), response["credits"])
 	})
 
 	t.Run("invalid id", func(t *testing.T) {

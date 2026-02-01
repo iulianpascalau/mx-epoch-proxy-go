@@ -122,8 +122,8 @@ func TestRequestsSynchronizer_Process(t *testing.T) {
 		crypto := &testscommon.CryptoPaymentClientStub{
 			GetAccountHandler: func(paymentID uint64) (*common.AccountInfo, error) {
 				return &common.AccountInfo{
-					PaymentID:        1,
-					NumberOfRequests: 100,
+					PaymentID: 1,
+					Credits:   100,
 				}, nil
 			},
 		}
@@ -157,8 +157,8 @@ func TestRequestsSynchronizer_Process(t *testing.T) {
 		crypto := &testscommon.CryptoPaymentClientStub{
 			GetAccountHandler: func(paymentID uint64) (*common.AccountInfo, error) {
 				return &common.AccountInfo{
-					PaymentID:        1,
-					NumberOfRequests: 100,
+					PaymentID: 1,
+					Credits:   100,
 				}, nil
 			},
 		}
@@ -190,8 +190,8 @@ func TestRequestsSynchronizer_Process(t *testing.T) {
 		crypto := &testscommon.CryptoPaymentClientStub{
 			GetAccountHandler: func(paymentID uint64) (*common.AccountInfo, error) {
 				return &common.AccountInfo{
-					PaymentID:        1,
-					NumberOfRequests: 100,
+					PaymentID: 1,
+					Credits:   100,
 				}, nil
 			},
 		}

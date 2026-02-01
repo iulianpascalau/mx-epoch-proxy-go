@@ -64,8 +64,8 @@ func TestCryptoPaymentClient_GetConfig(t *testing.T) {
 		t.Parallel()
 
 		expectedConfig := common.CryptoPaymentConfig{
-			RequestsPerEGLD: 100,
-			WalletURL:       "https://wallet.com",
+			CreditsPerEGLD: 100,
+			WalletURL:      "https://wallet.com",
 		}
 
 		stub := &testscommon.HttpRequesterStub{
@@ -172,7 +172,7 @@ func TestCryptoPaymentClient_GetAccount(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		expectedInfo := common.AccountInfo{PaymentID: 1, Address: "addr", NumberOfRequests: 50}
+		expectedInfo := common.AccountInfo{PaymentID: 1, Address: "addr", Credits: 50}
 		stub := &testscommon.HttpRequesterStub{
 			DoRequestHandler: func(method string, url string, apiKey string, result any) error {
 				assert.Equal(t, http.MethodGet, method)
