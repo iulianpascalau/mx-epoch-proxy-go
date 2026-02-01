@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments-go/integrationTests/framework"
 	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"

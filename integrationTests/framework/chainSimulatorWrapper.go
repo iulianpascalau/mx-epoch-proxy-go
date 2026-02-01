@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments-go/integrationTests/framework"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	apiCore "github.com/multiversx/mx-chain-core-go/data/api"
