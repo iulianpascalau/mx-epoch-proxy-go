@@ -1,4 +1,4 @@
-package _go
+package integrationTests
 
 import (
 	"context"
@@ -8,23 +8,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/go/framework"
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/framework"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
 )
+
+var log = logger.GetOrCreate("integrationTests")
 
 func TestCreateFreeUserAndCreateKeyAndTestRequestsAreThrottledThenSwitchToPremium(t *testing.T) {
 	if !framework.IsChainSimulatorIsRunning() {
 		t.Skip("No chain simulator instance running found. Skipping slow test")
 	}
+
+	framework.EnsureTestContracts(t)
+
 	proxyService := framework.NewProxyService(t)
-	cryptoPaymentService := framework.NewCryptoPaymentService(t)
+	cryptoPaymentService := cryptoPaymentsFramework.NewCryptoPaymentService(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	proxyService.Setup(ctx)
-	cryptoPaymentService.Setup(ctx, 100)
+	cryptoPaymentService.Setup(ctx, 100, framework.GetContractPath("credits"))
 
 	defer proxyService.TearDown()
 	defer cryptoPaymentService.TearDown()
@@ -87,7 +94,7 @@ func TestCreateFreeUserAndCreateKeyAndTestRequestsAreThrottledThenSwitchToPremiu
 	// Value: 0.5 EGLD = 0.5 * 10^18 = 500000000000000000
 	value := "500000000000000000"
 
-	receiverAddr := framework.NewMvxAddressFromBech32(t, session.GetDepositAddress())
+	receiverAddr := cryptoPaymentsFramework.NewMvxAddressFromBech32(t, session.GetDepositAddress())
 
 	// Send Tx
 	hash, _, status := cryptoPaymentService.ChainSimulator.SendTx(ctx, senderSk, receiverAddr, value, 500000, []byte{})

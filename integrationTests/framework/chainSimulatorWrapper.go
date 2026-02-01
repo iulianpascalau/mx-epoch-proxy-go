@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	apiCore "github.com/multiversx/mx-chain-core-go/data/api"
@@ -44,9 +45,10 @@ const (
 )
 
 var (
-	log          = logger.GetOrCreate("integrationTests")
-	signer       = &singlesig.Ed25519Signer{}
-	keyGenerator = signing.NewKeyGenerator(ed25519.NewEd25519())
+	log                       = logger.GetOrCreate("integrationTests")
+	signer                    = &singlesig.Ed25519Signer{}
+	keyGenerator              = signing.NewKeyGenerator(ed25519.NewEd25519())
+	addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
 )
 
 // ESDTSupply represents the DTO that holds the supply values for a token
@@ -132,7 +134,7 @@ func (instance *chainSimulatorWrapper) GetNetworkAddress() string {
 }
 
 // DeploySC will deploy the provided smart contract and return its address
-func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (*MvxAddress, string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (*cryptoPaymentsFramework.MvxAddress, string, *data.TransactionOnNetwork) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance.TB, err)
 
@@ -164,11 +166,11 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	require.Nil(instance, err)
 	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
 
-	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address), hash, txResult
+	return cryptoPaymentsFramework.NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address), hash, txResult
 }
 
 // UpgradeSC will upgrade the provided smart contract
-func (instance *chainSimulatorWrapper) UpgradeSC(ctx context.Context, scAddress *MvxAddress, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) UpgradeSC(ctx context.Context, scAddress *cryptoPaymentsFramework.MvxAddress, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (string, *data.TransactionOnNetwork) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance.TB, err)
 
@@ -253,12 +255,12 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilTxProcessed(ctx contex
 }
 
 // ScCall will make the provided sc call
-func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
+func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *cryptoPaymentsFramework.MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	return instance.SendTx(ctx, senderSK, contract, value, gasLimit, createTxData(function, parameters))
 }
 
 // ScCallWithoutGenerateBlocks will make the provided sc call and do not trigger the generate blocks command
-func (instance *chainSimulatorWrapper) ScCallWithoutGenerateBlocks(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) string {
+func (instance *chainSimulatorWrapper) ScCallWithoutGenerateBlocks(ctx context.Context, senderSK []byte, contract *cryptoPaymentsFramework.MvxAddress, value string, gasLimit uint64, function string, parameters []string) string {
 	return instance.SendTxWithoutGenerateBlocks(ctx, senderSK, contract, value, gasLimit, createTxData(function, parameters))
 }
 
@@ -271,7 +273,7 @@ func createTxData(function string, parameters []string) []byte {
 }
 
 // SendTx will build and send a transaction
-func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
+func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *cryptoPaymentsFramework.MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	hash := instance.SendTxWithoutGenerateBlocks(ctx, senderSK, receiver, value, gasLimit, dataField)
 	instance.GenerateBlocks(ctx, 1)
 	txResult, txStatus := instance.GetTransactionResult(ctx, hash)
@@ -280,7 +282,7 @@ func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []by
 }
 
 // SendTxWithoutGenerateBlocks will build and send a transaction without generating blocks
-func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) string {
+func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *cryptoPaymentsFramework.MvxAddress, value string, gasLimit uint64, dataField []byte) string {
 	senderPK := instance.getPublicKey(senderSK)
 	nonce, err := instance.getNonce(ctx, senderPK)
 	require.Nil(instance, err)
@@ -289,7 +291,7 @@ func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocks(ctx context.C
 }
 
 // SendTxWithNonceWithoutGenerateBlocks will build a transaction with given nonce and send it without generating blocks
-func (instance *chainSimulatorWrapper) SendTxWithNonceWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string {
+func (instance *chainSimulatorWrapper) SendTxWithNonceWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *cryptoPaymentsFramework.MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance, err)
 
@@ -337,7 +339,7 @@ func (instance *chainSimulatorWrapper) FundWallets(ctx context.Context, wallets 
 }
 
 // GetESDTBalance returns the balance of the esdt token for the provided address
-func (instance *chainSimulatorWrapper) GetESDTBalance(ctx context.Context, address *MvxAddress, token string) string {
+func (instance *chainSimulatorWrapper) GetESDTBalance(ctx context.Context, address *cryptoPaymentsFramework.MvxAddress, token string) string {
 	tokenData, err := instance.proxyInstance.GetESDTTokenData(ctx, address, token, apiCore.AccountQueryOptions{
 		OnFinalBlock: true,
 	})
@@ -426,7 +428,7 @@ func computeTransactionSignature(senderSk []byte, tx *transaction.FrontendTransa
 // ExecuteVMQuery will try to execute a VM query and return the results
 func (instance *chainSimulatorWrapper) ExecuteVMQuery(
 	ctx context.Context,
-	scAddress *MvxAddress,
+	scAddress *cryptoPaymentsFramework.MvxAddress,
 	function string,
 	hexParams []string,
 ) [][]byte {

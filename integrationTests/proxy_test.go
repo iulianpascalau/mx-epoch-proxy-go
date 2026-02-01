@@ -1,4 +1,4 @@
-package _go
+package integrationTests
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/go/framework"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/framework"
 	"github.com/stretchr/testify/require"
 )
 

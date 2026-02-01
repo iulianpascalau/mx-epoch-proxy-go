@@ -1,10 +1,10 @@
-package _go
+package integrationTests
 
 import (
 	"net/http"
 	"testing"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/go/framework"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/framework"
 )
 
 // SessionHandler defines the supported operations of a Session object

@@ -3,8 +3,8 @@ package framework
 import (
 	"context"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/factory"
-	"github.com/iulianpascalau/mx-epoch-proxy-go/services/crypto-payment/process"
+	"github.com/iulianpascalau/mx-crypto-payments/factory"
+	"github.com/iulianpascalau/mx-crypto-payments/process"
 	proxyApi "github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/api"
 	proxyFactory "github.com/iulianpascalau/mx-epoch-proxy-go/services/proxy/factory"
 	"github.com/multiversx/mx-chain-core-go/data/api"
