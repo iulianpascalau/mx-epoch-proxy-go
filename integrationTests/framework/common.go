@@ -3,13 +3,18 @@ package framework
 import (
 	"path/filepath"
 	"runtime"
+	"testing"
+
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
+	"github.com/stretchr/testify/require"
 )
 
-// PaymentGasLimit is the gas limit for the payment transaction
-const PaymentGasLimit = 50000
+// GetProxyRootPath returns the absolute path to the proxy service root path
+func GetProxyRootPath(templateFile string) string {
+	currentDir := traverse("integrationTests")
 
-// CallGasLimit is the gas limit for a SC call
-const CallGasLimit = 3000000
+	return filepath.Join(currentDir, "services", "proxy", templateFile)
+}
 
 // GetContractPath returns the absolute path to the wasm file
 func GetContractPath(contractName string) string {
@@ -18,11 +23,13 @@ func GetContractPath(contractName string) string {
 	return filepath.Join(currentDir, "contracts", contractName, contractName+".wasm")
 }
 
-// GetProxyRootPath returns the absolute path to the proxy service root path
-func GetProxyRootPath(templateFile string) string {
-	currentDir := traverse("integrationTests")
+// EnsureTestContracts test if the contracts are present in the project, if not, download them
+func EnsureTestContracts(tb testing.TB) {
+	root := traverse("integrationTests")
+	extractTarget := filepath.Join(root, "contracts")
 
-	return filepath.Join(currentDir, "services", "proxy", templateFile)
+	err := cryptoPaymentsFramework.EnsureContractCredits(cryptoPaymentsFramework.ContractCreditsURL, extractTarget)
+	require.NoError(tb, err)
 }
 
 func traverse(upToDir string) string {

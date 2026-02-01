@@ -6,8 +6,8 @@ toolchain go1.24.11
 
 require (
 	github.com/dchest/captcha v1.1.0
-	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/iulianpascalau/mx-crypto-payments v1.0.4
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/multiversx/mx-chain-core-go v1.4.1
@@ -50,6 +50,7 @@ require (
 	github.com/gin-contrib/cors v1.6.0 // indirect
 	github.com/gin-contrib/pprof v1.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/gin-gonic/gin v1.10.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect

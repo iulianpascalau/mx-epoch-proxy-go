@@ -1,4 +1,4 @@
-package _go
+package integrationTests
 
 import (
 	"context"
@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/go/framework"
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
+	"github.com/iulianpascalau/mx-epoch-proxy-go/integrationTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,16 +21,18 @@ func TestManualFlowsIsolation(t *testing.T) {
 		t.Skip("No chain simulator instance running found. Skipping slow test")
 	}
 
+	framework.EnsureTestContracts(t)
+
 	// 1. Setup Environment
 	proxyService := framework.NewProxyService(t)
-	cryptoPaymentService := framework.NewCryptoPaymentService(t)
+	cryptoPaymentService := cryptoPaymentsFramework.NewCryptoPaymentService(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	proxyService.Setup(ctx)
 	// High rate to avoid throttle issues during setup
-	cryptoPaymentService.Setup(ctx, 1000)
+	cryptoPaymentService.Setup(ctx, 1000, framework.GetContractPath("credits"))
 
 	defer proxyService.TearDown()
 	defer cryptoPaymentService.TearDown()

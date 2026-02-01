@@ -121,5 +121,22 @@ Stores system performance metrics.
 - **Settings**: Change password, update email.
 - **Responsive Design**: Fully mobile-compatible UI using Glassmorphism aesthetics.
 
-## 7. Future / In-Progress
-- **Crypto Payment Service**: A scaffold for a `crypto-payment` service exists in the code references, intended to handle cryptocurrency payments for premium accounts. Currently in early development state.
+## 7. Crypto Payments Service
+The **Crypto Payments Service** allows users to top up their account 
+credits using MultiversX native EGLD token. This functionality is decoupled into a 
+standalone microservice for security reasons.
+
+- **Project Repository**: [Crypto Payments Service Source](https://github.com/iulianpascalau/mx-crypto-payments)
+- **Credits Smart Contract**: [Smart Contract Source](https://github.com/iulianpascalau/mx-credits-contract-rs)
+
+### Funcationality
+1. **Address Management**: 
+   - Generates unique deposit addresses for each user.
+   - Maps on-chain payments to internal user accounts.
+2. **Payment Processing**:
+   - Monitors the blockchain for transactions.
+   - Validates transaction confirmations.
+   - Updates user credit balances upon successful payment using relayed transactions v3.
+3. **Configuration**:
+   - Manages exchange rates (credits per EGLD).
+   - Handles contract pause/resume states.
