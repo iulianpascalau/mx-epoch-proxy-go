@@ -58,8 +58,8 @@ type NonceTransactionsHandler interface {
 // ContractHandler defines the operations to query the contract state
 type ContractHandler interface {
 	IsContractPaused(ctx context.Context) (bool, error)
-	GetRequestsPerEGLD(ctx context.Context) (uint64, error)
-	GetRequests(ctx context.Context, id uint64) (uint64, error)
+	GetCreditsPerEGLD(ctx context.Context) (uint64, error)
+	GetCredits(ctx context.Context, id uint64) (uint64, error)
 	IsInterfaceNil() bool
 }
 

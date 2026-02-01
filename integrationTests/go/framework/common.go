@@ -15,7 +15,7 @@ const CallGasLimit = 3000000
 func GetContractPath(contractName string) string {
 	currentDir := traverse("integrationTests")
 
-	return filepath.Join(currentDir, "requests-contract", "output", contractName, contractName+".wasm")
+	return filepath.Join(currentDir, "contracts", contractName, contractName+".wasm")
 }
 
 // GetProxyRootPath returns the absolute path to the proxy service root path

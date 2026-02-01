@@ -54,7 +54,7 @@ func (crs *CryptoPaymentService) Setup(ctx context.Context, numRequestsPerEGLD i
 	log.Info("deploying contract")
 	address, _, txOnNetwork := crs.ChainSimulator.DeploySC(
 		ctx,
-		GetContractPath("requests"),
+		GetContractPath("credits"),
 		crs.Keys.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
