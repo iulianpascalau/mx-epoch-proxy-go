@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments/integrationTests/framework"
+	cryptoPaymentsFramework "github.com/iulianpascalau/mx-crypto-payments-go/integrationTests/framework"
 	"github.com/stretchr/testify/require"
 )
 
