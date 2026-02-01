@@ -58,7 +58,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
 		paused, err := handler.IsContractPaused(context.Background())
-		require.False(t, paused)
+		require.True(t, paused)
 		require.Equal(t, expectedErr, err)
 	})
 
@@ -74,6 +74,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
 		paused, err := handler.IsContractPaused(context.Background())
 		require.NoError(t, err)
+		// Data nil -> Paused
 		require.True(t, paused)
 	})
 
@@ -83,7 +84,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{ReturnData: nil},
+					Data: &vm.VMOutputApi{ReturnData: nil, ReturnCode: "ok"},
 				}, nil
 			},
 		}
@@ -100,7 +101,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{ReturnData: make([][]byte, 0)},
+					Data: &vm.VMOutputApi{ReturnData: make([][]byte, 0), ReturnCode: "ok"},
 				}, nil
 			},
 		}
@@ -117,7 +118,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{ReturnData: [][]byte{{}}},
+					Data: &vm.VMOutputApi{ReturnData: [][]byte{{}}, ReturnCode: "ok"},
 				}, nil
 			},
 		}
@@ -147,13 +148,33 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		require.True(t, paused)
 	})
 
+	t.Run("execution failed", func(t *testing.T) {
+		t.Parallel()
+
+		proxy := &testsCommon.BlockchainDataProviderStub{
+			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: "execution failed",
+						ReturnData: nil,
+					},
+				}, nil
+			},
+		}
+
+		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
+		paused, err := handler.IsContractPaused(context.Background())
+		require.NoError(t, err)
+		require.True(t, paused)
+	})
+
 	t.Run("paused", func(t *testing.T) {
 		t.Parallel()
 
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{ReturnData: [][]byte{{1}}},
+					Data: &vm.VMOutputApi{ReturnData: [][]byte{{1}}, ReturnCode: "ok"},
 				}, nil
 			},
 		}
@@ -170,7 +191,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{ReturnData: [][]byte{{0}}},
+					Data: &vm.VMOutputApi{ReturnData: [][]byte{{0}}, ReturnCode: "ok"},
 				}, nil
 			},
 		}
@@ -189,7 +210,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				calls++
 				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{ReturnData: [][]byte{{1}}},
+					Data: &vm.VMOutputApi{ReturnData: [][]byte{{1}}, ReturnCode: "ok"},
 				}, nil
 			},
 		}
