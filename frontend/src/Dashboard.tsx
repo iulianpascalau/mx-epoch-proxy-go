@@ -29,7 +29,7 @@ interface UserDetails {
 interface CryptoPaymentState {
     isServiceAvailable: boolean;
     isPaused: boolean;
-    requestsPerEGLD: number;
+    creditsPerEGLD: number;
     walletURL: string;
     explorerURL: string;
     contractAddress: string;
@@ -37,7 +37,7 @@ interface CryptoPaymentState {
 
     paymentId: number | null;
     depositAddress: string | null;
-    numberOfRequests: number;
+    credits: number;
 
     isLoading: boolean;
     error: string | null;
@@ -111,14 +111,14 @@ export const Dashboard = () => {
     const [cryptoState, setCryptoState] = useState<CryptoPaymentState>({
         isServiceAvailable: false,
         isPaused: false,
-        requestsPerEGLD: 10000,
+        creditsPerEGLD: 10000,
         walletURL: 'https://devnet-wallet.multiversx.com',
         explorerURL: 'https://devnet-explorer.multiversx.com',
         contractAddress: 'erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw',
         minimumBalance: 0,
         paymentId: null,
         depositAddress: null,
-        numberOfRequests: 0,
+        credits: 0,
         isLoading: false,
         error: null
     });
@@ -141,7 +141,7 @@ export const Dashboard = () => {
             const newState = {
                 isServiceAvailable: config.isAvailable,
                 isPaused: config.isPaused,
-                requestsPerEGLD: config.requestsPerEGLD,
+                creditsPerEGLD: config.creditsPerEGLD,
                 walletURL: ensureProtocol(config.walletURL),
                 explorerURL: ensureProtocol(config.explorerURL),
                 contractAddress: config.contractAddress,
@@ -164,7 +164,7 @@ export const Dashboard = () => {
                             ...prev,
                             paymentId: accountRes.data.paymentId,
                             depositAddress: accountRes.data.address,
-                            numberOfRequests: accountRes.data.numberOfRequests
+                            credits: accountRes.data.credits
                         }));
                     }
                 } catch (accErr: any) {
@@ -177,7 +177,7 @@ export const Dashboard = () => {
                             ...prev,
                             paymentId: null,
                             depositAddress: null,
-                            numberOfRequests: 0
+                            credits: 0
                         }));
                     }
                 }
@@ -191,7 +191,7 @@ export const Dashboard = () => {
                 isServiceAvailable: false,
                 isPaused: false, // Ensure paused state is cleared if service is down
                 isLoading: false,
-                requestsPerEGLD: 0, // Reset rate
+                creditsPerEGLD: 0, // Reset rate
                 error: err.response?.data?.error || "Crypto service unavailable"
             }));
         }
@@ -217,7 +217,7 @@ export const Dashboard = () => {
                     ...prev,
                     paymentId: accountRes.data.paymentId,
                     depositAddress: accountRes.data.address,
-                    numberOfRequests: accountRes.data.numberOfRequests,
+                    credits: accountRes.data.credits,
                     isLoading: false
                 }));
                 // Also refresh the main user data to ensure all views are in sync
@@ -636,7 +636,7 @@ export const Dashboard = () => {
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mb-6">
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
-                                                        Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
+                                                        Rate: {cryptoState.creditsPerEGLD ? cryptoState.creditsPerEGLD.toLocaleString() : '-'} credits / 1 EGLD
                                                     </span>
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Activation: under 3 minutes</span>
                                                 </div>
@@ -727,7 +727,7 @@ export const Dashboard = () => {
                                                     </div>
                                                     <div>
                                                         <label className="text-xs text-slate-500 block mb-1">Current Rate</label>
-                                                        <div className="text-slate-200">{cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req/EGLD</div>
+                                                        <div className="text-slate-200">{cryptoState.creditsPerEGLD ? cryptoState.creditsPerEGLD.toLocaleString() : '-'} credits/EGLD</div>
                                                     </div>
                                                     <div className="col-span-2 mt-1">
                                                         <div className="text-[10px] text-amber-500/80 font-medium flex items-center gap-1.5 uppercase tracking-wide">

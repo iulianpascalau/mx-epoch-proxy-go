@@ -61,7 +61,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 			IsContractPausedHandler: func(ctx context.Context) (bool, error) {
 				return false, nil
 			},
-			GetRequestsPerEGLDHandler: func(ctx context.Context) (uint64, error) {
+			GetCreditsPerEGLDHandler: func(ctx context.Context) (uint64, error) {
 				return 0, expectedErr
 			},
 		}
@@ -81,7 +81,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 			IsContractPausedHandler: func(ctx context.Context) (bool, error) {
 				return true, nil
 			},
-			GetRequestsPerEGLDHandler: func(ctx context.Context) (uint64, error) {
+			GetCreditsPerEGLDHandler: func(ctx context.Context) (uint64, error) {
 				return expectedRate, nil
 			},
 		}
@@ -93,7 +93,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 		require.NotNil(t, config)
 
 		assert.True(t, config["isContractPaused"].(bool))
-		assert.Equal(t, expectedRate, config["requestsPerEGLD"])
+		assert.Equal(t, expectedRate, config["creditsPerEGLD"])
 		assert.Equal(t, expectedWallet, config["walletURL"])
 		assert.Equal(t, expectedExplorer, config["explorerURL"])
 		assert.Equal(t, expectedMinBalance, config["minimumBalance"])

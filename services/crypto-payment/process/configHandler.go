@@ -40,7 +40,7 @@ func (ch *configHandler) GetConfig(ctx context.Context) (map[string]interface{},
 		return nil, err
 	}
 
-	requestsPerEgld, err := ch.contractHandler.GetRequestsPerEGLD(ctx)
+	creditsPerEgld, err := ch.contractHandler.GetCreditsPerEGLD(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (ch *configHandler) GetConfig(ctx context.Context) (map[string]interface{},
 		"isContractPaused": isPaused,
 		"walletURL":        ch.walletURL,
 		"explorerURL":      ch.explorerURL,
-		"requestsPerEGLD":  requestsPerEgld,
+		"creditsPerEGLD":   creditsPerEgld,
 		"minimumBalance":   ch.minimumBalance,
 	}, nil
 }

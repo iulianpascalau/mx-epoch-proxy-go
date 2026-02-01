@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const functionGetRequests = "getRequests"
+const functionGetCredits = "getCredits"
 
 var log = logger.GetOrCreate("integrationTests")
 
@@ -293,7 +293,7 @@ func checkCredits(ctx context.Context, service *framework.CryptoPaymentService, 
 	result := service.ChainSimulator.ExecuteVMQuery(
 		ctx,
 		service.ContractAddress,
-		functionGetRequests,
+		functionGetCredits,
 		[]string{
 			hex.EncodeToString(big.NewInt(int64(id)).Bytes()),
 		},

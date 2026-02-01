@@ -44,15 +44,15 @@ func TestAccountHandler_GetAccount(t *testing.T) {
 
 	expectedID := uint64(123)
 	expectedAddress := "erd1test"
-	expectedRequests := uint64(50)
+	expectedCredits := uint64(50)
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		contractStub := &testsCommon.ContractHandlerStub{
-			GetRequestsHandler: func(ctx context.Context, id uint64) (uint64, error) {
+			GetCreditsHandler: func(ctx context.Context, id uint64) (uint64, error) {
 				require.Equal(t, expectedID, id)
-				return expectedRequests, nil
+				return expectedCredits, nil
 			},
 		}
 
@@ -67,10 +67,10 @@ func TestAccountHandler_GetAccount(t *testing.T) {
 		}
 
 		ah, _ := NewAccountHandler(contractStub, dataStub)
-		address, requests, err := ah.GetAccount(context.Background(), expectedID)
+		address, credits, err := ah.GetAccount(context.Background(), expectedID)
 		require.NoError(t, err)
 		require.Equal(t, expectedAddress, address)
-		require.Equal(t, expectedRequests, requests)
+		require.Equal(t, expectedCredits, credits)
 	})
 
 	t.Run("data provider error", func(t *testing.T) {
@@ -85,10 +85,10 @@ func TestAccountHandler_GetAccount(t *testing.T) {
 		contractStub := &testsCommon.ContractHandlerStub{}
 
 		ah, _ := NewAccountHandler(contractStub, dataStub)
-		address, requests, err := ah.GetAccount(context.Background(), expectedID)
+		address, credits, err := ah.GetAccount(context.Background(), expectedID)
 		require.Equal(t, expectedErr, err)
 		require.Empty(t, address)
-		require.Zero(t, requests)
+		require.Zero(t, credits)
 	})
 
 	t.Run("contract handler error", func(t *testing.T) {
@@ -101,15 +101,15 @@ func TestAccountHandler_GetAccount(t *testing.T) {
 			},
 		}
 		contractStub := &testsCommon.ContractHandlerStub{
-			GetRequestsHandler: func(ctx context.Context, id uint64) (uint64, error) {
+			GetCreditsHandler: func(ctx context.Context, id uint64) (uint64, error) {
 				return 0, expectedErr
 			},
 		}
 
 		ah, _ := NewAccountHandler(contractStub, dataStub)
-		address, requests, err := ah.GetAccount(context.Background(), expectedID)
+		address, credits, err := ah.GetAccount(context.Background(), expectedID)
 		require.Equal(t, expectedErr, err)
 		require.Empty(t, address)
-		require.Zero(t, requests)
+		require.Zero(t, credits)
 	})
 }

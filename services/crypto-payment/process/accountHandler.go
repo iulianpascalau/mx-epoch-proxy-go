@@ -34,12 +34,12 @@ func (ah *accountHandler) GetAccount(ctx context.Context, id uint64) (string, ui
 		return "", 0, err
 	}
 
-	requests, err := ah.contractHandler.GetRequests(ctx, id)
+	credits, err := ah.contractHandler.GetCredits(ctx, id)
 	if err != nil {
 		return "", 0, err
 	}
 
-	return entry.Address, requests, nil
+	return entry.Address, credits, nil
 }
 
 // IsInterfaceNil returns true if the value under the interface is nil

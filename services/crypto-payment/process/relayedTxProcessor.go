@@ -17,7 +17,7 @@ import (
 	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV2"
 )
 
-const requestsAddEndpoint = "addRequests"
+const creditsAddEndpoint = "addCredits"
 const intervalToResendTxs = time.Minute
 
 var hashSigningTxHasher = keccak.NewKeccak()
@@ -127,7 +127,7 @@ func (processor *relayedTxProcessor) Process(ctx context.Context, id uint64, sen
 
 	// 1. Prepare the data field
 	dataFieldBuilder := builders.NewTxDataBuilder()
-	dataField, err := dataFieldBuilder.Function(requestsAddEndpoint).ArgInt64(int64(id)).ToDataBytes()
+	dataField, err := dataFieldBuilder.Function(creditsAddEndpoint).ArgInt64(int64(id)).ToDataBytes()
 	if err != nil {
 		return fmt.Errorf("failed to build data field: %w", err)
 	}

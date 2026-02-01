@@ -4,9 +4,9 @@ import "context"
 
 // ContractHandlerStub -
 type ContractHandlerStub struct {
-	IsContractPausedHandler   func(ctx context.Context) (bool, error)
-	GetRequestsPerEGLDHandler func(ctx context.Context) (uint64, error)
-	GetRequestsHandler        func(ctx context.Context, id uint64) (uint64, error)
+	IsContractPausedHandler  func(ctx context.Context) (bool, error)
+	GetCreditsPerEGLDHandler func(ctx context.Context) (uint64, error)
+	GetCreditsHandler        func(ctx context.Context, id uint64) (uint64, error)
 }
 
 // IsContractPaused -
@@ -17,18 +17,18 @@ func (stub *ContractHandlerStub) IsContractPaused(ctx context.Context) (bool, er
 	return false, nil
 }
 
-// GetRequestsPerEGLD -
-func (stub *ContractHandlerStub) GetRequestsPerEGLD(ctx context.Context) (uint64, error) {
-	if stub.GetRequestsPerEGLDHandler != nil {
-		return stub.GetRequestsPerEGLDHandler(ctx)
+// GetCreditsPerEGLD -
+func (stub *ContractHandlerStub) GetCreditsPerEGLD(ctx context.Context) (uint64, error) {
+	if stub.GetCreditsPerEGLDHandler != nil {
+		return stub.GetCreditsPerEGLDHandler(ctx)
 	}
 	return 0, nil
 }
 
-// GetRequests -
-func (stub *ContractHandlerStub) GetRequests(ctx context.Context, id uint64) (uint64, error) {
-	if stub.GetRequestsHandler != nil {
-		return stub.GetRequestsHandler(ctx, id)
+// GetCredits -
+func (stub *ContractHandlerStub) GetCredits(ctx context.Context, id uint64) (uint64, error) {
+	if stub.GetCreditsHandler != nil {
+		return stub.GetCreditsHandler(ctx, id)
 	}
 	return 0, nil
 }

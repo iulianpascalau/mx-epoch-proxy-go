@@ -64,14 +64,14 @@ func (h *Handler) GetAccount(c *gin.Context) {
 		return
 	}
 
-	address, requests, err := h.accountHandler.GetAccount(c.Request.Context(), request.ID)
+	address, credits, err := h.accountHandler.GetAccount(c.Request.Context(), request.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"address":          address,
-		"numberOfRequests": requests,
+		"address": address,
+		"credits": credits,
 	})
 }

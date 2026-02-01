@@ -68,8 +68,8 @@ func TestCryptoPaymentHandler_HandleConfig(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		expectedConfig := &common.CryptoPaymentConfig{
-			RequestsPerEGLD: 100,
-			WalletURL:       "https://wallet.com",
+			CreditsPerEGLD: 100,
+			WalletURL:      "https://wallet.com",
 		}
 		clientStub.GetConfigHandler = func() (*common.CryptoPaymentConfig, error) {
 			return expectedConfig, nil
@@ -219,7 +219,7 @@ func TestCryptoPaymentHandler_HandleGetAccount(t *testing.T) {
 		}
 		clientStub.GetAccountHandler = func(paymentID uint64) (*common.AccountInfo, error) {
 			assert.Equal(t, uint64(100), paymentID)
-			return &common.AccountInfo{PaymentID: 100, NumberOfRequests: 50}, nil
+			return &common.AccountInfo{PaymentID: 100, Credits: 50}, nil
 		}
 
 		w := httptest.NewRecorder()
@@ -278,7 +278,7 @@ func TestCryptoPaymentHandler_HandleAdmin(t *testing.T) {
 			return &common.UsersDetails{Username: "target", CryptoPaymentID: 100}, nil
 		}
 		clientStub.GetAccountHandler = func(paymentID uint64) (*common.AccountInfo, error) {
-			return &common.AccountInfo{PaymentID: 100, NumberOfRequests: 50}, nil
+			return &common.AccountInfo{PaymentID: 100, Credits: 50}, nil
 		}
 
 		w := httptest.NewRecorder()
@@ -329,6 +329,6 @@ func TestCryptoPaymentHandler_HandleAdmin(t *testing.T) {
 		var resp map[string]interface{}
 		_ = json.NewDecoder(w.Body).Decode(&resp)
 		assert.Nil(t, resp["paymentId"])
-		assert.Equal(t, float64(0), resp["numberOfRequests"])
+		assert.Equal(t, float64(0), resp["credits"])
 	})
 }

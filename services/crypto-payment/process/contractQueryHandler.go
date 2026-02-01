@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	isPausedFunc        = "isPaused"
-	requestsPerEgldFunc = "getRequestsPerEgld"
+	isPausedFunc       = "isPaused"
+	creditsPerEgldFunc = "getCreditsPerEgld"
 
-	keyIsPaused        = "isPaused"
-	keyRequestsPerEgld = "requestsPerEgld"
+	keyIsPaused       = "isPaused"
+	keyCreditsPerEgld = "creditsPerEgld"
 
 	contractNotFoundStatus = "contract not found"
 )
@@ -82,16 +82,16 @@ func (cqh *contractQueryHandler) IsContractPaused(ctx context.Context) (bool, er
 	return isPaused, nil
 }
 
-// GetRequestsPerEGLD returns the number of requests per EGLD
-func (cqh *contractQueryHandler) GetRequestsPerEGLD(ctx context.Context) (uint64, error) {
-	requestsPerEgldCachedValue, found := cqh.cacher.Get(keyRequestsPerEgld)
+// GetCreditsPerEGLD returns the number of credits per EGLD
+func (cqh *contractQueryHandler) GetCreditsPerEGLD(ctx context.Context) (uint64, error) {
+	creditsPerEgldCachedValue, found := cqh.cacher.Get(keyCreditsPerEgld)
 	if found {
-		return requestsPerEgldCachedValue.(uint64), nil
+		return creditsPerEgldCachedValue.(uint64), nil
 	}
 
 	res, err := cqh.blockchainDataProvider.ExecuteVMQuery(ctx, &data.VmValueRequest{
 		Address:    cqh.contractBech32Address,
-		FuncName:   requestsPerEgldFunc,
+		FuncName:   creditsPerEgldFunc,
 		CallValue:  "0",
 		CallerAddr: cqh.contractBech32Address,
 	})
@@ -99,14 +99,14 @@ func (cqh *contractQueryHandler) GetRequestsPerEGLD(ctx context.Context) (uint64
 		return 0, err
 	}
 
-	requestsPerEgld, err := vmValueToUint64Decoder(res.Data.ReturnData)
+	creditsPerEgld, err := vmValueToUint64Decoder(res.Data.ReturnData)
 	if err != nil {
 		return 0, err
 	}
 
-	cqh.cacher.Set(keyRequestsPerEgld, requestsPerEgld)
+	cqh.cacher.Set(keyCreditsPerEgld, creditsPerEgld)
 
-	return requestsPerEgld, nil
+	return creditsPerEgld, nil
 }
 
 func vmValueToUint64Decoder(buff [][]byte) (uint64, error) {
@@ -123,11 +123,11 @@ func vmValueToUint64Decoder(buff [][]byte) (uint64, error) {
 	return val.Uint64(), nil
 }
 
-// GetRequests returns the number of requests for a specific ID
-func (cqh *contractQueryHandler) GetRequests(ctx context.Context, id uint64) (uint64, error) {
+// GetCredits returns the number of credits for a specific ID
+func (cqh *contractQueryHandler) GetCredits(ctx context.Context, id uint64) (uint64, error) {
 	res, err := cqh.blockchainDataProvider.ExecuteVMQuery(ctx, &data.VmValueRequest{
 		Address:    cqh.contractBech32Address,
-		FuncName:   "getRequests",
+		FuncName:   "getCredits",
 		Args:       []string{ensureEvenHex(fmt.Sprintf("%x", id))}, // hex encoded id
 		CallValue:  "0",
 		CallerAddr: cqh.contractBech32Address,

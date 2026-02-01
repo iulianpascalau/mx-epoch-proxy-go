@@ -208,7 +208,7 @@ func TestContractQueryHandler_IsContractPaused(t *testing.T) {
 	})
 }
 
-func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
+func TestContractQueryHandler_GetCreditsPerEGLD(t *testing.T) {
 	t.Parallel()
 
 	t.Run("proxy error", func(t *testing.T) {
@@ -222,7 +222,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequestsPerEGLD(context.Background())
+		val, err := handler.GetCreditsPerEGLD(context.Background())
 		require.Equal(t, uint64(0), val)
 		require.Equal(t, expectedErr, err)
 	})
@@ -239,7 +239,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequestsPerEGLD(context.Background())
+		val, err := handler.GetCreditsPerEGLD(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, uint64(0), val)
 	})
@@ -249,7 +249,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, "getRequestsPerEgld", vmRequest.FuncName)
+				assert.Equal(t, "getCreditsPerEgld", vmRequest.FuncName)
 				return &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{ReturnData: [][]byte{{10}}},
 				}, nil
@@ -257,7 +257,7 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequestsPerEGLD(context.Background())
+		val, err := handler.GetCreditsPerEGLD(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, uint64(10), val)
 	})
@@ -277,14 +277,14 @@ func TestContractQueryHandler_GetRequestsPerEGLD(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequestsPerEGLD(context.Background())
+		val, err := handler.GetCreditsPerEGLD(context.Background())
 		require.Error(t, err)
 		require.True(t, strings.Contains(err.Error(), "is not a uint64"))
 		require.Equal(t, uint64(0), val)
 	})
 }
 
-func TestContractQueryHandler_GetRequests(t *testing.T) {
+func TestContractQueryHandler_GetCredits(t *testing.T) {
 	t.Parallel()
 
 	t.Run("proxy error", func(t *testing.T) {
@@ -298,7 +298,7 @@ func TestContractQueryHandler_GetRequests(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequests(context.Background(), 1)
+		val, err := handler.GetCredits(context.Background(), 1)
 		require.Equal(t, uint64(0), val)
 		require.Equal(t, expectedErr, err)
 	})
@@ -315,7 +315,7 @@ func TestContractQueryHandler_GetRequests(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequests(context.Background(), 1)
+		val, err := handler.GetCredits(context.Background(), 1)
 		require.NoError(t, err)
 		require.Equal(t, uint64(0), val)
 	})
@@ -326,7 +326,7 @@ func TestContractQueryHandler_GetRequests(t *testing.T) {
 		id := uint64(123)
 		proxy := &testsCommon.BlockchainDataProviderStub{
 			ExecuteVMQueryHandler: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, "getRequests", vmRequest.FuncName)
+				assert.Equal(t, "getCredits", vmRequest.FuncName)
 				assert.Equal(t, "7b", vmRequest.Args[0]) // 123 in hex
 				return &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{ReturnData: [][]byte{{10}}},
@@ -335,7 +335,7 @@ func TestContractQueryHandler_GetRequests(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequests(context.Background(), id)
+		val, err := handler.GetCredits(context.Background(), id)
 		require.NoError(t, err)
 		require.Equal(t, uint64(10), val)
 	})
@@ -353,7 +353,7 @@ func TestContractQueryHandler_GetRequests(t *testing.T) {
 		}
 
 		handler, _ := NewContractQueryHandler(proxy, "erd1test", &testsCommon.CacherStub{})
-		val, err := handler.GetRequests(context.Background(), 1)
+		val, err := handler.GetCredits(context.Background(), 1)
 		require.Error(t, err)
 		require.True(t, strings.Contains(err.Error(), "is not a uint64"))
 		require.Equal(t, uint64(0), val)

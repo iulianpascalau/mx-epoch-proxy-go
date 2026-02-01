@@ -47,22 +47,22 @@ func NewCryptoPaymentService(tb testing.TB) *CryptoPaymentService {
 }
 
 // Setup prepares the environment
-func (crs *CryptoPaymentService) Setup(ctx context.Context, numRequestsPerEGLD int64) {
+func (crs *CryptoPaymentService) Setup(ctx context.Context, creditsPerEGLD int64) {
 	log.Info("minting tokens to the users")
 	crs.ChainSimulator.FundWallets(ctx, crs.Keys.WalletsToFundOnMultiversX())
 
 	log.Info("deploying contract")
 	address, _, txOnNetwork := crs.ChainSimulator.DeploySC(
 		ctx,
-		GetContractPath("requests"),
+		GetContractPath("credits"),
 		crs.Keys.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
-			hex.EncodeToString(big.NewInt(numRequestsPerEGLD).Bytes()),
+			hex.EncodeToString(big.NewInt(creditsPerEGLD).Bytes()),
 		},
 	)
 
-	log.Info("deployed the requests contract", "address", address.Bech32(), "txHash", txOnNetwork.Hash)
+	log.Info("deployed the credits contract", "address", address.Bech32(), "txHash", txOnNetwork.Hash)
 	crs.ContractAddress = address
 }
 
