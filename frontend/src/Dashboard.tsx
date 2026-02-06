@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAccessKey, clearAuth, getUserInfo, parseJwt, type User as AuthUser } from './auth';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink, Zap, AlertTriangle, CreditCard, Wallet } from 'lucide-react';
+import { LogOut, Key, Users, Copy, Trash2, Shield, Loader, Plus, User, Pencil, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Check, X as XIcon, UserCog, BookOpen, ExternalLink, Zap, AlertTriangle, CreditCard, Wallet } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -29,7 +29,7 @@ interface UserDetails {
 interface CryptoPaymentState {
     isServiceAvailable: boolean;
     isPaused: boolean;
-    requestsPerEGLD: number;
+    creditsPerEGLD: number;
     walletURL: string;
     explorerURL: string;
     contractAddress: string;
@@ -37,7 +37,7 @@ interface CryptoPaymentState {
 
     paymentId: number | null;
     depositAddress: string | null;
-    numberOfRequests: number;
+    credits: number;
 
     isLoading: boolean;
     error: string | null;
@@ -111,14 +111,14 @@ export const Dashboard = () => {
     const [cryptoState, setCryptoState] = useState<CryptoPaymentState>({
         isServiceAvailable: false,
         isPaused: false,
-        requestsPerEGLD: 10000,
+        creditsPerEGLD: 10000,
         walletURL: 'https://devnet-wallet.multiversx.com',
         explorerURL: 'https://devnet-explorer.multiversx.com',
         contractAddress: 'erd1qqqqqqqqqqqqqpgqc6u0p4kfkr5ekcrae86m6knx46gr36khrqqqhf96zw',
         minimumBalance: 0,
         paymentId: null,
         depositAddress: null,
-        numberOfRequests: 0,
+        credits: 0,
         isLoading: false,
         error: null
     });
@@ -141,7 +141,7 @@ export const Dashboard = () => {
             const newState = {
                 isServiceAvailable: config.isAvailable,
                 isPaused: config.isPaused,
-                requestsPerEGLD: config.requestsPerEGLD,
+                creditsPerEGLD: config.creditsPerEGLD,
                 walletURL: ensureProtocol(config.walletURL),
                 explorerURL: ensureProtocol(config.explorerURL),
                 contractAddress: config.contractAddress,
@@ -164,7 +164,7 @@ export const Dashboard = () => {
                             ...prev,
                             paymentId: accountRes.data.paymentId,
                             depositAddress: accountRes.data.address,
-                            numberOfRequests: accountRes.data.numberOfRequests
+                            credits: accountRes.data.credits
                         }));
                     }
                 } catch (accErr: any) {
@@ -177,7 +177,7 @@ export const Dashboard = () => {
                             ...prev,
                             paymentId: null,
                             depositAddress: null,
-                            numberOfRequests: 0
+                            credits: 0
                         }));
                     }
                 }
@@ -191,7 +191,7 @@ export const Dashboard = () => {
                 isServiceAvailable: false,
                 isPaused: false, // Ensure paused state is cleared if service is down
                 isLoading: false,
-                requestsPerEGLD: 0, // Reset rate
+                creditsPerEGLD: 0, // Reset rate
                 error: err.response?.data?.error || "Crypto service unavailable"
             }));
         }
@@ -217,7 +217,7 @@ export const Dashboard = () => {
                     ...prev,
                     paymentId: accountRes.data.paymentId,
                     depositAddress: accountRes.data.address,
-                    numberOfRequests: accountRes.data.numberOfRequests,
+                    credits: accountRes.data.credits,
                     isLoading: false
                 }));
                 // Also refresh the main user data to ensure all views are in sync
@@ -636,7 +636,7 @@ export const Dashboard = () => {
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mb-6">
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">
-                                                        Rate: {cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req / 1 EGLD
+                                                        Rate: {cryptoState.creditsPerEGLD ? cryptoState.creditsPerEGLD.toLocaleString() : '-'} credits / 1 EGLD
                                                     </span>
                                                     <span className="bg-white/5 px-2 py-1 rounded text-xs text-slate-300">Activation: under 3 minutes</span>
                                                 </div>
@@ -727,7 +727,7 @@ export const Dashboard = () => {
                                                     </div>
                                                     <div>
                                                         <label className="text-xs text-slate-500 block mb-1">Current Rate</label>
-                                                        <div className="text-slate-200">{cryptoState.requestsPerEGLD ? cryptoState.requestsPerEGLD.toLocaleString() : '-'} req/EGLD</div>
+                                                        <div className="text-slate-200">{cryptoState.creditsPerEGLD ? cryptoState.creditsPerEGLD.toLocaleString() : '-'} credits/EGLD</div>
                                                     </div>
                                                     <div className="col-span-2 mt-1">
                                                         <div className="text-[10px] text-amber-500/80 font-medium flex items-center gap-1.5 uppercase tracking-wide">
@@ -1180,8 +1180,28 @@ export const Dashboard = () => {
                                 <ExternalLink size={18} />
                             </a>
                             <div className="text-center w-full border-t border-white/5 pt-6">
-                                <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
-                                    Build {appInfo.version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
+                                <p style={{ fontSize: '0.8rem' }} className="text-slate-500 flex items-center justify-center gap-1">
+                                    Build {appInfo.version} |
+                                    <div className="relative group inline-block ml-1">
+                                        <button className="hover:text-slate-300 underline decoration-slate-600 underline-offset-2 flex items-center gap-1 transition-colors">
+                                            Source Code <ChevronUp size={12} />
+                                        </button>
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900/95 border border-slate-700/50 backdrop-blur-xl rounded-lg shadow-2xl opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all duration-200 transform origin-bottom z-50 flex flex-col">
+                                            <div className="px-4 py-2 border-b border-white/5 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                                                Repositories
+                                            </div>
+                                            <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" target="_blank" rel="noopener noreferrer" className="px-4 py-3 hover:bg-indigo-500/10 hover:text-indigo-300 text-slate-300 text-xs text-left transition-colors flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Epoch Proxy (Go)
+                                            </a>
+                                            <a href="https://github.com/iulianpascalau/mx-crypto-payments" target="_blank" rel="noopener noreferrer" className="px-4 py-3 hover:bg-emerald-500/10 hover:text-emerald-300 text-slate-300 text-xs text-left transition-colors flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Crypto Payments (Go)
+                                            </a>
+                                            <a href="https://github.com/iulianpascalau/mx-credits-contract-rs" target="_blank" rel="noopener noreferrer" className="px-4 py-3 hover:bg-amber-500/10 hover:text-amber-300 text-slate-300 text-xs text-left transition-colors flex items-center gap-2 rounded-b-lg">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Credits Contract (Rust)
+                                            </a>
+                                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-700/50 transform rotate-45"></div>
+                                        </div>
+                                    </div>
                                 </p>
                             </div>
 

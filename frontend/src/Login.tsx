@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { setAuth } from './auth';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, ChevronUp } from 'lucide-react';
 
 export const Login = () => {
     const [username, setUsername] = useState('');
@@ -121,8 +121,28 @@ export const Login = () => {
                 </form>
 
                 <div className="mt-6 text-center">
-                    <p style={{ fontSize: '0.8rem' }} className="text-slate-500">
-                        Build {version} | <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" className="hover:text-slate-400 underline decoration-slate-600 underline-offset-2" target="_blank" rel="noopener noreferrer">Solution</a>
+                    <p style={{ fontSize: '0.8rem' }} className="text-slate-500 flex items-center justify-center gap-1">
+                        Build {version} |
+                        <div className="relative group inline-block ml-1">
+                            <button className="hover:text-slate-300 underline decoration-slate-600 underline-offset-2 flex items-center gap-1 transition-colors">
+                                Source Code <ChevronUp size={12} />
+                            </button>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900/95 border border-slate-700/50 backdrop-blur-xl rounded-lg shadow-2xl opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all duration-200 transform origin-bottom z-50 flex flex-col">
+                                <div className="px-4 py-2 border-b border-white/5 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                                    Repositories
+                                </div>
+                                <a href="https://github.com/iulianpascalau/mx-epoch-proxy-go" target="_blank" rel="noopener noreferrer" className="px-4 py-3 hover:bg-indigo-500/10 hover:text-indigo-300 text-slate-300 text-xs text-left transition-colors flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Epoch Proxy (Go)
+                                </a>
+                                <a href="https://github.com/iulianpascalau/mx-crypto-payments" target="_blank" rel="noopener noreferrer" className="px-4 py-3 hover:bg-emerald-500/10 hover:text-emerald-300 text-slate-300 text-xs text-left transition-colors flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Crypto Payments (Go)
+                                </a>
+                                <a href="https://github.com/iulianpascalau/mx-credits-contract-rs" target="_blank" rel="noopener noreferrer" className="px-4 py-3 hover:bg-amber-500/10 hover:text-amber-300 text-slate-300 text-xs text-left transition-colors flex items-center gap-2 rounded-b-lg">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Credits Contract (Rust)
+                                </a>
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-700/50 transform rotate-45"></div>
+                            </div>
+                        </div>
                     </p>
                 </div>
             </div>

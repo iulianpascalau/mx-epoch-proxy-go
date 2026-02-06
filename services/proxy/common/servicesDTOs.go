@@ -3,7 +3,7 @@ package common
 // CryptoPaymentConfig response from crypto-payment service
 type CryptoPaymentConfig struct {
 	IsContractPaused bool    `json:"isContractPaused"`
-	RequestsPerEGLD  uint64  `json:"requestsPerEGLD"`
+	CreditsPerEGLD   uint64  `json:"creditsPerEGLD"`
 	WalletURL        string  `json:"walletURL"`
 	ExplorerURL      string  `json:"explorerURL"`
 	ContractAddress  string  `json:"contractAddress"`
@@ -17,7 +17,7 @@ type CreateAddressResponse struct {
 
 // AccountInfo response from account endpoint
 type AccountInfo struct {
-	PaymentID        uint64 `json:"paymentID"`
-	Address          string `json:"address"`
-	NumberOfRequests uint64 `json:"numberOfRequests"`
+	PaymentID uint64 `json:"paymentID"`
+	Address   string `json:"address"`
+	Credits   uint64 `json:"credits"`
 }
