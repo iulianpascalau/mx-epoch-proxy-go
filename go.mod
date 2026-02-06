@@ -7,7 +7,7 @@ toolchain go1.24.11
 require (
 	github.com/dchest/captcha v1.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/iulianpascalau/mx-crypto-payments-go v1.0.7
+	github.com/iulianpascalau/mx-crypto-payments-go v1.0.9
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/multiversx/mx-chain-core-go v1.4.1
