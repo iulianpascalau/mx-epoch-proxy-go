@@ -126,7 +126,7 @@ The **Crypto Payments Service** allows users to top up their account
 credits using MultiversX native EGLD token. This functionality is decoupled into a 
 standalone microservice for security reasons.
 
-- **Project Repository**: [Crypto Payments Service Source](https://github.com/iulianpascalau/mx-crypto-payments)
+- **Project Repository**: [Crypto Payments Service Source](https://github.com/iulianpascalau/mx-crypto-payments-go)
 - **Credits Smart Contract**: [Smart Contract Source](https://github.com/iulianpascalau/mx-credits-contract-rs)
 
 ### Funcationality
