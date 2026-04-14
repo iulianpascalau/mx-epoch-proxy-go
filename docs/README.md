@@ -89,32 +89,35 @@ Requests hitting these URLs are appropriately terminated by the `mvx-epoch-proxy
 
 ---
 
-## Solution development backlog
+## Infrastructure Evolution
 
-### 1. Initial solution as of November 2024:
-The configuration consisted of: 
-- 1 physical server running the official mainnet node (epochs starting from 1543 and onwards)
-- 1 physical server running the deep history node version (epochs starting from 953 to 1543) 
-- 1 physical server running the deep hisotry node version (epochs starting from 1 to 953)
-- 1 VM running the Epoch Proxy initial application, version v1.0.1
-The solution ran on 3 servers with SSD storage. The access was quite fast, but it was not a sustainable model due to the cost of adding one server for ~1 year worth of data. The system was mostly used internally by the MultiversX team as it lacked access management.
+### 1. Initial Solution (November 2024)
+The initial configuration consisted of: 
+- 1 physical server running the official mainnet node (epochs 1543 onwards).
+- 1 physical server running the deep history node version (epochs 953 to 1543).
+- 1 physical server running the deep history node version (epochs 1 to 953).
+- 1 VM running the initial Epoch Proxy application (v1.0.1).
 
-### 2. v1.0.x && v1.1.x versions (2025):
-The hardware configuration remained basically the same, only the epoch proxy software was changed to accommodate manually added whitelisted tokens. The access was given to users outside the MultiversX team.
-During the 2025 setup monitoring, the disk space usage became the main concern in the current setup. During 2 meetings with the MultiversX team members, it was decided to move away from server-hosted-storage towards a more sustainable solution using network attached storage. The decision was to use an Unifi UNAS Pro 4 device which was unavailable at that time. The hardware solution was postponed until the UNAS became available.
+This solution ran on three servers with local SSD storage. While data access was very fast, the model was unsustainable due to the high cost of adding a dedicated server for roughly every year's worth of historical data. 
+The system was used by the MultiversX team members, and it was publicly accessible through a solution developed by Buidly team. Comprehensive Medium article and Telegram & Tweeter announcement were published by Buidly team to raise awareness of the project.
 
-### 3. v1.2.x versions (January 2026)
-While waiting for the hardware availability, the epoch proxy solution was re-evaluated and the administrative panel was implemented using some AI tools. Frontend, DB interaction and infrastructure settings were carried out.
+### 2. v1.0.x & v1.1.x (2025)
+The hardware configuration remained unchanged, but the Epoch Proxy software was updated to accommodate manually whitelisted tokens, granting access to select users outside of the MultiversX team. 
 
-### 4. v1.3.x versions (January 2026)
-The work started to implement the crypto payment service as a mean to migrate from the free tier to the premium one, automatically. 
+During runtime monitoring in 2025, disk space usage became the primary bottleneck. Following infrastructure evaluations with the MultiversX team, a decision was made to shift from server-hosted local storage toward a more sustainable Network Attached Storage (NAS) approach. The hardware upgrade was temporarily postponed until the chosen NAS (UniFi UNAS PRO 4) became available.
 
-### 5. v1.4.x versions (February 2026)
-To increase the reusability of the solution, the code was heavily refactored, essentially splitting the epoch-proxy, crypto-payment and the credits-contract solution in dedicated repositories.
+### 3. v1.2.x (January 2026)
+While awaiting hardware availability, the Epoch Proxy solution was re-evaluated, and a fully functional administrative panel was developed. This phase included significant frontend development, database integration, and configuration refinements.
 
-### 6. Hardware refactoring (February – April 2026)
-With the new hardware available, the time came to assess the biggest problem of the entire solution: disk usage. The data was slowly, sometimes painfully slowly copied to the UNAS hardware. After the required data was copied and filled up almost the entire UNAS 24TB drive the following changes took place:
-- the physical servers hosting historical data were turned off and repurposed
-- the physical server running the official mainnet (R640) nodes was reinstalled and configured to host the Proxmox hypervisor
-- on this server 2 VMs were added: one for the official mainnet node and one for the deep history node
-- the VMs for the crypto payment service and epoch proxy were moved to this server.
+### 4. v1.3.x (January 2026)
+Development began on the crypto payment service as a means to automate the migration of users from free-tier to premium-tier access based on active on-chain subscriptions.
+
+### 5. v1.4.x (February 2026)
+To increase solution modularity and reusability, the entire codebase was heavily refactored. The `epoch-proxy`, `crypto-payment`, and `credits-contract` components were split into distinct, dedicated repositories.
+
+### 6. Hardware Refactoring (February – April 2026)
+With the UniFi NAS hardware finally available, the primary challenge of disk space was addressed. The massive volume of historical data was gradually migrated over a prolonged period. Once the data copying was complete—utilizing nearly the entire 24TB capability of the UNAS drive—the following infrastructure optimizations took place:
+- The physical servers previously hosting historical data locally were decommissioned and repurposed.
+- The physical server running the official mainnet node (Dell R640) was wiped and re-provisioned to host the new Proxmox hypervisor (`pve-R640`).
+- Two dedicated VMs were added to the hypervisor: one for the live official mainnet node, and one for the deep history node (which reads large archived epochs from the UNAS over a Samba share).
+- The VMs running the crypto payment service and the Epoch Proxy were also migrated onto this consolidated Proxmox server, finalizing the current architecture.
