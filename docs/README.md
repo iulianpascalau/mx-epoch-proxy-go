@@ -87,11 +87,12 @@ The Epoch Proxy exposes two external endpoints to interact with the underlying v
 
 Requests hitting these URLs are appropriately terminated by the `mvx-epoch-proxy` VM, which serves as the protective and routing proxy over the internal ecosystem.
 
-## Performance metrics:
-- **Accessing data from epochs 1 to 2050**: expect response times of ~1 second per request. If the requests are bundled in the same epochs, the response time can go as low as 250ms.
-- **Accessing data from epochs 2051 to present**: the response time is expected to be 35-200ms per request.
+## Performance Metrics
 
-The high response times for epochs 1 to 2050 are caused by the fact that the data is stored on mechanical disks and the data access is limited to around 40-50MB/s. Furthermore, the node's database is LevelDB that consists of an incredibly large number of small files (roughly 2MB each). When the technology evolves and large SSDs will become economically feasible, they will replace the current mechanical disks. Until then, the response times will remain the same.
+- **Epochs 1 to 2050 (Historical Data)**: Expect response times of ~1 second per request. If multiple requests are bundled targeting the same epochs, response times can drop as low as 250ms.
+- **Epochs 2051 to Present (Live Data)**: Response times typically range from 35-200ms per request.
+
+The higher latency for older epochs (1–2050) occurs because the massive dataset is housed on mechanical hard drives (HDDs), where physical read speeds are limited to roughly 40-50MB/s. Additionally, the node's underlying LevelDB database relies on an incredibly large number of small files (~2MB each), which induces significant disk seek overhead. Once high-capacity SSDs become economically feasible at a 24TB scale, they will replace the current mechanical array natively. Until then, response times for deep history queries will remain at these expected levels.
 
 ---
 
@@ -104,8 +105,8 @@ The initial configuration consisted of:
 - 1 physical server running the deep history node version (epochs 1 to 953).
 - 1 VM running the initial Epoch Proxy application (v1.0.1).
 
-This solution ran on three servers with local SSD storage. While data access was very fast, the model was unsustainable due to the high cost of adding a dedicated server for roughly every year's worth of historical data. 
-The system was used by the MultiversX team members, and it was publicly accessible through a solution developed by Buidly team. Comprehensive Medium article and Telegram & Tweeter announcement were published by Buidly team to raise awareness of the project.
+**This solution ran on three servers with local SSD storage. While data access was exceptionally fast, the deployment model proved unsustainable due to the high hardware cost of adding a dedicated server for roughly every year's worth of historical data.** 
+The system was heavily utilized by the MultiversX team and was also made publicly accessible via a community solution developed by the Buidly team. To raise ecosystem awareness, the Buidly team published comprehensive Medium articles alongside Telegram and Twitter announcements.
 
 ### 2. v1.0.x & v1.1.x (2025)
 The hardware configuration remained unchanged, but the Epoch Proxy software was updated to accommodate manually whitelisted tokens, granting access to select users outside of the MultiversX team. 
