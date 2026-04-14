@@ -87,6 +87,12 @@ The Epoch Proxy exposes two external endpoints to interact with the underlying v
 
 Requests hitting these URLs are appropriately terminated by the `mvx-epoch-proxy` VM, which serves as the protective and routing proxy over the internal ecosystem.
 
+## Performance metrics:
+- **Accessing data from epochs 1 to 2050**: expect response times of ~1 second per request. If the requests are bundled in the same epochs, the response time can go as low as 250ms.
+- **Accessing data from epochs 2051 to present**: the response time is expected to be 35-200ms per request.
+
+The high response times for epochs 1 to 2050 are caused by the fact that the data is stored on mechanical disks and the data access is limited to around 40-50MB/s. Furthermore, the node's database is LevelDB that consists of an incredibly large number of small files (roughly 2MB each). When the technology evolves and large SSDs will become economically feasible, they will replace the current mechanical disks. Until then, the response times will remain the same.
+
 ---
 
 ## Infrastructure Evolution
