@@ -78,6 +78,19 @@ Inside the Proxmox environment (`pve-R640`), several targeted VMs are provisione
 - **Purpose**: Altered node code and scripts repositories, specifically designed for historical data retrieval. The node code is tuned so only the API engine is running, the p2p, blocks syncing, heartbeat and consensus go routines are not started to conserve resources.
 - **Local DB**: Yes, LevelDB.
 
+## Crypto Payment Service
+
+A detailed diagram of the crypto payment is presented below:
+![Crypto-payments Diagram](crypto-payments.drawio.png)
+
+The process starts with the user that wishes to buy credits (tokens) to be used for accessing the Deep History infrastructure. In the administration panel, when accessing the crypto-payments section, a new, unique ID will be allocated for that user. 
+Based on the ID, also a private/public key pair will be generated that will be handled by the crypto-payments service. If any MultiversX wallet deposits EGLD funds on that generated address, and the amount exceeds the minimum deposit amount, 
+a loop inside the crypto-payments service will detect this event and will automatically call the `addCredits` smart-contract function using a relayer. In this way we can ensure that absolutely all transferred funds from the user will be converted to credits.
+And also, greatly simplify the process from the user's perspective as it won't require that the user perform complex tasks. Only one simple transfer funds operation.
+
+**_Note:_** This service can be used in other systems and contexts as a separate building block. It does the lifting part of the conversion between EGLD to tokens or credits used to perform some specific tasks.
+
+
 ## Networking & Domains
 
 The Epoch Proxy exposes two external endpoints to interact with the underlying virtual machines:
