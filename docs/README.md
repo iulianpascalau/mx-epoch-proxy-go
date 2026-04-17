@@ -81,14 +81,19 @@ Inside the Proxmox environment (`pve-R640`), several targeted VMs are provisione
 ## Crypto Payment Service
 
 A detailed diagram of the crypto payment is presented below:
+
+
 ![Crypto-payments Diagram](crypto-payments.drawio.png)
 
-The process starts with the user that wishes to buy credits (tokens) to be used for accessing the Deep History infrastructure. In the administration panel, when accessing the crypto-payments section, a new, unique ID will be allocated for that user. 
-Based on the ID, also a private/public key pair will be generated that will be handled by the crypto-payments service. If any MultiversX wallet deposits EGLD funds on that generated address, and the amount exceeds the minimum deposit amount, 
-a loop inside the crypto-payments service will detect this event and will automatically call the `addCredits` smart-contract function using a relayer. In this way we can ensure that absolutely all transferred funds from the user will be converted to credits.
-And also, greatly simplify the process from the user's perspective as it won't require that the user perform complex tasks. Only one simple transfer funds operation.
+The process begins when a user wishes to purchase credits (tokens) to access the Deep History infrastructure. Upon navigating to the crypto-payments section of the administration panel, a unique ID is allocated to the user. 
 
-**_Note:_** This service can be used in other systems and contexts as a separate building block. It does the lifting part of the conversion between EGLD to tokens or credits used to perform some specific tasks.
+Based on this ID, a dedicated private/public key pair is generated and securely managed by the `crypto-payments` service. When any MultiversX wallet deposits EGLD funds into that generated address (provided the amount exceeds the minimum deposit threshold), a background loop inside the service detects the new deposited amount and automatically invokes the `addCredits` smart-contract function via a relayer. 
+
+This approach guarantees that all deposited funds are reliably converted into access credits. It also greatly simplifies the user experience, as it removes the need for complex smart contract interactions—only a standard, simple fund transfer is required.
+
+The service code is available on GitHub: https://github.com/iulianpascalau/mx-crypto-payments-go along with the smart contract implementaion: https://github.com/iulianpascalau/mx-credits-contract-rs
+
+**_Note:_** This payment service is highly modular and can be integrated into other systems as a standalone building block. It handles the heavy lifting of seamlessly converting native EGLD deposits into internal tokens or credits utilized for access control.
 
 
 ## Networking & Domains
