@@ -78,6 +78,24 @@ Inside the Proxmox environment (`pve-R640`), several targeted VMs are provisione
 - **Purpose**: Altered node code and scripts repositories, specifically designed for historical data retrieval. The node code is tuned so only the API engine is running, the p2p, blocks syncing, heartbeat and consensus go routines are not started to conserve resources.
 - **Local DB**: Yes, LevelDB.
 
+## Crypto Payment Service
+
+A detailed diagram of the crypto payment is presented below:
+
+
+![Crypto-payments Diagram](crypto-payments.drawio.png)
+
+The process begins when a user wishes to purchase credits (tokens) to access the Deep History infrastructure. Upon navigating to the crypto-payments section of the administration panel, a unique ID is allocated to the user. 
+
+Based on this ID, a dedicated private/public key pair is generated and securely managed by the `crypto-payments` service. When any MultiversX wallet deposits EGLD funds into that generated address (provided the amount exceeds the minimum deposit threshold), a background loop inside the service detects the new deposited amount and automatically invokes the `addCredits` smart-contract function via a relayer. 
+
+This approach guarantees that all deposited funds are reliably converted into access credits. It also greatly simplifies the user experience, as it removes the need for complex smart contract interactions—only a standard, simple fund transfer is required.
+
+The service code is available on GitHub: https://github.com/iulianpascalau/mx-crypto-payments-go along with the smart contract implementaion: https://github.com/iulianpascalau/mx-credits-contract-rs
+
+**_Note:_** This payment service is highly modular and can be integrated into other systems as a standalone building block. It handles the heavy lifting of seamlessly converting native EGLD deposits into internal tokens or credits utilized for access control.
+
+
 ## Networking & Domains
 
 The Epoch Proxy exposes two external endpoints to interact with the underlying virtual machines:
